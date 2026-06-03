@@ -252,8 +252,32 @@ module.exports = {
   toggleStreamer: toggleStreamer, requestStreamer: requestStreamer, getStreamerRequests: getStreamerRequests, handleStreamerRequest: handleStreamerRequest,
   createNotification: createNotification, getUserNotifications: getUserNotifications, markNotificationRead: markNotificationRead,
   createContactMessage: createContactMessage, getAllContactMessages: getAllContactMessages, deleteContactMessage: deleteContactMessage,
-  updateUserScore: updateUserScore, updateLastActive: updateLastActive, deleteUser: deleteUser, getDiscordLink: getDiscordLink, setDiscordLink: setDiscordLink
+  updateUserScore: updateUserScore, updateLastActive: updateLastActive, deleteUser: deleteUser, getDiscordLink: getDiscordLink, setDiscordLink: setDiscordLink,
+  getUserProfile: getUserProfile
 };
+
+async function getUserProfile(username) {
+  // 1) User info
+  var u = await query("SELECT id, username, role, streamer, best_score, games_played, created_at, last_active FROM users WHERE LOWER(username) = LOWER($1)", [username]);
+  if (u.rows.length === 0) return null;
+  var user = u.rows[0];
+
+  // 2) Per-game stats
+  var gs = await query("SELECT game_type, COUNT(*) as count, SUM(score) as total_score, MAX(score) as best_score FROM game_scores WHERE user_id = $1 GROUP BY game_type ORDER BY count DESC", [user.id]);
+
+  // 3) Recent 20 games
+  var recent = await query("SELECT game_type, score, total, played_at FROM game_scores WHERE user_id = $1 ORDER BY played_at DESC LIMIT 20", [user.id]);
+
+  // 4) Leaderboard rank
+  var rank = await query("SELECT COUNT(*) + 1 as rank FROM users WHERE best_score > $1 AND best_score > 0", [user.best_score]);
+
+  return {
+    user: user,
+    gameStats: gs.rows,
+    recentGames: recent.rows,
+    rank: user.best_score > 0 ? parseInt(rank.rows[0].rank) : null
+  };
+}
 
 async function getAllCharactersLite() {
   var r = await query("SELECT id, name, surname, gender, rep, tip, CASE WHEN img LIKE '/images/%' THEN img ELSE '' END as img, active FROM characters ORDER BY name");
