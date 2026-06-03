@@ -59,6 +59,8 @@ function play(t){
   document.getElementById('gg').style.display='none';
   document.getElementById('games-hdr').style.display='none';
   var gc=document.getElementById('games-con');gc.style.maxWidth='none';gc.style.padding='0';
+  if(t==='STREAM') { if(typeof _pushUrl==='function') _pushUrl('streamer-menu'); }
+  else { if(typeof _pushUrl==='function') _pushUrl('game', t); }
   if(t==='DIE')dieStart();else if(t==='TEAM')teamStart();else if(t==='FATE')fateStart();else if(t==='FACE')faceStart();else if(t==='QUOTE')quoteStart();else if(t==='MEM')memStart();else if(t==='WHO')whoStart();else if(t==='STREAM')streamStart();else genericGame(t);
 }
 function bk(){
@@ -67,6 +69,7 @@ function bk(){
   document.getElementById('games-hdr').style.display='';
   var gc=document.getElementById('games-con');gc.style.maxWidth='';gc.style.padding='';
   tState=null;dState=null;tmState=null;ftState=null;fcState=null;rqState=null;mState=null;whState=null;
+  if(typeof _pushUrl==='function') _pushUrl('games');
 }
 
 function genericGame(t){const cs=pick(chars.filter(c=>c.a),4);const g=GD.find(x=>x.t===t);
@@ -166,6 +169,7 @@ window.addEventListener('load', function() {
     document.querySelectorAll('.mob-nav a').forEach(function(a){a.classList.remove('on')});
     var mm={home:0,games:1,lb:2,contact:3};var idx=mm[sec];
     if(idx!==undefined){var ma=document.querySelectorAll('.mob-nav a');if(ma[idx])ma[idx].classList.add('on');}
+    _pushUrl(sec);
     setTimeout(function(){
       var el=document.getElementById('sec-'+sec);
       if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
@@ -312,6 +316,96 @@ window.addEventListener('load', function() {
   if(!document.querySelector('.mob-nav')){var mn=document.createElement('div');mn.className='mob-nav';mn.innerHTML='<div class="mob-nav-inner"><a href="#" class="on" onclick="goSec(\'home\');return false"><span>\u26a1</span>Anasayfa</a><a href="#" onclick="goSec(\'games\');return false"><span>\ud83c\udfae</span>Oyunlar</a><a href="#" onclick="goSec(\'lb\');return false"><span>\ud83c\udfc6</span>Sıralama</a><a href="#" onclick="goSec(\'contact\');return false"><span>\ud83d\udcec</span>İletişim</a><a href="#" onclick="go(\'login\');return false"><span>\ud83d\udc64</span>Profil</a></div>';document.body.appendChild(mn);}
 
   // Override go - handle ALL page navigation
+  // ═══ URL ROUTING ═══
+  var _routeMap = {home:'/',oyunlar:'games',siralama:'lb',iletisim:'contact',giris:'login',kayit:'register',admin:'admin',profil:'profile'};
+  var _reverseRoute = {home:'/',games:'/oyunlar',lb:'/siralama',contact:'/iletisim',login:'/giris',register:'/kayit',admin:'/admin',profile:'/profil'};
+  var _gameUrls = {DIE:'/oyun/hayatta-kal',TEAM:'/oyun/ekibini-kur',QUOTE:'/oyun/replik-bil',FACE:'/oyun/yuzden-bil',MEM:'/oyun/eightborn-moruq',FATE:'/oyun/kaderini-sec',WHO:'/oyun/sen-kimsin',STREAM:'/yayinci'};
+  var _urlToGame = {'hayatta-kal':'DIE','ekibini-kur':'TEAM','replik-bil':'QUOTE','yuzden-bil':'FACE','eightborn-moruq':'MEM','kaderini-sec':'FATE','sen-kimsin':'WHO'};
+  var _skipPush = false;
+
+  function _pushUrl(page, extra) {
+    if (_skipPush) return;
+    var hash = _reverseRoute[page] || '/';
+    if (page === 'profile' && extra) hash = '/profil/' + encodeURIComponent(extra);
+    if (page === 'game' && extra) hash = _gameUrls[extra] || '/oyunlar';
+    if (page === 'streamer-menu') hash = '/yayinci';
+    if (page === 'streamer-setup') hash = '/yayinci/kurulum';
+    if (page === 'streamer-live') hash = '/yayinci/canli';
+    var newHash = '#' + hash;
+    if (window.location.hash !== newHash) {
+      history.pushState({ page: page, extra: extra || null }, '', newHash);
+    }
+  }
+
+  // Back button handler
+  window.addEventListener('popstate', function(e) {
+    _skipPush = true;
+    try {
+      if (e.state && e.state.page) {
+        var pg = e.state.page;
+        if (pg === 'profile' && e.state.extra) {
+          window._profileTarget = e.state.extra;
+          go('profile');
+        } else if (pg === 'game' && e.state.extra) {
+          playDirect(e.state.extra);
+        } else if (pg === 'streamer-menu') {
+          playDirect('STREAM');
+        } else if (pg === 'streamer-setup' || pg === 'streamer-live') {
+          // Back from setup/live → go to streamer menu
+          if (typeof streamCleanup === 'function') streamCleanup();
+          playDirect('STREAM');
+        } else if (pg === 'home' || pg === 'lb' || pg === 'contact') {
+          goSec(pg);
+        } else {
+          go(pg);
+        }
+      } else {
+        _handleRoute();
+      }
+    } catch(err) { console.error('popstate error:', err); }
+    _skipPush = false;
+  });
+
+  // Parse current hash and navigate
+  function _handleRoute() {
+    var hash = (window.location.hash || '').replace('#', '');
+    if (!hash || hash === '/') { goSec('home'); return; }
+    
+    // /profil/username
+    var profMatch = hash.match(/^\/profil\/(.+)$/);
+    if (profMatch) {
+      window._profileTarget = decodeURIComponent(profMatch[1]);
+      _skipPush = true; go('profile'); _skipPush = false;
+      return;
+    }
+    
+    // /oyun/xxx — individual games
+    var gameMatch = hash.match(/^\/oyun\/(.+)$/);
+    if (gameMatch) {
+      var gameType = _urlToGame[gameMatch[1]];
+      if (gameType) { _skipPush = true; playDirect(gameType); _skipPush = false; return; }
+    }
+    
+    // /yayinci — streamer menu or sub-pages
+    if (hash === '/yayinci' || hash === '/yayinci/kurulum' || hash === '/yayinci/canli') {
+      _skipPush = true; playDirect('STREAM'); _skipPush = false;
+      return;
+    }
+    
+    // Standard page mapping
+    var parts = hash.replace(/^\//, '');
+    var page = _routeMap[parts];
+    if (page) {
+      if (page === 'home' || page === 'lb' || page === 'contact') {
+        _skipPush = true; goSec(page); _skipPush = false;
+      } else {
+        _skipPush = true; go(page); _skipPush = false;
+      }
+    } else {
+      goSec('home');
+    }
+  }
+
   var _origGo=window.go;
   window.go=function(pg){
     if(pg==='home'||pg==='lb'||pg==='contact'){goSec(pg);return;}
@@ -325,6 +419,7 @@ window.addEventListener('load', function() {
       var pa=document.getElementById('p-admin');
       if(pa){pa.classList.remove('hid');pa.style.display='block';}
       window.scrollTo({top:0,behavior:'smooth'});
+      _pushUrl('admin');
       if(typeof rAdm==='function')rAdm();
       return;
     }
@@ -338,13 +433,18 @@ window.addEventListener('load', function() {
         var ag=document.getElementById('ag');if(ag)ag.classList.add('hid');
         var gg=document.getElementById('gg');if(gg)gg.style.display='';
         var gh=document.getElementById('games-hdr');if(gh)gh.style.display='';
+        _pushUrl('games');
       }
       if(pg==='profile'){
         var _pu=window._profileTarget||(typeof curUser!=='undefined'&&curUser?curUser.username:'');
         window._profileTarget=null;
-        if(_pu&&typeof renderProfile==='function') renderProfile(_pu);
-        else { goSec('home'); return; }
+        if(_pu&&typeof renderProfile==='function'){
+          renderProfile(_pu);
+          _pushUrl('profile', _pu);
+        } else { goSec('home'); return; }
       }
+      if(pg==='login') _pushUrl('login');
+      if(pg==='register') _pushUrl('register');
       return;
     }
     // Everything else: use original go
@@ -527,4 +627,16 @@ window.addEventListener('load', function() {
   _bh();
   // Re-apply ads after login state is known
   setTimeout(function(){if(typeof applyAds==='function')applyAds();},500);
+  // Initial route: parse URL hash and navigate to correct page
+  setTimeout(function(){
+    var hash = window.location.hash;
+    if (hash && hash !== '#' && hash !== '#/') {
+      _skipPush = true;
+      _handleRoute();
+      _skipPush = false;
+    } else {
+      // Set initial state for home
+      history.replaceState({ page: 'home' }, '', '#/');
+    }
+  }, 100);
 });
