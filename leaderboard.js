@@ -67,7 +67,7 @@ async function loadLbGame(game) {
     h += '<div style="display:grid;grid-template-columns:80px 1fr 120px 100px;align-items:center;padding:20px 24px;border-bottom:1px solid rgba(91,64,61,0.05);transition:background .2s" onmouseover="this.style.background=\'rgba(255,255,255,0.03)\'" onmouseout="this.style.background=\'\'">';
     h += '<div style="display:flex;align-items:center;gap:8px"><span style="width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:' + (i < 3 ? '28' : '14') + 'px;' + rankBg + '">' + (i < 3 ? rankEmoji : (i + 1)) + '</span></div>';
     h += '<div style="display:flex;align-items:center">';
-    h += '<span style="font-size:15px;font-weight:600;color:#e4e1ee">' + esc(u.username) + '</span></div>';
+    h += '<span data-profile="' + esc(u.username) + '" style="font-size:15px;font-weight:600;color:#e4e1ee;cursor:pointer;text-decoration:none" onmouseover="this.style.color=\'#ffb4ac\'" onmouseout="this.style.color=\'#e4e1ee\'">' + esc(u.username) + '</span></div>';
     h += '<div style="text-align:center;font-family:Bebas Neue,sans-serif;font-size:20px;color:#e4e1ee">' + score.toLocaleString() + '</div>';
     h += '<div style="text-align:right;color:#3cddc7;font-weight:700;font-size:14px">' + games + '</div>';
     h += '</div>';
