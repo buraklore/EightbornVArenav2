@@ -137,7 +137,7 @@ window.addEventListener('load', function() {
     if (!navEl) return;
     navEl.innerHTML = '<nav style="position:relative;width:100%;z-index:100;background:#13131b;border-bottom:1px solid rgba(91,64,61,0.15);box-shadow:0 24px 48px -12px rgba(0,0,0,0.6)">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;height:80px;padding:0 32px;max-width:100%">' +
-        '<a onclick="goSec(\'home\')" style="cursor:pointer;text-decoration:none"><span class="fd" style="font-size:30px;letter-spacing:2px;color:#ffb4ac">EIGHTBORNV ARENA</span></a>' +
+        '<a onclick="location.reload(true)" style="cursor:pointer;text-decoration:none"><span class="fd" style="font-size:30px;letter-spacing:2px;color:#ffb4ac">EIGHTBORNV ARENA</span></a>' +
         '<div class="nls" style="display:flex;align-items:center;gap:32px">' +
           '<button class="nl" data-p="home" onclick="goSec(\'home\')" style="font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#ffb4ac;border-bottom:2px solid #ffb4ac;padding:8px 4px;background:none;border-top:none;border-left:none;border-right:none">Arena</button>' +
           '<button class="nl" data-p="games" onclick="goSec(\'games\')" style="font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#e4e1ee;padding:8px 4px;background:none;border:none">Oyunlar</button>' +
