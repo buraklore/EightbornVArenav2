@@ -328,8 +328,8 @@ window.addEventListener('load', function() {
       if(typeof rAdm==='function')rAdm();
       return;
     }
-    // Login, Register, Games: direct handling
-    if(pg==='login'||pg==='register'||pg==='games'){
+    // Login, Register, Games, Profile: direct handling
+    if(pg==='login'||pg==='register'||pg==='games'||pg==='profile'){
       document.querySelectorAll('[id^="p-"]').forEach(function(e){e.classList.add('hid');e.style.display='none';});
       var tp=document.getElementById('p-'+pg);
       if(tp){tp.classList.remove('hid');tp.style.display='block';}
@@ -338,6 +338,12 @@ window.addEventListener('load', function() {
         var ag=document.getElementById('ag');if(ag)ag.classList.add('hid');
         var gg=document.getElementById('gg');if(gg)gg.style.display='';
         var gh=document.getElementById('games-hdr');if(gh)gh.style.display='';
+      }
+      if(pg==='profile'){
+        var _pu=window._profileTarget||(typeof curUser!=='undefined'&&curUser?curUser.username:'');
+        window._profileTarget=null;
+        if(_pu&&typeof renderProfile==='function') renderProfile(_pu);
+        else { goSec('home'); return; }
       }
       return;
     }
