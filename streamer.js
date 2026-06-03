@@ -49,14 +49,14 @@ function streamStart() {
     '<div class="gc-new" onclick="streamSetup(\'CDIE\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.DIE||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'\u2694\ufe0f\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('CDIE','Kim Hayatta Kalacak') +'</h3><p>'+ _sd('CDIE','Chat CK\'y\u0131 belirler!') +'</p><div class="diff" style="background:rgba(255,84,77,.08);color:#ffb4ac">\u0130NTERAKT\u0130F</div></div>' +
     '<div class="gc-new" onclick="streamSetup(\'CTEAM\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.TEAM||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'\ud83d\udc65\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('CTEAM','Ekibini Kur') +'</h3><p>'+ _sd('CTEAM','Ekibi chat belirler!') +'</p><div class="diff" style="background:rgba(255,84,77,.08);color:#ffb4ac">\u0130NTERAKT\u0130F</div></div>' +
     '<div class="gc-new" onclick="streamSetup(\'CFATE\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.FATE||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'\ud83c\udfb2\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('CFATE','Kaderini Se\u00e7') +'</h3><p>'+ _sd('CFATE','Kaderi chat belirler!') +'</p><div class="diff" style="background:rgba(255,84,77,.08);color:#ffb4ac">\u0130NTERAKT\u0130F</div></div>' +
-    '<div class="gc-new" style="opacity:.5;cursor:default;pointer-events:none;position:relative"><div style="position:absolute;top:12px;right:12px;font-size:11px;font-weight:800;padding:4px 10px;border-radius:6px;background:#666;color:#fff">YAKINDA</div><div class="gc-i" style="background:rgba(100,100,100,.1)">\ud83c\udfae</div><h3>Yay\u0131nc\u0131 Vs Chat</h3><p>\u00c7ok yak\u0131nda!</p><div class="diff" style="background:rgba(100,100,100,.08);color:#666">YAKINDA</div></div>' +
+    '<div class="gc-new" onclick="streamSetup(\'DUEL\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.DIE||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'\u2694\ufe0f\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('DUEL','D\u00fcello Olu\u015ftur') +'</h3><p>'+ _sd('DUEL','Kendi d\u00fcellonu olu\u015ftur!') +'</p><div class="diff" style="background:rgba(255,84,77,.08);color:#ffb4ac">\u0130NTERAKT\u0130F</div></div>' +
     '</div></div>';
 }
 
 function streamSetup(mode) {
   var ag = document.getElementById('ag');
   var isStory = mode === 'STORY';
-  var modeNames = {QUOTE:'Replik Bil',FACE:'Yüzden Bil',MEMORY:'Eightborn Moruq',STORY:'Chat Kaderini Belirler',CDIE:'Kim Hayatta Kalacak',CTEAM:'Ekibini Kur',CFATE:'Kaderini Seç'};
+  var modeNames = {QUOTE:'Replik Bil',FACE:'Yüzden Bil',MEMORY:'Eightborn Moruq',STORY:'Chat Kaderini Belirler',CDIE:'Kim Hayatta Kalacak',CTEAM:'Ekibini Kur',CFATE:'Kaderini Seç',DUEL:'Düello Oluştur'};
   
   // Calculate max counts for dynamic options
   var repCount = chars.filter(function(c){return c.a && c.rep && c.rep.trim()}).length;
@@ -95,6 +95,32 @@ function streamSetup(mode) {
     extraField = '<div class="form-group" style="margin-bottom:28px"><label class="lbl" style="font-size:20px;margin-bottom:10px">👥 Karakter Sayısı</label><select class="inp" style="font-size:22px;padding:20px;border-radius:16px" id="stream-count">'+opts+'</select></div>';
   } else if (mode === 'CFATE') {
     extraField = '<div class="form-group" style="margin-bottom:28px"><label class="lbl" style="font-size:20px;margin-bottom:10px">⚧ Cinsiyetiniz</label><select class="inp" style="font-size:22px;padding:20px;border-radius:16px" id="stream-count"><option value="M">Erkek (Karşınıza Kadın Karakterler Çıkar)</option><option value="F">Kadın (Karşınıza Erkek Karakterler Çıkar)</option></select></div>';
+  } else if (mode === 'DUEL') {
+    var charListHtml = '';
+    var activeChars = chars.filter(function(c){ return c.a; });
+    activeChars.forEach(function(c, i) {
+      var cId = (c.n + '|' + c.s).replace(/'/g, "\\'");
+      charListHtml += '<label class="duel-char-item" data-name="' + esc(c.n + ' ' + c.s).toLowerCase() + '" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;cursor:pointer;border:2px solid var(--b1);transition:all .2s">' +
+        '<input type="checkbox" class="duel-char-cb" value="' + i + '" style="width:20px;height:20px;accent-color:#ff544d;flex-shrink:0">' +
+        '<div style="width:36px;height:36px;border-radius:8px;overflow:hidden;flex-shrink:0">' + cp(c, 36) + '</div>' +
+        '<span style="font-weight:600;font-size:14px">' + esc(c.n) + ' ' + esc(c.s) + '</span></label>';
+    });
+    extraField =
+      '<div class="form-group" style="margin-bottom:20px">' +
+        '<label class="lbl" style="font-size:20px;margin-bottom:10px">⚔️ Düello Başlığı</label>' +
+        '<input class="inp" style="font-size:20px;padding:18px;border-radius:16px" id="duel-title" placeholder="Örn: Hangisi daha zengin?">' +
+      '</div>' +
+      '<div class="form-group" style="margin-bottom:20px">' +
+        '<label class="lbl" style="font-size:20px;margin-bottom:10px">👥 Karakter Seç <span id="duel-count" style="font-size:14px;color:var(--t3)">(0 seçildi — en az 4)</span></label>' +
+        '<input class="inp" style="font-size:16px;padding:14px;border-radius:12px;margin-bottom:12px" id="duel-search" placeholder="🔍 Karakter ara..." oninput="duelFilterChars()">' +
+        '<div style="display:flex;gap:8px;margin-bottom:12px">' +
+          '<button class="btn bsm" style="font-size:12px;padding:6px 14px;border-radius:8px" onclick="duelSelectAll(true)">Tümünü Seç</button>' +
+          '<button class="btn bsm bg" style="font-size:12px;padding:6px 14px;border-radius:8px" onclick="duelSelectAll(false)">Tümünü Kaldır</button>' +
+        '</div>' +
+        '<div id="duel-char-list" style="max-height:350px;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:8px;border:1px solid var(--b1);border-radius:14px;background:var(--bg2)">' +
+          charListHtml +
+        '</div>' +
+      '</div>';
   }
   
   ag.innerHTML = 
@@ -115,6 +141,49 @@ function streamSetup(mode) {
     '<button class="btn bp" style="width:100%;font-size:26px;padding:22px;border-radius:16px;margin-top:12px;background:linear-gradient(135deg,#ff544d,#ff544d);box-shadow:0 8px 32px #ff544d40" onclick="streamConnect()">🚀 Oyunu Başlat</button>' +
     '</div></div>';
 }
+
+// ═══ DUEL HELPER FUNCTIONS ═══
+function duelFilterChars() {
+  var q = (document.getElementById('duel-search').value || '').toLowerCase().trim();
+  var items = document.querySelectorAll('.duel-char-item');
+  items.forEach(function(el) {
+    var name = el.getAttribute('data-name') || '';
+    el.style.display = (!q || name.indexOf(q) >= 0) ? 'flex' : 'none';
+  });
+}
+
+function duelSelectAll(select) {
+  document.querySelectorAll('.duel-char-cb').forEach(function(cb) {
+    var item = cb.closest('.duel-char-item');
+    if (item && item.style.display !== 'none') {
+      cb.checked = select;
+      item.style.borderColor = select ? '#ff544d' : 'var(--b1)';
+      item.style.background = select ? 'rgba(255,84,77,0.05)' : 'transparent';
+    }
+  });
+  duelUpdateCount();
+}
+
+function duelUpdateCount() {
+  var count = document.querySelectorAll('.duel-char-cb:checked').length;
+  var el = document.getElementById('duel-count');
+  if (el) {
+    var color = count >= 4 ? 'var(--m)' : 'var(--pk)';
+    el.innerHTML = '<span style="color:' + color + '">(' + count + ' seçildi' + (count < 4 ? ' — en az 4' : ' ✅') + ')</span>';
+  }
+}
+
+// Attach change listeners after setup renders
+document.addEventListener('change', function(e) {
+  if (e.target && e.target.classList.contains('duel-char-cb')) {
+    var item = e.target.closest('.duel-char-item');
+    if (item) {
+      item.style.borderColor = e.target.checked ? '#ff544d' : 'var(--b1)';
+      item.style.background = e.target.checked ? 'rgba(255,84,77,0.05)' : 'transparent';
+    }
+    duelUpdateCount();
+  }
+});
 
 async function streamConnect() {
   if(typeof checkBanned==="function"&&checkBanned())return;
@@ -167,23 +236,39 @@ async function streamConnect() {
     });
   }
   
-  if (mode === 'CDIE' || mode === 'CTEAM' || mode === 'CFATE') {
-    var countVal = document.getElementById('stream-count').value;
+  if (mode === 'CDIE' || mode === 'CTEAM' || mode === 'CFATE' || mode === 'DUEL') {
+    var countVal = (mode !== 'DUEL' && document.getElementById('stream-count')) ? document.getElementById('stream-count').value : '';
+    var duelTitle = '';
     var pool = [];
-    if (mode === 'CFATE') {
+    if (mode === 'DUEL') {
+      // Read düello title and selected characters
+      duelTitle = (document.getElementById('duel-title').value || '').trim();
+      if (!duelTitle) { toast('Düello başlığı gerekli!', false); return; }
+      var selected = [];
+      document.querySelectorAll('.duel-char-cb:checked').forEach(function(cb) {
+        var idx = parseInt(cb.value);
+        var activeChars = chars.filter(function(c){ return c.a; });
+        if (activeChars[idx]) selected.push(activeChars[idx]);
+      });
+      if (selected.length < 4) { toast('En az 4 karakter seçmelisin!', false); return; }
+      // Ensure even number for pairing
+      if (selected.length % 2 !== 0) { selected = selected.slice(0, selected.length - 1); }
+      pool = shuf(selected);
+    } else if (mode === 'CFATE') {
       var opposite = countVal === 'M' ? 'F' : 'M';
       pool = shuf(chars.filter(function(c){return c.a && c.g === opposite})).slice(0,8);
     } else {
       pool = shuf(chars.filter(function(c){return c.a})).slice(0, parseInt(countVal));
     }
-    streamState = { platform:platform, channelId:channelId, mode:mode, active:true, pool:pool, alive:[].concat(pool), eliminated:[], team:[], currentPair:null, currentChar:null, votes:{}, voters:{}, voteTimer:null, phase:'READY', chatMessages:[], fates:[{id:'f1',name:'\u00d6ld\u00fcr',emoji:'\ud83d\udd2a',color:'#ff544d',chars:[]},{id:'f2',name:'Evlen',emoji:'\ud83d\udc8d',color:'#3cddc7',chars:[]},{id:'f3',name:'\u0130hanet Et',emoji:'\ud83d\udc94',color:'#ff6b6b',chars:[]},{id:'f4',name:'Fl\u00f6rt Et',emoji:'\ud83d\ude18',color:'#ffa07a',chars:[]},{id:'f5',name:'Ghostla',emoji:'\ud83d\udc7b',color:'#888',chars:[]},{id:'f6',name:'\u00d6p',emoji:'\ud83d\udc8b',color:'#e91e90',chars:[]},{id:'f7',name:'Tokat At',emoji:'\ud83e\udd4a',color:'#ff4444',chars:[]},{id:'f8',name:'Ka\u00e7',emoji:'\ud83c\udfc3',color:'#4ecdc4',chars:[]}],passFate:{id:'f9',name:'Pas',emoji:'\u23ed\ufe0f',color:'#666',chars:[],maxUses:3,used:0},usedFates:[] };
+    streamState = { platform:platform, channelId:channelId, mode:mode, active:true, pool:pool, alive:[].concat(pool), eliminated:[], team:[], currentPair:null, currentChar:null, votes:{}, voters:{}, voteTimer:null, phase:'READY', chatMessages:[], duelTitle:duelTitle, duelRound:1, fates:[{id:'f1',name:'\u00d6ld\u00fcr',emoji:'\ud83d\udd2a',color:'#ff544d',chars:[]},{id:'f2',name:'Evlen',emoji:'\ud83d\udc8d',color:'#3cddc7',chars:[]},{id:'f3',name:'\u0130hanet Et',emoji:'\ud83d\udc94',color:'#ff6b6b',chars:[]},{id:'f4',name:'Fl\u00f6rt Et',emoji:'\ud83d\ude18',color:'#ffa07a',chars:[]},{id:'f5',name:'Ghostla',emoji:'\ud83d\udc7b',color:'#888',chars:[]},{id:'f6',name:'\u00d6p',emoji:'\ud83d\udc8b',color:'#e91e90',chars:[]},{id:'f7',name:'Tokat At',emoji:'\ud83e\udd4a',color:'#ff4444',chars:[]},{id:'f8',name:'Ka\u00e7',emoji:'\ud83c\udfc3',color:'#4ecdc4',chars:[]}],passFate:{id:'f9',name:'Pas',emoji:'\u23ed\ufe0f',color:'#666',chars:[],maxUses:3,used:0},usedFates:[] };
     if (platform === 'youtube') {
       var initRes = await apiPost('/stream/youtube-init', { videoId: channelId });
       if (initRes.error) { toast('YouTube ba\u011flant\u0131 hatas\u0131: ' + initRes.error, false); return; }
       streamState.liveChatId = initRes.liveChatId;
       startChatPolling();
     } else { startKickChat(channelId); }
-    if (mode==='CDIE') nextCDieRound();
+    if (mode==='DUEL') nextDuelRound();
+    else if (mode==='CDIE') nextCDieRound();
     else if (mode==='CTEAM') nextCTeamRound();
     else nextCFateRound();
     return;
@@ -373,7 +458,7 @@ function startKickChat(channelName) {
 function processStreamMessage(author, text) {
   if (!streamState || !streamState.active) return;
   if (streamState.mode === 'STORY') { processStoryChatMessage(author, text); return; }
-  if (streamState.mode === 'CDIE' || streamState.mode === 'CTEAM' || streamState.mode === 'CFATE') { processChatVote(author, text); return; }
+  if (streamState.mode === 'CDIE' || streamState.mode === 'CTEAM' || streamState.mode === 'CFATE' || streamState.mode === 'DUEL') { processChatVote(author, text); return; }
   if (streamState.roundWinner) return;
   
   var q = streamState.questions[streamState.current];
@@ -501,6 +586,7 @@ function streamerForceVote(choice) {
   
   if (streamState.mode === 'CDIE') resolveCDieVote();
   else if (streamState.mode === 'CTEAM') resolveCTeamVote();
+  else if (streamState.mode === 'DUEL') resolveDuelVote();
 }
 
 // CFATE: Yayıncı bir kadere tıklayarak oylamayı bitirir
@@ -786,7 +872,7 @@ function processChatVote(author, text) {
   var isValidVote = false;
   var voteDisplay = '';
 
-  if (s.mode === 'CDIE' || s.mode === 'CTEAM') {
+  if (s.mode === 'CDIE' || s.mode === 'CTEAM' || s.mode === 'DUEL') {
     if (upperText === 'A' || upperText === 'B') {
       s.voters[author] = upperText;
       s.votes[upperText] = (s.votes[upperText]||0)+1;
@@ -833,6 +919,115 @@ function processChatVote(author, text) {
   }
 }
 
+// ═══ DÜELLO (DUEL) ═══
+function nextDuelRound() {
+  var s = streamState;
+  if (!s || !s.active) return;
+  if (s.alive.length <= 1) { renderDuelWinner(); return; }
+  
+  // If odd number, give last one a bye to next round
+  if (s.alive.length % 2 !== 0) {
+    var byeChar = s.alive.pop();
+    if (!s._nextRound) s._nextRound = [];
+    s._nextRound.push(byeChar);
+  }
+  
+  var pair = s.alive.splice(0, 2);
+  if (pair.length < 2) { renderDuelWinner(); return; }
+  s.currentPair = pair;
+  s.chatMessages = [];
+  var c1 = pair[0], c2 = pair[1];
+  var ag = document.getElementById('ag');
+  
+  // Calculate round info
+  var totalInRound = (s.alive.length + 2 + (s._nextRound ? s._nextRound.length : 0));
+  var roundName = '';
+  if (totalInRound <= 2) roundName = '🏆 FINAL';
+  else if (totalInRound <= 4) roundName = '⚔️ Yarı Final';
+  else if (totalInRound <= 8) roundName = '🗡️ Çeyrek Final';
+  else roundName = '⚔️ Tur ' + s.duelRound;
+  
+  ag.innerHTML =
+    '<div style="display:flex;gap:20px;padding:20px">'+
+    '<div style="flex:1">'+
+      '<h2 class="fd" style="font-size:28px;margin-bottom:6px;text-align:center">⚔️ ' + esc(s.duelTitle) + '</h2>'+
+      '<p style="color:var(--t2);font-size:16px;text-align:center;margin-bottom:6px">' + roundName + ' · ' + totalInRound + ' karakter kaldı</p>'+
+      '<div style="display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap;margin-bottom:16px">'+
+        '<div class="cg sci" style="width:380px;padding:24px;text-align:center;cursor:pointer" onclick="streamerForceVote(\'A\')" onmouseover="this.style.borderColor=\'#60a5fa\'" onmouseout="this.style.borderColor=\'\'"><div style="font-size:24px;color:#60a5fa;font-weight:800;margin-bottom:8px">A</div><div style="max-width:350px;border-radius:14px;overflow:hidden;margin:0 auto 10px">'+cp(c1,350)+'</div><h3 class="fd" style="font-size:24px">'+esc(c1.n)+' '+esc(c1.s)+'</h3></div>'+
+        '<div class="t-vs fl fd" style="background:linear-gradient(135deg,#ff544d30,#ff544d10);border-color:#ff544d40;font-size:20px">VS</div>'+
+        '<div class="cg sci" style="width:380px;padding:24px;text-align:center;cursor:pointer" onclick="streamerForceVote(\'B\')" onmouseover="this.style.borderColor=\'#ffb95f\'" onmouseout="this.style.borderColor=\'\'"><div style="font-size:24px;color:#ffb95f;font-weight:800;margin-bottom:8px">B</div><div style="max-width:350px;border-radius:14px;overflow:hidden;margin:0 auto 10px">'+cp(c2,350)+'</div><h3 class="fd" style="font-size:24px">'+esc(c2.n)+' '+esc(c2.s)+'</h3></div>'+
+      '</div>'+
+      '<div id="cvote-bar" style="max-width:600px;margin:0 auto"></div>'+
+      '<p style="text-align:center;font-size:18px;color:var(--t3);margin-top:12px">Chat\'e <b style="color:#60a5fa">A</b> veya <b style="color:#ffb95f">B</b> yazın! ⏱️ <span id="cvote-timer" style="font-weight:800;color:var(--v)">60</span>s</p>'+
+    '</div>'+
+    '<div style="width:260px;display:flex;flex-direction:column;gap:12px;flex-shrink:0">'+
+      '<div style="background:var(--bg2);border-radius:14px;border:1px solid var(--b1);padding:14px"><h4 style="font-size:14px;font-weight:600;color:var(--t2);margin-bottom:10px">📊 Oylama</h4><div id="cvote-stats"></div></div>'+
+      '<div style="background:var(--bg2);border-radius:14px;border:1px solid var(--b1);padding:14px;flex:1;display:flex;flex-direction:column;overflow:hidden"><h4 style="font-size:14px;font-weight:600;color:var(--t2);margin-bottom:8px">💬 Chat Oyları</h4><div id="chat-msgs" style="flex:1;overflow-y:auto;max-height:300px"></div></div>'+
+    '</div></div>';
+  
+  startCVoteTimer(60, resolveDuelVote);
+}
+
+function resolveDuelVote() {
+  var s = streamState;
+  if (!s || !s.active) return;
+  var a = s.votes['A']||0, b = s.votes['B']||0;
+  var c1 = s.currentPair[0], c2 = s.currentPair[1];
+  
+  // Determine winner (tie goes to A)
+  var winner, loser;
+  if (a >= b) { winner = c1; loser = c2; }
+  else { winner = c2; loser = c1; }
+  
+  // Track for next round
+  if (!s._nextRound) s._nextRound = [];
+  s._nextRound.push(winner);
+  s.eliminated.push(loser);
+  
+  // Show result notification
+  showCNotif('⚔️', esc(winner.n) + ' ' + esc(winner.s) + ' kazandı! (' + Math.max(a,b) + ' - ' + Math.min(a,b) + ')', true);
+  
+  // Check if current round is complete (no more alive pairs)
+  if (s.alive.length === 0) {
+    // Round complete — advance winners to next round
+    s.alive = shuf(s._nextRound);
+    s._nextRound = [];
+    s.duelRound++;
+  }
+  
+  // Short delay then next match
+  setTimeout(function() {
+    showStreamTransition(function() {
+      nextDuelRound();
+    });
+  }, 2500);
+}
+
+function renderDuelWinner() {
+  var s = streamState;
+  var ag = document.getElementById('ag');
+  var champion = s.alive[0] || (s._nextRound && s._nextRound[0]);
+  if (!champion) { streamStart(); return; }
+  
+  ag.innerHTML =
+    '<div style="flex:1;display:flex;align-items:center;justify-content:center">' +
+    '<div class="cg" style="text-align:center;padding:60px 40px;max-width:900px">' +
+    '<div style="font-size:80px;margin-bottom:16px">🏆</div>' +
+    '<h2 class="fd" style="font-size:36px;margin-bottom:8px">' + esc(s.duelTitle) + '</h2>' +
+    '<p style="font-size:20px;color:var(--t3);margin-bottom:32px">Şampiyon belli oldu!</p>' +
+    '<div style="max-width:400px;margin:0 auto;border-radius:20px;overflow:hidden;border:4px solid var(--g);box-shadow:0 0 60px rgba(255,215,0,0.3)">' + cp(champion, 400) + '</div>' +
+    '<h3 class="fd" style="font-size:42px;margin-top:20px;background:linear-gradient(135deg,#ffd700,#ff8c00);-webkit-background-clip:text;-webkit-text-fill-color:transparent">🏆 ' + esc(champion.n) + ' ' + esc(champion.s) + '</h3>' +
+    '<p style="font-size:16px;color:var(--t3);margin-top:8px">' + s.pool.length + ' karakter arasından şampiyon!</p>' +
+    '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:24px">' +
+    s.eliminated.slice().reverse().slice(0, 8).map(function(c, i) {
+      return '<div style="text-align:center;opacity:' + (0.7 - i * 0.05) + '"><div style="width:48px;height:48px;border-radius:10px;overflow:hidden;border:2px solid var(--b1)">' + cp(c, 48) + '</div><div style="font-size:10px;color:var(--t3);margin-top:2px">' + (i + 2) + '.</div></div>';
+    }).join('') +
+    '</div>' +
+    '<button class="btn bp" style="margin-top:32px;font-size:18px;padding:14px 32px" onclick="streamStart()">← Yayıncı Oyunlarına Dön</button>' +
+    '</div></div>';
+}
+
+// Also add DUEL to streamerForceVote
 function updateCVoteBar() {
   var s = streamState;
   var a = s.votes['A']||0, b = s.votes['B']||0, total = a+b||1;
