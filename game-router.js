@@ -59,8 +59,8 @@ function play(t){
   document.getElementById('gg').style.display='none';
   document.getElementById('games-hdr').style.display='none';
   var gc=document.getElementById('games-con');gc.style.maxWidth='none';gc.style.padding='0';
-  if(t==='STREAM') { if(typeof _pushUrl==='function') _pushUrl('streamer-menu'); }
-  else { if(typeof _pushUrl==='function') _pushUrl('game', t); }
+  if(t==='STREAM') { if(window._pushUrl) window._pushUrl('streamer-menu'); }
+  else { if(window._pushUrl) window._pushUrl('game', t); }
   if(t==='DIE')dieStart();else if(t==='TEAM')teamStart();else if(t==='FATE')fateStart();else if(t==='FACE')faceStart();else if(t==='QUOTE')quoteStart();else if(t==='MEM')memStart();else if(t==='WHO')whoStart();else if(t==='STREAM')streamStart();else genericGame(t);
 }
 function bk(){
@@ -69,7 +69,7 @@ function bk(){
   document.getElementById('games-hdr').style.display='';
   var gc=document.getElementById('games-con');gc.style.maxWidth='';gc.style.padding='';
   tState=null;dState=null;tmState=null;ftState=null;fcState=null;rqState=null;mState=null;whState=null;
-  if(typeof _pushUrl==='function') _pushUrl('games');
+  if(window._pushUrl) window._pushUrl('games');
 }
 
 function genericGame(t){const cs=pick(chars.filter(c=>c.a),4);const g=GD.find(x=>x.t===t);
@@ -323,7 +323,7 @@ window.addEventListener('load', function() {
   var _urlToGame = {'hayatta-kal':'DIE','ekibini-kur':'TEAM','replik-bil':'QUOTE','yuzden-bil':'FACE','eightborn-moruq':'MEM','kaderini-sec':'FATE','sen-kimsin':'WHO'};
   var _skipPush = false;
 
-  function _pushUrl(page, extra) {
+  window._pushUrl = function(page, extra) {
     if (_skipPush) return;
     var hash = _reverseRoute[page] || '/';
     if (page === 'profile' && extra) hash = '/profil/' + encodeURIComponent(extra);
@@ -335,7 +335,8 @@ window.addEventListener('load', function() {
     if (window.location.hash !== newHash) {
       history.pushState({ page: page, extra: extra || null }, '', newHash);
     }
-  }
+  };
+  var _pushUrl = window._pushUrl;
 
   // Back button handler
   window.addEventListener('popstate', function(e) {
