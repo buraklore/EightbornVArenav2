@@ -59,7 +59,7 @@ function streamSetup(mode) {
   var ag = document.getElementById('ag');
   var isStory = mode === 'STORY';
   var modeNames = {QUOTE:'Replik Bil',FACE:'Yüzden Bil',MEMORY:'Eightborn Moruq',STORY:'Chat Kaderini Belirler',CDIE:'Kim Hayatta Kalacak',CTEAM:'Ekibini Kur',CFATE:'Kaderini Seç',DUEL:'Düello Oluştur'};
-  if(typeof _pushUrl==='function') _pushUrl('streamer-setup');
+  if(window._pushUrl) window._pushUrl('streamer-setup');
   
   // Calculate max counts for dynamic options
   var repCount = chars.filter(function(c){return c.a && c.rep && c.rep.trim()}).length;
@@ -283,7 +283,7 @@ async function streamConnect() {
       // Solo mode — no chat needed
       if (duelPlayMode === 'solo') {
         streamState = { platform:'solo', channelId:'', mode:'DUEL', active:true, pool:pool, alive:[].concat(pool), eliminated:[], currentPair:null, votes:{}, voters:{}, voteTimer:null, phase:'READY', chatMessages:[], duelTitle:duelTitle, duelRound:1, duelSolo:true };
-        if(typeof _pushUrl==='function') _pushUrl('streamer-live');
+        if(window._pushUrl) window._pushUrl('streamer-live');
         nextDuelRound();
         return;
       }
@@ -315,7 +315,7 @@ async function streamConnect() {
       streamState.liveChatId = initRes.liveChatId;
       startChatPolling();
     } else { startKickChat(channelId); }
-    if(typeof _pushUrl==='function') _pushUrl('streamer-live');
+    if(window._pushUrl) window._pushUrl('streamer-live');
     if (mode==='DUEL') nextDuelRound();
     else if (mode==='CDIE') nextCDieRound();
     else if (mode==='CTEAM') nextCTeamRound();
@@ -334,7 +334,7 @@ async function streamConnect() {
     } else {
       startKickChat(channelId);
     }
-    if(typeof _pushUrl==='function') _pushUrl('streamer-live');
+    if(window._pushUrl) window._pushUrl('streamer-live');
     startStoryMode(platform, channelId);
     return;
   }
@@ -364,7 +364,7 @@ async function streamConnect() {
   } else {
     startKickChat(channelId);
   }
-  if(typeof _pushUrl==='function') _pushUrl('streamer-live');
+  if(window._pushUrl) window._pushUrl('streamer-live');
   
   renderStreamRound();
   startQuestionTimeout();
