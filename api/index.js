@@ -441,5 +441,20 @@ app.get('/api/survival-leaderboard', async function(req, res) {
   } catch(e) { res.json({ leaderboard: [] }); }
 });
 
+// ═══ PROFILE ═══
+app.get('/api/profile/:username', async function(req, res) {
+  try {
+    await ensureDb();
+    var username = (req.params.username || '').trim();
+    if (!username) return res.status(400).json({ error: 'Kullanıcı adı gerekli.' });
+    var profile = await db.getUserProfile(username);
+    if (!profile) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
+    res.json(profile);
+  } catch (e) {
+    console.error('Profile error:', e.message);
+    res.status(500).json({ error: 'Profil yüklenemedi.' });
+  }
+});
+
 // #12 Security: module.exports dosya sonunda — tüm route'lar kayıtlı
 module.exports = app;
