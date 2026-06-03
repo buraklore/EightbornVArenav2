@@ -43,6 +43,24 @@ function streamStart() {
     '<h2 class="fd" style="font-weight:700;font-size:48px">Yay\u0131nc\u0131 Oyunlar\u0131</h2></div>' +
     '<div style="text-align:center;padding:40px 0">' +
     '<p style="font-size:18px;color:var(--t2);margin-bottom:32px">Bir oyun se\u00e7 ve canl\u0131 yay\u0131nda chat ile oyna!</p>' +
+    
+    // ═══ DÜELLO BANNER — full width above other games ═══
+    '<div onclick="streamSetup(\'DUEL\')" style="max-width:1400px;margin:0 auto 28px;padding:0 24px;cursor:pointer">' +
+      '<div style="position:relative;border-radius:20px;overflow:hidden;border:2px solid rgba(255,84,77,0.3);background:linear-gradient(135deg,#1a1025,#1f1028,#251520);padding:36px 48px;display:flex;align-items:center;gap:40px;transition:all .3s;box-shadow:0 8px 32px rgba(255,84,77,0.1)" onmouseover="this.style.borderColor=\'#ff544d\';this.style.boxShadow=\'0 12px 48px rgba(255,84,77,0.2)\';this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.borderColor=\'rgba(255,84,77,0.3)\';this.style.boxShadow=\'0 8px 32px rgba(255,84,77,0.1)\';this.style.transform=\'\'">' +
+        '<div style="position:absolute;top:0;right:0;width:300px;height:100%;background:linear-gradient(135deg,transparent,rgba(255,84,77,0.05));pointer-events:none"></div>' +
+        '<div style="width:80px;height:80px;border-radius:20px;background:linear-gradient(135deg,#ff544d20,#ff544d10);display:flex;align-items:center;justify-content:center;font-size:40px;flex-shrink:0;border:1px solid rgba(255,84,77,0.2)">⚔️</div>' +
+        '<div style="flex:1">' +
+          '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">' +
+            '<h3 class="fd" style="font-size:28px;font-weight:800;letter-spacing:1px">' + _sn('DUEL','D\u00fcello Olu\u015ftur') + '</h3>' +
+            '<span style="padding:4px 14px;border-radius:8px;background:linear-gradient(135deg,#ff544d,#ff6b6b);color:#fff;font-size:11px;font-weight:800;letter-spacing:2px">YENİ</span>' +
+          '</div>' +
+          '<p style="font-size:16px;color:#9a969e;max-width:600px">' + _sd('DUEL','Kendi d\u00fcellonu olu\u015ftur! Karakterleri se\u00e7, ba\u015fl\u0131k belirle, chat veya bireysel oyna.') + '</p>' +
+        '</div>' +
+        '<div style="flex-shrink:0;padding:14px 32px;border-radius:12px;background:linear-gradient(135deg,#ff544d,#ff6b6b);color:#fff;font-weight:800;font-size:14px;letter-spacing:2px;text-transform:uppercase">OYNA →</div>' +
+      '</div>' +
+    '</div>' +
+    
+    // ═══ Other games grid ═══
     '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;max-width:1400px;margin:0 auto;padding:0 24px">' +
     '<div class="gc-new" onclick="streamSetup(\'QUOTE\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.QUOTE||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'\ud83d\udcac\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('QUOTE','Replik Bil') +'</h3><p>'+ _sd('QUOTE','Repli\u011fi kime ait?') +'</p><div class="diff" style="background:rgba(255,84,77,.08);color:#ffb4ac">\u0130NTERAKT\u0130F</div></div>' +
     '<div class="gc-new" onclick="streamSetup(\'FACE\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.FACE||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'\ud83e\udd14\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('FACE','Y\u00fczden Bil') +'</h3><p>'+ _sd('FACE','Karakteri tan\u0131!') +'</p><div class="diff" style="background:rgba(255,84,77,.08);color:#ffb4ac">\u0130NTERAKT\u0130F</div></div>' +
@@ -51,7 +69,6 @@ function streamStart() {
     '<div class="gc-new" onclick="streamSetup(\'CDIE\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.DIE||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'\u2694\ufe0f\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('CDIE','Kim Hayatta Kalacak') +'</h3><p>'+ _sd('CDIE','Chat CK\'y\u0131 belirler!') +'</p><div class="diff" style="background:rgba(255,84,77,.08);color:#ffb4ac">\u0130NTERAKT\u0130F</div></div>' +
     '<div class="gc-new" onclick="streamSetup(\'CTEAM\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.TEAM||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'\ud83d\udc65\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('CTEAM','Ekibini Kur') +'</h3><p>'+ _sd('CTEAM','Ekibi chat belirler!') +'</p><div class="diff" style="background:rgba(255,84,77,.08);color:#ffb4ac">\u0130NTERAKT\u0130F</div></div>' +
     '<div class="gc-new" onclick="streamSetup(\'CFATE\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.FATE||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'\ud83c\udfb2\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('CFATE','Kaderini Se\u00e7') +'</h3><p>'+ _sd('CFATE','Kaderi chat belirler!') +'</p><div class="diff" style="background:rgba(255,84,77,.08);color:#ffb4ac">\u0130NTERAKT\u0130F</div></div>' +
-    '<div class="gc-new" onclick="streamSetup(\'DUEL\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.DIE||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'\u2694\ufe0f\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('DUEL','D\u00fcello Olu\u015ftur') +'</h3><p>'+ _sd('DUEL','Kendi d\u00fcellonu olu\u015ftur!') +'</p><div class="diff" style="background:rgba(255,84,77,.08);color:#ffb4ac">\u0130NTERAKT\u0130F</div></div>' +
     '</div></div>';
 }
 
