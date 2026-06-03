@@ -2,6 +2,8 @@
 var streamState = null;
 var gameTimers = [];
 window.addEventListener("load", function(){ if(typeof streamCleanup==="function") streamCleanup(); });
+window.addEventListener("beforeunload", function(){ if(typeof streamCleanup==="function") streamCleanup(); });
+window.addEventListener("pagehide", function(){ if(typeof streamCleanup==="function") streamCleanup(); });
 var chatPollTimer = null;
 var roundTimer = null;
 var lastChatTs = '';
@@ -107,6 +109,21 @@ function streamSetup(mode) {
     });
     extraField =
       '<div class="form-group" style="margin-bottom:20px">' +
+        '<label class="lbl" style="font-size:20px;margin-bottom:10px">🎮 Oyun Modu</label>' +
+        '<select class="inp" style="font-size:20px;padding:18px;border-radius:16px" id="duel-play-mode" onchange="duelToggleChat()">' +
+          '<option value="chat">🌐 Chat ile Oyna (Canlı Yayın)</option>' +
+          '<option value="solo">🎮 Bireysel Oyna</option>' +
+        '</select>' +
+      '</div>' +
+      '<div id="duel-chat-fields">' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:20px">' +
+          '<div class="form-group"><label class="lbl" style="font-size:18px;margin-bottom:10px">🌐 Platform</label>' +
+          '<select class="inp" style="font-size:18px;padding:16px;border-radius:14px" id="stream-platform"><option value="youtube">▶️ YouTube</option><option value="kick">🟢 Kick</option></select></div>' +
+          '<div class="form-group"><label class="lbl" style="font-size:18px;margin-bottom:10px">🔗 Yayın Linki</label>' +
+          '<input class="inp" style="font-size:18px;padding:16px;border-radius:14px" id="stream-url" placeholder="https://youtube.com/watch?v=..."></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="form-group" style="margin-bottom:20px">' +
         '<label class="lbl" style="font-size:20px;margin-bottom:10px">⚔️ Düello Başlığı</label>' +
         '<input class="inp" style="font-size:20px;padding:18px;border-radius:16px" id="duel-title" placeholder="Örn: Hangisi daha zengin?">' +
       '</div>' +
@@ -114,8 +131,8 @@ function streamSetup(mode) {
         '<label class="lbl" style="font-size:20px;margin-bottom:10px">👥 Karakter Seç <span id="duel-count" style="font-size:14px;color:var(--t3)">(0 seçildi — en az 4)</span></label>' +
         '<input class="inp" style="font-size:16px;padding:14px;border-radius:12px;margin-bottom:12px" id="duel-search" placeholder="🔍 Karakter ara..." oninput="duelFilterChars()">' +
         '<div style="display:flex;gap:8px;margin-bottom:12px">' +
-          '<button class="btn bsm" style="font-size:12px;padding:6px 14px;border-radius:8px" onclick="duelSelectAll(true)">Tümünü Seç</button>' +
-          '<button class="btn bsm bg" style="font-size:12px;padding:6px 14px;border-radius:8px" onclick="duelSelectAll(false)">Tümünü Kaldır</button>' +
+          '<button type="button" style="font-size:12px;padding:6px 14px;border-radius:8px;border:1px solid var(--b1);background:var(--bg3);color:var(--t1);cursor:pointer" onclick="duelSelectAll(true)">Tümünü Seç</button>' +
+          '<button type="button" style="font-size:12px;padding:6px 14px;border-radius:8px;border:1px solid var(--b1);background:var(--bg3);color:var(--t1);cursor:pointer" onclick="duelSelectAll(false)">Tümünü Kaldır</button>' +
         '</div>' +
         '<div id="duel-char-list" style="max-height:350px;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:8px;border:1px solid var(--b1);border-radius:14px;background:var(--bg2)">' +
           charListHtml +
@@ -131,18 +148,25 @@ function streamSetup(mode) {
     '<div class="cg" style="text-align:center;padding:48px 40px;max-width:1100px;width:100%;border-radius:24px">' +
     '<div style="text-align:left;max-width:1000px;margin:0 auto">' +
     '<input type="hidden" id="stream-mode" value="' + mode + '">' +
+    (mode === 'DUEL' ? '' :
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:28px">' +
       '<div class="form-group"><label class="lbl" style="font-size:20px;margin-bottom:10px">🌐 Platform</label>' +
       '<select class="inp" style="font-size:22px;padding:20px;border-radius:16px" id="stream-platform"><option value="youtube">▶️ YouTube</option><option value="kick">🟢 Kick</option></select></div>' +
       '<div class="form-group"><label class="lbl" style="font-size:20px;margin-bottom:10px">🔗 Yayın Linki veya Kanal Adı</label>' +
       '<input class="inp" style="font-size:22px;padding:20px;border-radius:16px" id="stream-url" placeholder="https://youtube.com/watch?v=... veya kanal adı"></div>' +
-    '</div>' +
+    '</div>') +
     extraField +
     '<button class="btn bp" style="width:100%;font-size:26px;padding:22px;border-radius:16px;margin-top:12px;background:linear-gradient(135deg,#ff544d,#ff544d);box-shadow:0 8px 32px #ff544d40" onclick="streamConnect()">🚀 Oyunu Başlat</button>' +
     '</div></div>';
 }
 
 // ═══ DUEL HELPER FUNCTIONS ═══
+function duelToggleChat() {
+  var mode = document.getElementById('duel-play-mode').value;
+  var chatFields = document.getElementById('duel-chat-fields');
+  if (chatFields) chatFields.style.display = mode === 'chat' ? 'block' : 'none';
+}
+
 function duelFilterChars() {
   var q = (document.getElementById('duel-search').value || '').toLowerCase().trim();
   var items = document.querySelectorAll('.duel-char-item');
@@ -244,6 +268,7 @@ async function streamConnect() {
       // Read düello title and selected characters
       duelTitle = (document.getElementById('duel-title').value || '').trim();
       if (!duelTitle) { toast('Düello başlığı gerekli!', false); return; }
+      var duelPlayMode = document.getElementById('duel-play-mode').value;
       var selected = [];
       document.querySelectorAll('.duel-char-cb:checked').forEach(function(cb) {
         var idx = parseInt(cb.value);
@@ -251,9 +276,30 @@ async function streamConnect() {
         if (activeChars[idx]) selected.push(activeChars[idx]);
       });
       if (selected.length < 4) { toast('En az 4 karakter seçmelisin!', false); return; }
-      // Ensure even number for pairing
       if (selected.length % 2 !== 0) { selected = selected.slice(0, selected.length - 1); }
       pool = shuf(selected);
+      
+      // Solo mode — no chat needed
+      if (duelPlayMode === 'solo') {
+        streamState = { platform:'solo', channelId:'', mode:'DUEL', active:true, pool:pool, alive:[].concat(pool), eliminated:[], currentPair:null, votes:{}, voters:{}, voteTimer:null, phase:'READY', chatMessages:[], duelTitle:duelTitle, duelRound:1, duelSolo:true };
+        nextDuelRound();
+        return;
+      }
+      
+      // Chat mode — require platform/URL
+      var platformEl = document.getElementById('stream-platform');
+      var urlEl = document.getElementById('stream-url');
+      if (!platformEl || !urlEl || !urlEl.value.trim()) { toast('Chat modu için yayın linki gerekli!', false); return; }
+      platform = platformEl.value;
+      url = urlEl.value.trim();
+      // Re-extract channelId for DUEL chat mode
+      if (platform === 'youtube') {
+        var match2 = url.match(/[?&]v=([^&]+)/) || url.match(/youtu\.be\/([^?]+)/) || url.match(/live\/([^?]+)/);
+        channelId = match2 ? match2[1] : url;
+      } else {
+        channelId = url.replace(/https?:\/\/(www\.)?kick\.com\/?/i, '').replace(/\//g, '');
+      }
+      if (!channelId) { toast('Geçerli bir link gir!', false); return; }
     } else if (mode === 'CFATE') {
       var opposite = countVal === 'M' ? 'F' : 'M';
       pool = shuf(chars.filter(function(c){return c.a && c.g === opposite})).slice(0,8);
@@ -947,25 +993,71 @@ function nextDuelRound() {
   else if (totalInRound <= 8) roundName = '🗡️ Çeyrek Final';
   else roundName = '⚔️ Tur ' + s.duelRound;
   
-  ag.innerHTML =
-    '<div style="display:flex;gap:20px;padding:20px">'+
-    '<div style="flex:1">'+
-      '<h2 class="fd" style="font-size:28px;margin-bottom:6px;text-align:center">⚔️ ' + esc(s.duelTitle) + '</h2>'+
-      '<p style="color:var(--t2);font-size:16px;text-align:center;margin-bottom:6px">' + roundName + ' · ' + totalInRound + ' karakter kaldı</p>'+
-      '<div style="display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap;margin-bottom:16px">'+
-        '<div class="cg sci" style="width:380px;padding:24px;text-align:center;cursor:pointer" onclick="streamerForceVote(\'A\')" onmouseover="this.style.borderColor=\'#60a5fa\'" onmouseout="this.style.borderColor=\'\'"><div style="font-size:24px;color:#60a5fa;font-weight:800;margin-bottom:8px">A</div><div style="max-width:350px;border-radius:14px;overflow:hidden;margin:0 auto 10px">'+cp(c1,350)+'</div><h3 class="fd" style="font-size:24px">'+esc(c1.n)+' '+esc(c1.s)+'</h3></div>'+
-        '<div class="t-vs fl fd" style="background:linear-gradient(135deg,#ff544d30,#ff544d10);border-color:#ff544d40;font-size:20px">VS</div>'+
-        '<div class="cg sci" style="width:380px;padding:24px;text-align:center;cursor:pointer" onclick="streamerForceVote(\'B\')" onmouseover="this.style.borderColor=\'#ffb95f\'" onmouseout="this.style.borderColor=\'\'"><div style="font-size:24px;color:#ffb95f;font-weight:800;margin-bottom:8px">B</div><div style="max-width:350px;border-radius:14px;overflow:hidden;margin:0 auto 10px">'+cp(c2,350)+'</div><h3 class="fd" style="font-size:24px">'+esc(c2.n)+' '+esc(c2.s)+'</h3></div>'+
-      '</div>'+
-      '<div id="cvote-bar" style="max-width:600px;margin:0 auto"></div>'+
-      '<p style="text-align:center;font-size:18px;color:var(--t3);margin-top:12px">Chat\'e <b style="color:#60a5fa">A</b> veya <b style="color:#ffb95f">B</b> yazın! ⏱️ <span id="cvote-timer" style="font-weight:800;color:var(--v)">60</span>s</p>'+
-    '</div>'+
-    '<div style="width:260px;display:flex;flex-direction:column;gap:12px;flex-shrink:0">'+
-      '<div style="background:var(--bg2);border-radius:14px;border:1px solid var(--b1);padding:14px"><h4 style="font-size:14px;font-weight:600;color:var(--t2);margin-bottom:10px">📊 Oylama</h4><div id="cvote-stats"></div></div>'+
-      '<div style="background:var(--bg2);border-radius:14px;border:1px solid var(--b1);padding:14px;flex:1;display:flex;flex-direction:column;overflow:hidden"><h4 style="font-size:14px;font-weight:600;color:var(--t2);margin-bottom:8px">💬 Chat Oyları</h4><div id="chat-msgs" style="flex:1;overflow-y:auto;max-height:300px"></div></div>'+
-    '</div></div>';
+  var isSolo = s.duelSolo;
   
-  startCVoteTimer(60, resolveDuelVote);
+  // Card section (shared by both modes)
+  var cardsHtml =
+    '<h2 class="fd" style="font-size:28px;margin-bottom:6px;text-align:center">⚔️ ' + esc(s.duelTitle) + '</h2>' +
+    '<p style="color:var(--t2);font-size:16px;text-align:center;margin-bottom:6px">' + roundName + ' · ' + totalInRound + ' karakter kaldı</p>' +
+    '<div style="display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap;margin-bottom:16px">' +
+      '<div class="cg sci" style="width:380px;padding:24px;text-align:center;cursor:pointer" onclick="' + (isSolo ? 'duelSoloPick(\'A\')' : 'streamerForceVote(\'A\')') + '" onmouseover="this.style.borderColor=\'#60a5fa\'" onmouseout="this.style.borderColor=\'\'"><div style="font-size:24px;color:#60a5fa;font-weight:800;margin-bottom:8px">A</div><div style="max-width:350px;border-radius:14px;overflow:hidden;margin:0 auto 10px">' + cp(c1, 350) + '</div><h3 class="fd" style="font-size:24px">' + esc(c1.n) + ' ' + esc(c1.s) + '</h3></div>' +
+      '<div class="t-vs fl fd" style="background:linear-gradient(135deg,#ff544d30,#ff544d10);border-color:#ff544d40;font-size:20px">VS</div>' +
+      '<div class="cg sci" style="width:380px;padding:24px;text-align:center;cursor:pointer" onclick="' + (isSolo ? 'duelSoloPick(\'B\')' : 'streamerForceVote(\'B\')') + '" onmouseover="this.style.borderColor=\'#ffb95f\'" onmouseout="this.style.borderColor=\'\'"><div style="font-size:24px;color:#ffb95f;font-weight:800;margin-bottom:8px">B</div><div style="max-width:350px;border-radius:14px;overflow:hidden;margin:0 auto 10px">' + cp(c2, 350) + '</div><h3 class="fd" style="font-size:24px">' + esc(c2.n) + ' ' + esc(c2.s) + '</h3></div>' +
+    '</div>';
+  
+  if (isSolo) {
+    // Solo mode — full width, no chat, no timer, just click
+    ag.innerHTML =
+      '<div style="padding:20px">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">' +
+        '<button class="btn bg bsm" onclick="streamStop()">← Bitir</button>' +
+        '<span class="badge" style="background:#c084fc20;color:#c084fc;font-size:12px">🎮 Bireysel</span>' +
+      '</div>' +
+      cardsHtml +
+      '<p style="text-align:center;font-size:18px;color:var(--t3);margin-top:12px">Seçimini yap — bir karaktere tıkla!</p>' +
+      '</div>';
+  } else {
+    // Chat mode — with sidebar
+    ag.innerHTML =
+      '<div style="display:flex;gap:20px;padding:20px">' +
+      '<div style="flex:1">' +
+      cardsHtml +
+      '<div id="cvote-bar" style="max-width:600px;margin:0 auto"></div>' +
+      '<p style="text-align:center;font-size:18px;color:var(--t3);margin-top:12px">Chat\'e <b style="color:#60a5fa">A</b> veya <b style="color:#ffb95f">B</b> yazın! ⏱️ <span id="cvote-timer" style="font-weight:800;color:var(--v)">60</span>s</p>' +
+      '</div>' +
+      '<div style="width:260px;display:flex;flex-direction:column;gap:12px;flex-shrink:0">' +
+        '<div style="background:var(--bg2);border-radius:14px;border:1px solid var(--b1);padding:14px"><h4 style="font-size:14px;font-weight:600;color:var(--t2);margin-bottom:10px">📊 Oylama</h4><div id="cvote-stats"></div></div>' +
+        '<div style="background:var(--bg2);border-radius:14px;border:1px solid var(--b1);padding:14px;flex:1;display:flex;flex-direction:column;overflow:hidden"><h4 style="font-size:14px;font-weight:600;color:var(--t2);margin-bottom:8px">💬 Chat Oyları</h4><div id="chat-msgs" style="flex:1;overflow-y:auto;max-height:300px"></div></div>' +
+      '</div></div>';
+    
+    startCVoteTimer(60, resolveDuelVote);
+  }
+}
+
+// Solo mode: user clicks A or B directly
+function duelSoloPick(choice) {
+  if (!streamState || !streamState.active) return;
+  var c1 = streamState.currentPair[0], c2 = streamState.currentPair[1];
+  var winner = choice === 'A' ? c1 : c2;
+  var loser = choice === 'A' ? c2 : c1;
+  
+  if (!streamState._nextRound) streamState._nextRound = [];
+  streamState._nextRound.push(winner);
+  streamState.eliminated.push(loser);
+  
+  showCNotif('⚔️', esc(winner.n) + ' ' + esc(winner.s) + ' kazandı!', true);
+  
+  if (streamState.alive.length === 0) {
+    streamState.alive = shuf(streamState._nextRound);
+    streamState._nextRound = [];
+    streamState.duelRound++;
+  }
+  
+  setTimeout(function() {
+    showStreamTransition(function() {
+      nextDuelRound();
+    });
+  }, 1500);
 }
 
 function resolveDuelVote() {
