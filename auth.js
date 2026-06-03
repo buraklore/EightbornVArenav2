@@ -5,15 +5,27 @@ function renderNav(){
     '<a onclick="go(\'home\')" style="display:flex;align-items:center;gap:10px;cursor:pointer"><div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--v),var(--m));display:flex;align-items:center;justify-content:center"><span style="color:#fff;font-weight:700;font-size:20px" class="fd">8B</span></div><span class="fd" style="font-weight:700;font-size:28px">Eightborn<span style="color:var(--v)">V</span> Arena</span></a>'+
     '<div class="nls" style="gap:4px;flex-wrap:nowrap"><button class="nl" style="font-size:18px;padding:10px 18px;white-space:nowrap" data-p="home" onclick="go(\'home\')">⚡ Ana Sayfa</button><button class="nl" style="font-size:18px;padding:10px 18px;white-space:nowrap" data-p="games" onclick="go(\'games\')">🎮 Oyunlar</button><button class="nl" style="font-size:18px;padding:10px 18px;white-space:nowrap" data-p="lb" onclick="go(\'lb\')">🏆 Sıralama</button><button class="nl" style="font-size:18px;padding:10px 18px;white-space:nowrap" data-p="contact" onclick="go(\'contact\')">📬 Bize Ulaşın</button>'+(curUser&&curUser.role==='ADMIN'?'<button class="nl" data-p="admin" onclick="go(\'admin\')" style="color:var(--pk);font-size:18px;padding:10px 18px;white-space:nowrap">🛡️ Admin</button>':'')+'<a id="discord-link" href="#" target="_blank" style="display:none;font-size:18px;padding:10px 18px;white-space:nowrap;text-decoration:none;color:#5865F2;font-weight:600;border-radius:10px;background:#5865F210" onclick="">🎮 Discord</a></div>'+
     (curUser?
-      '<div style="display:flex;align-items:center;gap:12px;padding:10px 18px;border-radius:14px;background:var(--bg3)"><a id="nav-profile-link" style="display:flex;align-items:center;gap:12px;cursor:pointer;text-decoration:none;color:inherit"><div style="width:40px;height:40px;border-radius:10px;background:#8b5cf620;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:var(--v)">'+esc(curUser.username)[0].toUpperCase()+'</div><div><div style="font-size:16px;font-weight:600">'+esc(curUser.username)+'</div><div style="font-size:13px;color:var(--m)">Puan: '+curUser.best_score+'</div></div></a><button class="btn bg" style="padding:6px 14px;font-size:14px;margin-left:8px;color:var(--pk);border:1px solid var(--pk);border-radius:8px" onclick="doLogout()">Çıkış</button></div>'
+      '<div style="display:flex;align-items:center;gap:12px;padding:10px 18px;border-radius:14px;background:var(--bg3)"><div data-profile="'+esc(curUser.username)+'" style="display:flex;align-items:center;gap:12px;cursor:pointer"><div style="width:40px;height:40px;border-radius:10px;background:#8b5cf620;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:var(--v)">'+esc(curUser.username)[0].toUpperCase()+'</div><div><div style="font-size:16px;font-weight:600">'+esc(curUser.username)+'</div><div style="font-size:13px;color:var(--m)">Puan: '+curUser.best_score+'</div></div></div><button class="btn bg" style="padding:6px 14px;font-size:14px;margin-left:8px;color:var(--pk);border:1px solid var(--pk);border-radius:8px" onclick="doLogout()">Çıkış</button></div>'
     :
       '<div style="display:flex;gap:10px"><button class="btn bs" style="font-size:16px;padding:10px 20px" onclick="go(\'login\')">Giriş</button><button class="btn bp bsm" onclick="go(\'register\')">Kayıt Ol</button></div>'
     )+
   '</div>';
-  // Attach profile link click handler
-  var profLink = document.getElementById('nav-profile-link');
-  if (profLink) profLink.addEventListener('click', function(e) { e.preventDefault(); go('profile'); });
+  // No need for individual listeners — global delegation handles [data-profile] clicks
 }
+
+// ═══ GLOBAL PROFILE CLICK HANDLER ═══
+// Any element with data-profile="username" will open that user's profile
+document.addEventListener('click', function(e) {
+  var target = e.target.closest('[data-profile]');
+  if (target) {
+    e.preventDefault();
+    var username = target.getAttribute('data-profile');
+    if (username) {
+      window._profileTarget = username;
+      go('profile');
+    }
+  }
+});
 
 // ═══ AUTH ═══
 async function doLogin(){
@@ -44,7 +56,7 @@ function go(p){if(typeof streamCleanup==="function")streamCleanup();
   document.getElementById('p-'+p)?.classList.remove('hid');
   document.querySelectorAll('.nl').forEach(function(l){l.classList.toggle('a',l.dataset.p===p)});
   if(document.getElementById('ag')){document.getElementById('ag').classList.add('hid');if(document.getElementById('gg'))document.getElementById('gg').style.display='';if(document.getElementById('games-hdr'))document.getElementById('games-hdr').style.display='';var gc=document.getElementById('games-con');if(gc){gc.style.maxWidth='';gc.style.padding=''}}
-  window.scrollTo({top:0,behavior:'smooth'});if(p==='lb')rLB();if(p==='profile'){if(curUser)renderProfile(curUser.username);else{toast('Giriş yapmalısın!',false);go('login');return}};if(p==='admin'){if(!curUser||curUser.role!=='ADMIN'){toast('Admin yetkisi gerekli!',false);go('home');return}rAdm()};
+  window.scrollTo({top:0,behavior:'smooth'});if(p==='lb')rLB();if(p==='profile'){var _pu=window._profileTarget||(curUser?curUser.username:'');window._profileTarget=null;if(_pu)renderProfile(_pu);else{toast('Giriş yapmalısın!',false);go('login');return}};if(p==='admin'){if(!curUser||curUser.role!=='ADMIN'){toast('Admin yetkisi gerekli!',false);go('home');return}rAdm()};
 }
 try{var c=sessionStorage.getItem("ebv_user");if(c)curUser=JSON.parse(c);}catch(e){}
 renderNav();go("home");
