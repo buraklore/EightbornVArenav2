@@ -153,8 +153,11 @@ async function initData() {
     // Apply ads after config is loaded
     if(typeof applyAds === 'function') applyAds();
     // rfCards removed — cards rendered once by game-router.js
-  } catch (e) { console.error('initData error:', e); window._dataReady = true; }
+  } catch (e) { console.error('initData error:', e); window._dataReady = true; var _ls=document.getElementById('loading-screen');if(_ls){_ls.style.opacity='0';setTimeout(function(){_ls.remove();},500);} }
   window._dataReady = true;
+  // Hide loading screen
+  var ls = document.getElementById('loading-screen');
+  if (ls) { ls.style.opacity = '0'; setTimeout(function(){ ls.remove(); }, 500); }
   // Load character images in background (non-blocking)
   apiGet('/char-images').then(function(imgData){
     var images = imgData.images || {};
