@@ -441,6 +441,45 @@ app.get('/api/survival-leaderboard', async function(req, res) {
   } catch(e) { res.json({ leaderboard: [] }); }
 });
 
+// ═══ SAVED DUELS ═══
+app.get('/api/duels', async function(req, res) {
+  try { await ensureDb(); res.json({ duels: await db.getDuels() }); }
+  catch (e) { res.status(500).json({ error: 'Düellolar yüklenemedi.' }); }
+});
+
+app.post('/api/duels', auth, async function(req, res) {
+  try {
+    await ensureDb();
+    var title = (req.body.title || '').trim();
+    var characters = req.body.characters || [];
+    if (!title || characters.length < 4) return res.status(400).json({ error: 'Başlık ve en az 4 karakter gerekli.' });
+    var duel = await db.saveDuel(req.user.id, req.user.username, title, characters);
+    res.json({ success: true, id: duel.id });
+  } catch (e) { res.status(500).json({ error: 'Kaydedilemedi.' }); }
+});
+
+app.delete('/api/duels/:id', auth, async function(req, res) {
+  try {
+    await ensureDb();
+    await db.deleteDuel(parseInt(req.params.id), req.user.id);
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: 'Silinemedi.' }); }
+});
+
+// ═══ STREAMER LINKS ═══
+app.get('/api/streamer-link', auth, async function(req, res) {
+  try { await ensureDb(); res.json(await db.getStreamerLink(req.user.id)); }
+  catch (e) { res.status(500).json({ error: 'Yüklenemedi.' }); }
+});
+
+app.post('/api/streamer-link', auth, async function(req, res) {
+  try {
+    await ensureDb();
+    await db.saveStreamerLink(req.user.id, req.body.youtube_url, req.body.kick_url);
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: 'Kaydedilemedi.' }); }
+});
+
 // ═══ PROFILE ═══
 app.get('/api/profile/:username', async function(req, res) {
   try {
