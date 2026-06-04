@@ -426,13 +426,13 @@ function toggleStreamPause() {
   }
 }
 
-// Floating pause button — auto-injected when a streamer game is active
+// Floating pause button — bottom center, large and visible
 function showPauseButton() {
   if (document.getElementById('pause-btn-float')) return;
   var btn = document.createElement('div');
   btn.id = 'pause-btn-float';
-  btn.style.cssText = 'position:fixed;top:16px;right:16px;z-index:9998;display:flex;gap:8px';
-  btn.innerHTML = '<button id="pause-btn" onclick="toggleStreamPause()" style="padding:10px 20px;border-radius:12px;border:2px solid rgba(255,255,255,0.15);background:rgba(30,30,46,0.9);color:#e4e1ee;font-size:14px;font-weight:700;cursor:pointer;backdrop-filter:blur(8px);transition:all .2s;display:flex;align-items:center;gap:6px" onmouseover="this.style.borderColor=\'#ff544d\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,0.15)\'">⏸️ Duraklat</button>';
+  btn.style.cssText = 'position:fixed;bottom:40px;left:50%;transform:translateX(-50%);z-index:9998';
+  btn.innerHTML = '<button id="pause-btn" onclick="toggleStreamPause()" style="padding:16px 40px;border-radius:16px;border:2px solid rgba(255,255,255,0.15);background:rgba(30,30,46,0.95);color:#e4e1ee;font-size:18px;font-weight:700;cursor:pointer;backdrop-filter:blur(8px);transition:all .2s;display:flex;align-items:center;gap:8px;box-shadow:0 8px 32px rgba(0,0,0,0.4)" onmouseover="this.style.borderColor=\'#ff544d\';this.style.transform=\'scale(1.05)\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,0.15)\';this.style.transform=\'\'">⏸️ Duraklat</button>';
   document.body.appendChild(btn);
 }
 
