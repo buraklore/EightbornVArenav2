@@ -39,6 +39,10 @@ async function init() {
   await query("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active TIMESTAMP DEFAULT NOW()").catch(function(){});;
   await query("CREATE TABLE IF NOT EXISTS streamer_requests (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id), username VARCHAR(20) NOT NULL, status VARCHAR(10) DEFAULT 'pending', created_at TIMESTAMP DEFAULT NOW(), last_active TIMESTAMP DEFAULT NOW())");
   await query("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active TIMESTAMP DEFAULT NOW()").catch(function(){});
+  // Saved duels table
+  await query("CREATE TABLE IF NOT EXISTS saved_duels (id SERIAL PRIMARY KEY, creator_id INTEGER REFERENCES users(id), creator_username VARCHAR(20) NOT NULL, title VARCHAR(100) NOT NULL, characters TEXT NOT NULL, created_at TIMESTAMP DEFAULT NOW())");
+  // Streamer links table
+  await query("CREATE TABLE IF NOT EXISTS streamer_links (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) UNIQUE, youtube_url VARCHAR(300) DEFAULT '', kick_url VARCHAR(300) DEFAULT '', updated_at TIMESTAMP DEFAULT NOW())");
   var r = await query("SELECT id FROM users WHERE role = 'ADMIN'");
   if (r.rows.length === 0) {
     // #4 Security: Güçlü varsayılan şifre — env yoksa random üret
@@ -253,8 +257,35 @@ module.exports = {
   createNotification: createNotification, getUserNotifications: getUserNotifications, markNotificationRead: markNotificationRead,
   createContactMessage: createContactMessage, getAllContactMessages: getAllContactMessages, deleteContactMessage: deleteContactMessage,
   updateUserScore: updateUserScore, updateLastActive: updateLastActive, deleteUser: deleteUser, getDiscordLink: getDiscordLink, setDiscordLink: setDiscordLink,
-  getUserProfile: getUserProfile
+  getUserProfile: getUserProfile,
+  saveDuel: saveDuel, getDuels: getDuels, deleteDuel: deleteDuel,
+  getStreamerLink: getStreamerLink, saveStreamerLink: saveStreamerLink
 };
+
+// ═══ SAVED DUELS ═══
+async function saveDuel(userId, username, title, characters) {
+  var r = await query("INSERT INTO saved_duels (creator_id, creator_username, title, characters) VALUES ($1, $2, $3, $4) RETURNING id", [userId, username, title, JSON.stringify(characters)]);
+  return r.rows[0];
+}
+
+async function getDuels() {
+  var r = await query("SELECT id, creator_id, creator_username, title, characters, created_at FROM saved_duels ORDER BY created_at DESC LIMIT 50");
+  return r.rows.map(function(d) { try { d.characters = JSON.parse(d.characters); } catch(e) { d.characters = []; } return d; });
+}
+
+async function deleteDuel(duelId, userId) {
+  await query("DELETE FROM saved_duels WHERE id = $1 AND creator_id = $2", [duelId, userId]);
+}
+
+// ═══ STREAMER LINKS ═══
+async function getStreamerLink(userId) {
+  var r = await query("SELECT youtube_url, kick_url FROM streamer_links WHERE user_id = $1", [userId]);
+  return r.rows[0] || { youtube_url: '', kick_url: '' };
+}
+
+async function saveStreamerLink(userId, youtubeUrl, kickUrl) {
+  await query("INSERT INTO streamer_links (user_id, youtube_url, kick_url, updated_at) VALUES ($1, $2, $3, NOW()) ON CONFLICT (user_id) DO UPDATE SET youtube_url = $2, kick_url = $3, updated_at = NOW()", [userId, youtubeUrl || '', kickUrl || '']);
+}
 
 async function getUserProfile(username) {
   // 1) User info
