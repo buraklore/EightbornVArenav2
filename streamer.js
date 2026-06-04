@@ -426,17 +426,29 @@ function toggleStreamPause() {
   }
 }
 
-// Floating pause button — bottom center, large and visible
+// Pause button — injected inside game area, auto re-injects when content changes
 function showPauseButton() {
-  if (document.getElementById('pause-btn-float')) return;
-  var btn = document.createElement('div');
-  btn.id = 'pause-btn-float';
-  btn.style.cssText = 'position:fixed;bottom:40px;left:50%;transform:translateX(-50%);z-index:9998';
-  btn.innerHTML = '<button id="pause-btn" onclick="toggleStreamPause()" style="padding:16px 40px;border-radius:16px;border:2px solid rgba(255,255,255,0.15);background:rgba(30,30,46,0.95);color:#e4e1ee;font-size:18px;font-weight:700;cursor:pointer;backdrop-filter:blur(8px);transition:all .2s;display:flex;align-items:center;gap:8px;box-shadow:0 8px 32px rgba(0,0,0,0.4)" onmouseover="this.style.borderColor=\'#ff544d\';this.style.transform=\'scale(1.05)\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,0.15)\';this.style.transform=\'\'">⏸️ Duraklat</button>';
-  document.body.appendChild(btn);
+  if (streamState) streamState._showPause = true;
+  _ensurePauseBtn();
 }
 
+function _ensurePauseBtn() {
+  if (!streamState || !streamState._showPause || !streamState.active) return;
+  if (document.getElementById('pause-btn-float')) return;
+  var ag = document.getElementById('ag');
+  if (!ag || ag.classList.contains('hid')) return;
+  var btn = document.createElement('div');
+  btn.id = 'pause-btn-float';
+  btn.style.cssText = 'text-align:center;padding:16px 0 24px';
+  btn.innerHTML = '<button id="pause-btn" onclick="toggleStreamPause()" style="padding:18px 52px;border-radius:16px;border:2px solid rgba(255,255,255,0.12);background:rgba(30,30,46,0.95);color:#e4e1ee;font-size:20px;font-weight:700;cursor:pointer;backdrop-filter:blur(8px);transition:all .2s;display:inline-flex;align-items:center;gap:10px;box-shadow:0 4px 20px rgba(0,0,0,0.3)" onmouseover="this.style.borderColor=\'#ff544d\';this.style.transform=\'scale(1.05)\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,0.12)\';this.style.transform=\'\'">' + (streamState.paused ? '▶️ Devam Et' : '⏸️ Duraklat') + '</button>';
+  ag.appendChild(btn);
+}
+
+// Auto re-inject pause button every 500ms if missing (handles ag.innerHTML re-renders)
+setInterval(function() { if (typeof streamState !== 'undefined' && streamState && streamState._showPause) _ensurePauseBtn(); }, 500);
+
 function hidePauseButton() {
+  if (streamState) streamState._showPause = false;
   var btn = document.getElementById('pause-btn-float');
   if (btn) btn.remove();
   var overlay = document.getElementById('pause-overlay');
