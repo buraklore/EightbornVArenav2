@@ -340,6 +340,7 @@ function startStoryMode(platform, channelId) {
 
 function processStoryChatMessage(author, text) {
   if (!storyState || !storyState.active || storyState.phase !== 'VOTING') return;
+  if (typeof streamState !== 'undefined' && streamState && streamState.paused) return; // ⏸️ Skip when paused
   
   text = text.trim().toUpperCase();
   if (text !== 'A' && text !== 'B') return;
@@ -433,6 +434,7 @@ function startStoryCountdown(seconds) {
   
   if (storyTimer) clearInterval(storyTimer);
   storyTimer = setInterval(function() {
+    if (typeof streamState !== 'undefined' && streamState && streamState.paused) return; // ⏸️ Skip when paused
     remaining--;
     var el = document.getElementById('story-countdown');
     if (el) {
