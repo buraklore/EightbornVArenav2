@@ -47,3 +47,152 @@ function checkBanned(){
   }
   return false;
 }
+
+// ═══ SHAREABLE RESULT CARD ═══
+function generateShareCard(opts) {
+  // opts: { gameName, gameEmoji, username, score, total, extra, streak }
+  var W = 720, H = 960;
+  var canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  var ctx = canvas.getContext('2d');
+  
+  // Background gradient
+  var bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, '#0f0f1a');
+  bg.addColorStop(0.5, '#1a1025');
+  bg.addColorStop(1, '#0f0f1a');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+  
+  // Subtle pattern circles
+  ctx.globalAlpha = 0.03;
+  ctx.fillStyle = '#ff544d';
+  ctx.beginPath(); ctx.arc(120, 180, 120, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(600, 700, 160, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1;
+  
+  // Top border line
+  var topLine = ctx.createLinearGradient(0, 0, W, 0);
+  topLine.addColorStop(0, '#ff544d');
+  topLine.addColorStop(1, '#c084fc');
+  ctx.fillStyle = topLine;
+  ctx.fillRect(0, 0, W, 5);
+  
+  // Header: EIGHTBORNV ARENA
+  ctx.font = '700 28px "Bebas Neue", Arial';
+  ctx.fillStyle = '#ffb4ac';
+  ctx.letterSpacing = '4px';
+  ctx.textAlign = 'center';
+  ctx.fillText('EIGHTBORNV ARENA', W/2, 60);
+  
+  // Game emoji (large)
+  ctx.font = '80px Arial';
+  ctx.fillText(opts.gameEmoji || '🎮', W/2, 170);
+  
+  // Game name
+  ctx.font = '700 36px "Bebas Neue", Arial';
+  ctx.fillStyle = '#e4e1ee';
+  ctx.fillText((opts.gameName || 'Oyun').toUpperCase(), W/2, 230);
+  
+  // Divider
+  var divLine = ctx.createLinearGradient(W/2 - 100, 0, W/2 + 100, 0);
+  divLine.addColorStop(0, 'transparent');
+  divLine.addColorStop(0.5, '#ff544d');
+  divLine.addColorStop(1, 'transparent');
+  ctx.fillStyle = divLine;
+  ctx.fillRect(W/2 - 100, 255, 200, 2);
+  
+  // Username
+  ctx.font = '700 48px "Bebas Neue", Arial';
+  ctx.fillStyle = '#fff';
+  ctx.fillText(opts.username || 'Oyuncu', W/2, 330);
+  
+  // Score - big
+  var pct = opts.total > 0 ? Math.round(opts.score / opts.total * 100) : 0;
+  var scoreColor = pct >= 80 ? '#3cddc7' : pct >= 50 ? '#ffb95f' : '#ff544d';
+  
+  ctx.font = '700 120px "Bebas Neue", Arial';
+  ctx.fillStyle = scoreColor;
+  ctx.fillText(opts.score + '/' + opts.total, W/2, 480);
+  
+  // Percentage
+  ctx.font = '700 42px "Bebas Neue", Arial';
+  ctx.fillStyle = 'rgba(228,225,238,0.5)';
+  ctx.fillText('%' + pct + ' Başarı', W/2, 530);
+  
+  // Extra info (streak, rank etc)
+  if (opts.extra) {
+    ctx.font = '700 32px "Bebas Neue", Arial';
+    ctx.fillStyle = '#ffb95f';
+    ctx.fillText(opts.extra, W/2, 600);
+  }
+  
+  // Stats boxes
+  var boxY = 650;
+  // Left box
+  ctx.fillStyle = 'rgba(255,255,255,0.04)';
+  ctx.beginPath(); ctx.roundRect(60, boxY, 280, 80, 16); ctx.fill();
+  ctx.font = '700 20px Arial';
+  ctx.fillStyle = '#ff544d';
+  ctx.textAlign = 'center';
+  ctx.fillText('DOĞRU', 200, boxY + 30);
+  ctx.font = '700 32px "Bebas Neue", Arial';
+  ctx.fillStyle = '#e4e1ee';
+  ctx.fillText(opts.score + ' SORU', 200, boxY + 62);
+  
+  // Right box
+  ctx.fillStyle = 'rgba(255,255,255,0.04)';
+  ctx.beginPath(); ctx.roundRect(380, boxY, 280, 80, 16); ctx.fill();
+  ctx.font = '700 20px Arial';
+  ctx.fillStyle = '#c084fc';
+  ctx.textAlign = 'center';
+  ctx.fillText('BAŞARI', 520, boxY + 30);
+  ctx.font = '700 32px "Bebas Neue", Arial';
+  ctx.fillStyle = '#e4e1ee';
+  ctx.fillText('%' + pct, 520, boxY + 62);
+  
+  // Bottom: site URL
+  ctx.fillStyle = 'rgba(255,255,255,0.04)';
+  ctx.fillRect(0, H - 80, W, 80);
+  ctx.font = '600 22px Arial';
+  ctx.fillStyle = 'rgba(228,225,238,0.4)';
+  ctx.textAlign = 'center';
+  ctx.fillText('eightbornvarena.com', W/2, H - 35);
+  
+  // Bottom border line
+  ctx.fillStyle = topLine;
+  ctx.fillRect(0, H - 5, W, 5);
+  
+  return canvas;
+}
+
+function shareResultCard(opts) {
+  var canvas = generateShareCard(opts);
+  canvas.toBlob(function(blob) {
+    var fileName = 'eightbornv-' + (opts.gameName || 'sonuc').toLowerCase().replace(/\s+/g, '-') + '.png';
+    
+    // Try Web Share API (mobile)
+    if (navigator.share && navigator.canShare) {
+      var file = new File([blob], fileName, { type: 'image/png' });
+      navigator.share({ title: 'EightbornV Arena Sonuç', files: [file] }).catch(function() {
+        downloadBlob(blob, fileName);
+      });
+    } else {
+      downloadBlob(blob, fileName);
+    }
+  }, 'image/png');
+}
+
+function downloadBlob(blob, name) {
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+  toast('📤 Sonuç kartı indirildi!');
+}
+
+function getShareButton(opts) {
+  return '<button onclick="shareResultCard(' + esc(JSON.stringify(opts)).replace(/"/g, '&quot;') + ')" style="padding:14px 32px;border-radius:14px;border:2px solid rgba(255,84,77,0.3);background:linear-gradient(135deg,rgba(255,84,77,0.1),rgba(192,132,252,0.1));color:#ffb4ac;font-size:18px;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px" onmouseover="this.style.borderColor=\'#ff544d\';this.style.transform=\'scale(1.05)\'" onmouseout="this.style.borderColor=\'rgba(255,84,77,0.3)\';this.style.transform=\'\'">📤 Sonucu Paylaş</button>';
+}
