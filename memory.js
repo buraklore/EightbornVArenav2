@@ -171,7 +171,7 @@ function renderMemResult() {
         <div style="display:flex;justify-content:center;gap:12px;margin-top:16px">
           <button class="btn bp" onclick="memStart()">🔄 Tekrar Oyna</button>
           <button class="btn bs" onclick="go('lb')">🏆 Sıralama</button>
-          
+          <button onclick="shareResultCard({gameName:'Eightborn Moruq',gameEmoji:'🧠',username:'${curUser?esc(curUser.username):'Oyuncu'}',score:${s.correct},total:${total}})" style="padding:14px 32px;border-radius:14px;border:2px solid rgba(255,84,77,0.3);background:linear-gradient(135deg,rgba(255,84,77,0.1),rgba(192,132,252,0.1));color:#ffb4ac;font-size:18px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px">📤 Paylaş</button>
         </div>
       </div>
     </div>`;
