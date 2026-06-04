@@ -403,6 +403,46 @@ async function duelSaveLinks() {
   } catch(e) { toast('Kaydedilemedi', false); }
 }
 
+// ═══ PAUSE / RESUME SYSTEM ═══
+function toggleStreamPause() {
+  if (!streamState || !streamState.active) return;
+  streamState.paused = !streamState.paused;
+  
+  var btn = document.getElementById('pause-btn');
+  var overlay = document.getElementById('pause-overlay');
+  
+  if (streamState.paused) {
+    if (btn) { btn.innerHTML = '▶️ Devam Et'; btn.style.background = 'linear-gradient(135deg,#3cddc7,#36c4b0)'; btn.style.color = '#1a1a2e'; }
+    if (!overlay) {
+      var ov = document.createElement('div');
+      ov.id = 'pause-overlay';
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
+      ov.innerHTML = '<div style="text-align:center"><div style="font-size:80px;margin-bottom:16px">⏸️</div><h2 style="font-size:36px;font-weight:800;color:#fff;margin-bottom:12px">DURAKLATILDI</h2><p style="font-size:16px;color:rgba(255,255,255,0.6)">Zamanlayıcı ve oylar duraklatıldı</p><button onclick="toggleStreamPause()" style="margin-top:24px;padding:16px 48px;border-radius:14px;border:none;background:linear-gradient(135deg,#3cddc7,#36c4b0);color:#1a1a2e;font-size:20px;font-weight:800;cursor:pointer">▶️ Devam Et</button></div>';
+      document.body.appendChild(ov);
+    }
+  } else {
+    if (btn) { btn.innerHTML = '⏸️ Duraklat'; btn.style.background = ''; btn.style.color = ''; }
+    if (overlay) overlay.remove();
+  }
+}
+
+// Floating pause button — auto-injected when a streamer game is active
+function showPauseButton() {
+  if (document.getElementById('pause-btn-float')) return;
+  var btn = document.createElement('div');
+  btn.id = 'pause-btn-float';
+  btn.style.cssText = 'position:fixed;top:16px;right:16px;z-index:9998;display:flex;gap:8px';
+  btn.innerHTML = '<button id="pause-btn" onclick="toggleStreamPause()" style="padding:10px 20px;border-radius:12px;border:2px solid rgba(255,255,255,0.15);background:rgba(30,30,46,0.9);color:#e4e1ee;font-size:14px;font-weight:700;cursor:pointer;backdrop-filter:blur(8px);transition:all .2s;display:flex;align-items:center;gap:6px" onmouseover="this.style.borderColor=\'#ff544d\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,0.15)\'">⏸️ Duraklat</button>';
+  document.body.appendChild(btn);
+}
+
+function hidePauseButton() {
+  var btn = document.getElementById('pause-btn-float');
+  if (btn) btn.remove();
+  var overlay = document.getElementById('pause-overlay');
+  if (overlay) overlay.remove();
+}
+
 async function streamConnect() {
   if(typeof checkBanned==="function"&&checkBanned())return;
   var platform = document.getElementById('stream-platform').value;
@@ -476,7 +516,7 @@ async function streamConnect() {
       // Solo mode — no chat needed
       if (duelPlayMode === 'solo') {
         streamState = { platform:'solo', channelId:'', mode:'DUEL', active:true, pool:pool, alive:[].concat(pool), eliminated:[], currentPair:null, votes:{}, voters:{}, voteTimer:null, phase:'READY', chatMessages:[], duelTitle:duelTitle, duelRound:1, duelSolo:true };
-        if(window._pushUrl) window._pushUrl('streamer-live');
+        if(window._pushUrl) window._pushUrl('streamer-live'); showPauseButton();
         nextDuelRound();
         return;
       }
@@ -508,7 +548,7 @@ async function streamConnect() {
       streamState.liveChatId = initRes.liveChatId;
       startChatPolling();
     } else { startKickChat(channelId); }
-    if(window._pushUrl) window._pushUrl('streamer-live');
+    if(window._pushUrl) window._pushUrl('streamer-live'); showPauseButton();
     if (mode==='DUEL') nextDuelRound();
     else if (mode==='CDIE') nextCDieRound();
     else if (mode==='CTEAM') nextCTeamRound();
@@ -527,7 +567,7 @@ async function streamConnect() {
     } else {
       startKickChat(channelId);
     }
-    if(window._pushUrl) window._pushUrl('streamer-live');
+    if(window._pushUrl) window._pushUrl('streamer-live'); showPauseButton();
     startStoryMode(platform, channelId);
     return;
   }
@@ -557,7 +597,7 @@ async function streamConnect() {
   } else {
     startKickChat(channelId);
   }
-  if(window._pushUrl) window._pushUrl('streamer-live');
+  if(window._pushUrl) window._pushUrl('streamer-live'); showPauseButton();
   
   renderStreamRound();
   startQuestionTimeout();
@@ -701,6 +741,7 @@ function startKickChat(channelName) {
 
 function processStreamMessage(author, text) {
   if (!streamState || !streamState.active) return;
+  if (streamState.paused) return; // ⏸️ Skip when paused
   if (streamState.mode === 'STORY') { processStoryChatMessage(author, text); return; }
   if (streamState.mode === 'CDIE' || streamState.mode === 'CTEAM' || streamState.mode === 'CFATE' || streamState.mode === 'DUEL') { processChatVote(author, text); return; }
   if (streamState.roundWinner) return;
@@ -846,26 +887,32 @@ function streamerForceFate(fateId) {
 
 // 60-second question timeout — if nobody answers, skip to next
 function startQuestionTimeout() {
-  if (streamState._questionTimeout) clearTimeout(streamState._questionTimeout);
-  streamState._questionTimeout = setTimeout(function() {
-    if (!streamState || !streamState.active || streamState.roundWinner) return;
-    streamState.roundWinner = '—';
-    renderStreamRound();
-    roundTimer = setTimeout(function() {
-      showStreamTransition(function() {
-        streamState.current++;
-        streamState.roundWinner = null;
-        streamState.roundAnswers = {};
-        streamState.chatMessages = [];
-        if (streamState.current >= streamState.questions.length) {
-          renderStreamFinal();
-        } else {
-          renderStreamRound();
-          startQuestionTimeout();
-        }
-      });
-    }, 2000);
-  }, 60000);
+  if (streamState._questionTimeout) clearInterval(streamState._questionTimeout);
+  var remaining = 60;
+  streamState._questionTimeout = setInterval(function() {
+    if (!streamState || !streamState.active || streamState.roundWinner) { clearInterval(streamState._questionTimeout); return; }
+    if (streamState.paused) return; // ⏸️ Skip tick when paused
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(streamState._questionTimeout);
+      streamState.roundWinner = '—';
+      renderStreamRound();
+      roundTimer = setTimeout(function() {
+        showStreamTransition(function() {
+          streamState.current++;
+          streamState.roundWinner = null;
+          streamState.roundAnswers = {};
+          streamState.chatMessages = [];
+          if (streamState.current >= streamState.questions.length) {
+            renderStreamFinal();
+          } else {
+            renderStreamRound();
+            startQuestionTimeout();
+          }
+        });
+      }, 2000);
+    }
+  }, 1000);
 }
 
 // 5-second transition screen between questions
@@ -1076,6 +1123,7 @@ function streamStop() {
 
 function streamCleanup() {
   gameTimers.forEach(function(t){clearTimeout(t);clearInterval(t);}); gameTimers=[];
+  hidePauseButton();
   if (chatPollTimer) { clearTimeout(chatPollTimer); clearInterval(chatPollTimer); chatPollTimer = null; }
   if (typeof storyTimer!=='undefined'&&storyTimer) { clearInterval(storyTimer); storyTimer=null; }
   if (typeof storyVoteTimer!=='undefined'&&storyVoteTimer) { clearInterval(storyVoteTimer); storyVoteTimer=null; }
@@ -1106,6 +1154,7 @@ function streamerApply() {
 function processChatVote(author, text) {
   var s = streamState;
   if (!s || !s.active || s.phase !== 'VOTING') return;
+  if (s.paused) return; // ⏸️ Skip when paused
   var rawText = text.trim();
   var upperText = rawText.toUpperCase();
   var lowerText = rawText.toLowerCase();
@@ -1208,7 +1257,7 @@ function nextDuelRound() {
     ag.innerHTML =
       '<div style="padding:20px">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">' +
-        '<button class="btn bg bsm" onclick="streamStop()">← Bitir</button>' +
+        '<div style="display:flex;gap:8px"><button class="btn bg bsm" onclick="streamStop()">← Bitir</button></div>' +
         '<span class="badge" style="background:#c084fc20;color:#c084fc;font-size:12px">🎮 Bireysel</span>' +
       '</div>' +
       cardsHtml +
@@ -1367,6 +1416,7 @@ function startCVoteTimer(seconds, callback) {
   var timerEl = document.getElementById('cvote-timer');
   if (s.voteTimer) clearInterval(s.voteTimer);
   s.voteTimer = setInterval(function(){
+    if (s.paused) return; // ⏸️ Skip tick when paused
     remaining--;
     if (timerEl) timerEl.textContent = remaining + 's';
     if (remaining <= 0) {
