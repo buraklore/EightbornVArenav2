@@ -136,7 +136,7 @@ function streamSetup(mode) {
       '<div id="duel-chat-fields">' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:20px">' +
           '<div class="form-group"><label class="lbl" style="font-size:18px;margin-bottom:10px">🌐 Platform</label>' +
-          '<select class="inp" style="font-size:18px;padding:16px;border-radius:14px" id="stream-platform"><option value="youtube">▶️ YouTube</option><option value="kick">🟢 Kick</option></select></div>' +
+          '<select class="inp" style="font-size:18px;padding:16px;border-radius:14px" id="stream-platform" onchange="duelAutoFillUrl()"><option value="youtube">▶️ YouTube</option><option value="kick">🟢 Kick</option></select></div>' +
           '<div class="form-group"><label class="lbl" style="font-size:18px;margin-bottom:10px">🔗 Yayın Linki</label>' +
           '<input class="inp" style="font-size:18px;padding:16px;border-radius:14px" id="stream-url" placeholder="https://youtube.com/watch?v=..."></div>' +
         '</div>' +
@@ -158,24 +158,65 @@ function streamSetup(mode) {
       '</div>';
   }
   
-  ag.innerHTML = 
-    '<div style="display:flex;align-items:center;justify-content:center;gap:12px;padding:10px 0">' +
-    '' +
-    '<h2 class="fd" style="font-weight:700;font-size:28px">' + modeNames[mode] + '</h2></div>' +
-    '<div style="flex:1;display:flex;align-items:center;justify-content:center">' +
-    '<div class="cg" style="text-align:center;padding:48px 40px;max-width:1100px;width:100%;border-radius:24px">' +
-    '<div style="text-align:left;max-width:1000px;margin:0 auto">' +
-    '<input type="hidden" id="stream-mode" value="' + mode + '">' +
-    (mode === 'DUEL' ? '' :
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:28px">' +
-      '<div class="form-group"><label class="lbl" style="font-size:20px;margin-bottom:10px">🌐 Platform</label>' +
-      '<select class="inp" style="font-size:22px;padding:20px;border-radius:16px" id="stream-platform"><option value="youtube">▶️ YouTube</option><option value="kick">🟢 Kick</option></select></div>' +
-      '<div class="form-group"><label class="lbl" style="font-size:20px;margin-bottom:10px">🔗 Yayın Linki veya Kanal Adı</label>' +
-      '<input class="inp" style="font-size:22px;padding:20px;border-radius:16px" id="stream-url" placeholder="https://youtube.com/watch?v=... veya kanal adı"></div>' +
-    '</div>') +
-    extraField +
-    '<button class="btn bp" style="width:100%;font-size:26px;padding:22px;border-radius:16px;margin-top:12px;background:linear-gradient(135deg,#ff544d,#ff544d);box-shadow:0 8px 32px #ff544d40" onclick="streamConnect()">🚀 Oyunu Başlat</button>' +
-    '</div></div>';
+  if (mode === 'DUEL') {
+    // ═══ DUEL: 2-column layout with saved duels panel ═══
+    ag.innerHTML = 
+      '<div style="display:flex;align-items:center;justify-content:center;gap:12px;padding:10px 0">' +
+      '<h2 class="fd" style="font-weight:700;font-size:28px">⚔️ ' + modeNames[mode] + '</h2></div>' +
+      '<div style="display:flex;gap:20px;padding:0 20px;max-width:1400px;margin:0 auto">' +
+      
+      // LEFT: Setup form
+      '<div style="flex:1;min-width:0">' +
+      '<div class="cg" style="padding:32px;border-radius:20px">' +
+      '<div style="text-align:left">' +
+      '<input type="hidden" id="stream-mode" value="DUEL">' +
+      extraField +
+      '<div style="display:flex;gap:12px;margin-top:16px">' +
+        '<button class="btn bp" style="flex:1;font-size:20px;padding:18px;border-radius:14px;background:linear-gradient(135deg,#ff544d,#ff544d);box-shadow:0 8px 32px #ff544d40" onclick="streamConnect()">🚀 Oyunu Başlat</button>' +
+        '<button type="button" style="padding:18px 28px;border-radius:14px;border:2px solid #3cddc740;background:#3cddc710;color:#3cddc7;font-size:16px;font-weight:700;cursor:pointer;transition:all .2s" onclick="duelSaveConfig()" onmouseover="this.style.borderColor=\'#3cddc7\'" onmouseout="this.style.borderColor=\'#3cddc740\'">💾 Kaydet</button>' +
+      '</div>' +
+      '</div></div></div>' +
+      
+      // RIGHT: Saved duels panel
+      '<div style="width:340px;flex-shrink:0">' +
+      '<div class="cg" style="padding:20px;border-radius:20px;position:sticky;top:20px">' +
+        '<h3 class="fd" style="font-size:18px;font-weight:700;margin-bottom:12px">📋 Kayıtlı Düellolar</h3>' +
+        '<div id="duel-library" style="max-height:600px;overflow-y:auto"><div style="text-align:center;padding:20px;color:var(--t3)">Yükleniyor...</div></div>' +
+      '</div>' +
+      
+      // Streamer link save section
+      '<div class="cg" style="padding:16px;border-radius:16px;margin-top:12px">' +
+        '<h4 style="font-size:14px;font-weight:600;color:var(--t2);margin-bottom:8px">🔗 Yayın Linklerini Kaydet</h4>' +
+        '<input class="inp" style="font-size:13px;padding:10px;border-radius:8px;margin-bottom:6px" id="save-yt-url" placeholder="YouTube linki">' +
+        '<input class="inp" style="font-size:13px;padding:10px;border-radius:8px;margin-bottom:6px" id="save-kick-url" placeholder="Kick linki">' +
+        '<button type="button" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--b1);background:var(--bg3);color:var(--t1);font-size:12px;font-weight:600;cursor:pointer" onclick="duelSaveLinks()">Linkleri Kaydet</button>' +
+      '</div>' +
+      '</div>' +
+      
+      '</div>';
+    
+    // Load saved duels and streamer links
+    duelLoadLibrary();
+    duelLoadLinks();
+  } else {
+    // ═══ OTHER MODES: Standard single-column layout ═══
+    ag.innerHTML = 
+      '<div style="display:flex;align-items:center;justify-content:center;gap:12px;padding:10px 0">' +
+      '<h2 class="fd" style="font-weight:700;font-size:28px">' + modeNames[mode] + '</h2></div>' +
+      '<div style="flex:1;display:flex;align-items:center;justify-content:center">' +
+      '<div class="cg" style="text-align:center;padding:48px 40px;max-width:1100px;width:100%;border-radius:24px">' +
+      '<div style="text-align:left;max-width:1000px;margin:0 auto">' +
+      '<input type="hidden" id="stream-mode" value="' + mode + '">' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:28px">' +
+        '<div class="form-group"><label class="lbl" style="font-size:20px;margin-bottom:10px">🌐 Platform</label>' +
+        '<select class="inp" style="font-size:22px;padding:20px;border-radius:16px" id="stream-platform"><option value="youtube">▶️ YouTube</option><option value="kick">🟢 Kick</option></select></div>' +
+        '<div class="form-group"><label class="lbl" style="font-size:20px;margin-bottom:10px">🔗 Yayın Linki veya Kanal Adı</label>' +
+        '<input class="inp" style="font-size:22px;padding:20px;border-radius:16px" id="stream-url" placeholder="https://youtube.com/watch?v=... veya kanal adı"></div>' +
+      '</div>' +
+      extraField +
+      '<button class="btn bp" style="width:100%;font-size:26px;padding:22px;border-radius:16px;margin-top:12px;background:linear-gradient(135deg,#ff544d,#ff544d);box-shadow:0 8px 32px #ff544d40" onclick="streamConnect()">🚀 Oyunu Başlat</button>' +
+      '</div></div>';
+  }
 }
 
 // ═══ DUEL HELPER FUNCTIONS ═══
@@ -226,6 +267,141 @@ document.addEventListener('change', function(e) {
     duelUpdateCount();
   }
 });
+
+// ═══ DUEL LIBRARY (Saved Duels) ═══
+var _savedDuels = [];
+
+async function duelLoadLibrary() {
+  var el = document.getElementById('duel-library');
+  if (!el) return;
+  try {
+    var data = await apiGet('/duels');
+    _savedDuels = data.duels || [];
+    if (_savedDuels.length === 0) {
+      el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--t3)"><div style="font-size:32px;margin-bottom:8px">📭</div><p style="font-size:13px">Henüz kayıtlı düello yok.</p><p style="font-size:11px;margin-top:4px">İlk düellonu oluştur ve kaydet!</p></div>';
+      return;
+    }
+    // Group by creator
+    var grouped = {};
+    _savedDuels.forEach(function(d) {
+      if (!grouped[d.creator_username]) grouped[d.creator_username] = [];
+      grouped[d.creator_username].push(d);
+    });
+    var h = '';
+    for (var username in grouped) {
+      h += '<div style="margin-bottom:14px">' +
+        '<div style="font-size:12px;font-weight:700;color:var(--v);margin-bottom:6px;padding:4px 0;border-bottom:1px solid var(--b1)">📌 ' + esc(username) + '</div>';
+      grouped[username].forEach(function(d) {
+        var charCount = d.characters ? d.characters.length : 0;
+        var isOwn = curUser && curUser.username === d.creator_username;
+        h += '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;cursor:pointer;border:1px solid var(--b1);margin-bottom:4px;transition:all .2s;background:var(--bg2)" onclick="duelApplyConfig(' + d.id + ')" onmouseover="this.style.borderColor=\'#ff544d\';this.style.background=\'rgba(255,84,77,0.03)\'" onmouseout="this.style.borderColor=\'var(--b1)\';this.style.background=\'var(--bg2)\'">' +
+          '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">⚔️ ' + esc(d.title) + '</div>' +
+          '<div style="font-size:11px;color:var(--t3)">' + charCount + ' karakter</div></div>' +
+          (isOwn ? '<div onclick="event.stopPropagation();duelDeleteConfig(' + d.id + ')" style="width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;color:var(--t3);flex-shrink:0" onmouseover="this.style.color=\'#ff544d\'" onmouseout="this.style.color=\'var(--t3)\'">🗑️</div>' : '') +
+          '</div>';
+      });
+      h += '</div>';
+    }
+    el.innerHTML = h;
+  } catch(e) {
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--t3)">Yüklenemedi</div>';
+  }
+}
+
+function duelApplyConfig(duelId) {
+  var duel = _savedDuels.find(function(d) { return d.id === duelId; });
+  if (!duel) return;
+  
+  // Set title
+  var titleEl = document.getElementById('duel-title');
+  if (titleEl) titleEl.value = duel.title;
+  
+  // Uncheck all first
+  duelSelectAll(false);
+  
+  // Check matching characters
+  var activeChars = chars.filter(function(c) { return c.a; });
+  var charNames = duel.characters || [];
+  document.querySelectorAll('.duel-char-cb').forEach(function(cb) {
+    var idx = parseInt(cb.value);
+    var c = activeChars[idx];
+    if (!c) return;
+    var key = c.n + '|' + c.s;
+    var nameStr = c.n + ' ' + c.s;
+    if (charNames.indexOf(key) >= 0 || charNames.indexOf(nameStr) >= 0) {
+      cb.checked = true;
+      var item = cb.closest('.duel-char-item');
+      if (item) { item.style.borderColor = '#ff544d'; item.style.background = 'rgba(255,84,77,0.05)'; }
+    }
+  });
+  duelUpdateCount();
+  toast('✅ "' + duel.title + '" yüklendi!');
+}
+
+async function duelSaveConfig() {
+  var title = (document.getElementById('duel-title').value || '').trim();
+  if (!title) { toast('Başlık gerekli!', false); return; }
+  
+  var selected = [];
+  var activeChars = chars.filter(function(c) { return c.a; });
+  document.querySelectorAll('.duel-char-cb:checked').forEach(function(cb) {
+    var idx = parseInt(cb.value);
+    var c = activeChars[idx];
+    if (c) selected.push(c.n + '|' + c.s);
+  });
+  if (selected.length < 4) { toast('En az 4 karakter seç!', false); return; }
+  
+  try {
+    var r = await apiPost('/duels', { title: title, characters: selected });
+    if (r.success) {
+      toast('💾 Düello kaydedildi!');
+      duelLoadLibrary();
+    } else { toast(r.error || 'Kaydedilemedi', false); }
+  } catch(e) { toast('Kaydedilemedi', false); }
+}
+
+async function duelDeleteConfig(duelId) {
+  if (!confirm('Bu düelloyu silmek istediğine emin misin?')) return;
+  try {
+    await apiDelete('/duels/' + duelId);
+    toast('🗑️ Silindi');
+    duelLoadLibrary();
+  } catch(e) { toast('Silinemedi', false); }
+}
+
+// ═══ STREAMER LINK MANAGEMENT ═══
+function duelAutoFillUrl() {
+  var platform = document.getElementById('stream-platform').value;
+  var urlEl = document.getElementById('stream-url');
+  var ytEl = document.getElementById('save-yt-url');
+  var kickEl = document.getElementById('save-kick-url');
+  if (!urlEl) return;
+  if (platform === 'youtube' && ytEl && ytEl.value) urlEl.value = ytEl.value;
+  else if (platform === 'kick' && kickEl && kickEl.value) urlEl.value = kickEl.value;
+}
+
+async function duelLoadLinks() {
+  try {
+    var data = await apiGet('/streamer-link');
+    var ytEl = document.getElementById('save-yt-url');
+    var kickEl = document.getElementById('save-kick-url');
+    var streamUrlEl = document.getElementById('stream-url');
+    if (ytEl && data.youtube_url) ytEl.value = data.youtube_url;
+    if (kickEl && data.kick_url) kickEl.value = data.kick_url;
+    // Auto-fill stream URL if available
+    if (streamUrlEl && data.youtube_url) streamUrlEl.value = data.youtube_url;
+  } catch(e) {}
+}
+
+async function duelSaveLinks() {
+  var yt = (document.getElementById('save-yt-url').value || '').trim();
+  var kick = (document.getElementById('save-kick-url').value || '').trim();
+  try {
+    var r = await apiPost('/streamer-link', { youtube_url: yt, kick_url: kick });
+    if (r.success) toast('🔗 Linkler kaydedildi!');
+    else toast(r.error || 'Kaydedilemedi', false);
+  } catch(e) { toast('Kaydedilemedi', false); }
+}
 
 async function streamConnect() {
   if(typeof checkBanned==="function"&&checkBanned())return;
