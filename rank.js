@@ -103,23 +103,38 @@ function renderRankRound() {
   var s = rkState;
   var ag = document.getElementById('ag');
   var totalScore = s.points.reduce(function(a, b){ return a + b; }, 0);
+
+  // Tur ilerleme çubuğu (segmentli)
+  var segs = '';
+  for (var i = 1; i <= s.totalRounds; i++) {
+    var done = i < s.round, cur = i === s.round;
+    segs += '<div style="flex:1;height:6px;border-radius:3px;background:' + (done ? '#ffb95f' : (cur ? 'linear-gradient(90deg,#ffb95f,#ff544d)' : '#26262f')) + ';transition:background .3s"></div>';
+  }
+
   ag.innerHTML =
-    '<div style="max-width:680px;margin:0 auto;padding:16px 16px 40px">' +
-      '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px">' +
-        '<button class="btn bg bsm" onclick="bk()">← Çık</button>' +
-        '<div style="display:inline-flex;align-items:center;gap:10px;background:#1b1b24;border:1px solid rgba(91,64,61,0.15);border-radius:50px;padding:8px 18px">' +
-          '<span class="fd" style="font-size:16px;letter-spacing:2px;color:#e4e1ee">TUR ' + s.round + '/' + s.totalRounds + '</span>' +
-          '<span style="width:6px;height:6px;border-radius:50%;background:#ffb95f"></span>' +
-          '<span style="font-size:15px;color:#ffb95f;font-weight:700">' + totalScore + ' puan</span>' +
+    '<div style="max-width:780px;margin:0 auto;padding:10px 18px 52px;width:100%">' +
+      // Üst: tur + puan (çıkış butonu yok — üst menüden çıkılır)
+      '<div style="display:flex;flex-direction:column;align-items:center;gap:14px;margin-bottom:22px">' +
+        '<div style="display:inline-flex;align-items:center;gap:12px;background:#1b1b24;border:1px solid rgba(91,64,61,0.18);border-radius:50px;padding:9px 22px">' +
+          '<span class="fd" style="font-size:17px;letter-spacing:2px;color:#e4e1ee">TUR ' + s.round + '/' + s.totalRounds + '</span>' +
+          '<span style="width:5px;height:5px;border-radius:50%;background:#6a6878"></span>' +
+          '<span style="font-size:15px;color:#ffb95f;font-weight:800">🎯 ' + totalScore + ' puan</span>' +
         '</div>' +
+        '<div style="display:flex;gap:5px;width:100%;max-width:420px">' + segs + '</div>' +
       '</div>' +
-      '<div style="text-align:center;margin-bottom:8px">' +
-        '<div style="font-size:46px;line-height:1;margin-bottom:8px">' + (s.criterion.emoji || '🏆') + '</div>' +
-        '<h1 class="fd" style="font-size:clamp(30px,5vw,44px);letter-spacing:1px;color:#e4e1ee;line-height:1.1">' + esc(s.criterion.label) + '</h1>' +
-        '<p style="font-size:14px;color:#6a6878;margin-top:10px">En çok olanı <b style="color:#3cddc7">en üste</b>, en az olanı <b style="color:#ff544d">en alta</b> sırala</p>' +
+      // Kriter
+      '<div style="text-align:center;margin-bottom:18px">' +
+        '<div style="font-size:54px;line-height:1;margin-bottom:10px">' + (s.criterion.emoji || '🏆') + '</div>' +
+        '<h1 class="fd" style="font-size:clamp(32px,5.5vw,50px);letter-spacing:1px;color:#e4e1ee;line-height:1.05">' + esc(s.criterion.label) + '</h1>' +
+        '<p style="font-size:15px;color:#9a969e;margin-top:12px">En çok olanı <b style="color:#3cddc7">en üste</b>, en az olanı <b style="color:#ff544d">en alta</b> sırala</p>' +
       '</div>' +
-      '<div id="rank-list" style="margin:22px 0"></div>' +
-      '<button class="btn bp" style="width:100%;padding:16px;font-size:17px" onclick="rankSubmit()">Sıralamayı Onayla →</button>' +
+      // Puanlama ipucu
+      '<div style="display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,rgba(255,185,95,0.06),rgba(255,84,77,0.04));border:1px solid rgba(255,185,95,0.14);border-radius:12px;padding:11px 16px;margin-bottom:8px">' +
+        '<span style="font-size:20px;flex-shrink:0">🏆</span>' +
+        '<span style="font-size:13px;color:#9a969e;line-height:1.5">Sıralaman topluluğun ortalamasına ne kadar <b style="color:#ffb95f">yakınsa</b> o kadar çok puan kazanırsın. Sürükle-bırak ya da <b style="color:#e4e1ee">▲ ▼</b> tuşlarını kullan.</span>' +
+      '</div>' +
+      '<div id="rank-list" style="margin:16px 0 20px"></div>' +
+      '<button class="btn bp" style="width:100%;padding:17px;font-size:18px" onclick="rankSubmit()">Sıralamayı Onayla →</button>' +
     '</div>';
   renderRankList();
 }
@@ -136,17 +151,17 @@ function renderRankList() {
     var rankBadge = i < 3 ? medals[i] : (i + 1);
     return '<div class="rank-row" draggable="true" data-pos="' + i + '" ' +
       'ondragstart="rankDragStart(event,' + i + ')" ondragover="rankDragOver(event,' + i + ')" ondragleave="rankDragLeave(event,' + i + ')" ondrop="rankDrop(event,' + i + ')" ondragend="rankDragEnd(event)" ' +
-      'style="display:flex;align-items:center;gap:12px;background:#1f1f28;border:1px solid rgba(91,64,61,0.15);border-radius:14px;padding:10px 12px;margin-bottom:10px;cursor:grab;transition:border-color .15s,transform .1s,box-shadow .15s">' +
-        '<div class="fd" style="width:38px;text-align:center;font-size:' + (i < 3 ? '24' : '20') + 'px;color:#ffb95f;flex-shrink:0">' + rankBadge + '</div>' +
-        '<div style="width:52px;height:52px;border-radius:10px;overflow:hidden;flex-shrink:0;border:1px solid rgba(91,64,61,0.2)">' + cp(c, 52) + '</div>' +
+      'style="display:flex;align-items:center;gap:14px;background:#1f1f28;border:1px solid rgba(91,64,61,0.15);border-radius:15px;padding:12px 16px;margin-bottom:11px;cursor:grab;transition:border-color .15s,transform .1s,box-shadow .15s">' +
+        '<div class="fd" style="width:42px;text-align:center;font-size:' + (i < 3 ? '28' : '22') + 'px;color:#ffb95f;flex-shrink:0">' + rankBadge + '</div>' +
+        '<div style="width:62px;height:62px;border-radius:12px;overflow:hidden;flex-shrink:0;border:1px solid rgba(91,64,61,0.2)">' + cp(c, 62) + '</div>' +
         '<div style="flex:1;min-width:0;text-align:left">' +
-          '<div style="font-size:16px;font-weight:700;color:#e4e1ee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(c.n) + ' ' + esc(c.s) + '</div>' +
-          (c.tip ? '<div style="font-size:12px;color:#6a6878">' + esc(c.tip) + '</div>' : '') +
+          '<div style="font-size:18px;font-weight:700;color:#e4e1ee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2">' + esc(c.n) + ' ' + esc(c.s) + '</div>' +
+          (c.tip ? '<div style="display:inline-block;margin-top:5px;font-size:12px;color:#9a969e;background:#16161d;border:1px solid rgba(91,64,61,0.18);border-radius:6px;padding:2px 9px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(c.tip) + '</div>' : '') +
         '</div>' +
-        '<div style="font-size:18px;color:#4a4858;flex-shrink:0;padding:0 2px">⠿</div>' +
-        '<div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0">' +
-          '<button onclick="rankMove(' + i + ',-1)" ' + (i === 0 ? 'disabled' : '') + ' style="width:34px;height:24px;border-radius:7px;border:1px solid rgba(91,64,61,0.2);background:' + (i === 0 ? '#16161d;color:#3a3a44' : '#292933;color:#e4e1ee') + ';cursor:' + (i === 0 ? 'default' : 'pointer') + ';font-size:12px;display:flex;align-items:center;justify-content:center" aria-label="Yukarı">▲</button>' +
-          '<button onclick="rankMove(' + i + ',1)" ' + (i === n - 1 ? 'disabled' : '') + ' style="width:34px;height:24px;border-radius:7px;border:1px solid rgba(91,64,61,0.2);background:' + (i === n - 1 ? '#16161d;color:#3a3a44' : '#292933;color:#e4e1ee') + ';cursor:' + (i === n - 1 ? 'default' : 'pointer') + ';font-size:12px;display:flex;align-items:center;justify-content:center" aria-label="Aşağı">▼</button>' +
+        '<div style="font-size:20px;color:#4a4858;flex-shrink:0;padding:0 2px">⠿</div>' +
+        '<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">' +
+          '<button onclick="rankMove(' + i + ',-1)" ' + (i === 0 ? 'disabled' : '') + ' style="width:40px;height:30px;border-radius:8px;border:1px solid rgba(91,64,61,0.2);background:' + (i === 0 ? '#16161d;color:#3a3a44' : '#292933;color:#e4e1ee') + ';cursor:' + (i === 0 ? 'default' : 'pointer') + ';font-size:13px;display:flex;align-items:center;justify-content:center" aria-label="Yukarı">▲</button>' +
+          '<button onclick="rankMove(' + i + ',1)" ' + (i === n - 1 ? 'disabled' : '') + ' style="width:40px;height:30px;border-radius:8px;border:1px solid rgba(91,64,61,0.2);background:' + (i === n - 1 ? '#16161d;color:#3a3a44' : '#292933;color:#e4e1ee') + ';cursor:' + (i === n - 1 ? 'default' : 'pointer') + ';font-size:13px;display:flex;align-items:center;justify-content:center" aria-label="Aşağı">▼</button>' +
         '</div>' +
       '</div>';
   }).join('');

@@ -436,6 +436,7 @@ window.addEventListener('load', function() {
         var ag=document.getElementById('ag');if(ag)ag.classList.add('hid');
         var gg=document.getElementById('gg');if(gg)gg.style.display='';
         var gh=document.getElementById('games-hdr');if(gh)gh.style.display='';
+        var gc=document.getElementById('games-con');if(gc){gc.style.maxWidth='';gc.style.padding='';}
         _pushUrl('games');
       }
       if(pg==='profile'){

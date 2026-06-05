@@ -35,7 +35,54 @@ function _skCharObj(row) {
 
 function stockStart() {
   if (typeof checkBanned === 'function' && checkBanned()) return;
-  skState = { tab: 'market', market: [], portfolio: null, sort: 'price', q: '', loading: true };
+  var ag = document.getElementById('ag');
+  var loggedIn = (typeof curUser !== 'undefined' && curUser);
+  function feat(emoji, title, desc) {
+    return '<div style="background:#1b1b24;border:1px solid rgba(91,64,61,0.15);border-radius:14px;padding:18px 16px;text-align:center">' +
+      '<div style="font-size:34px;margin-bottom:8px">' + emoji + '</div>' +
+      '<div style="font-size:15px;font-weight:700;color:#e4e1ee;margin-bottom:4px">' + title + '</div>' +
+      '<div style="font-size:13px;color:#9a969e;line-height:1.5">' + desc + '</div>' +
+    '</div>';
+  }
+  function step(n, txt) {
+    return '<div style="display:flex;align-items:center;gap:12px">' +
+      '<div class="fd" style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#3cddc7,#60a5fa);color:#0d0d14;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">' + n + '</div>' +
+      '<div style="font-size:14px;color:#cfcdd6;line-height:1.5;text-align:left">' + txt + '</div>' +
+    '</div>';
+  }
+  ag.innerHTML =
+    '<div style="max-width:880px;margin:0 auto;padding:32px 20px 56px">' +
+      '<div style="text-align:center;margin-bottom:32px">' +
+        '<div style="width:100px;height:100px;border-radius:24px;background:rgba(60,221,199,0.06);display:flex;align-items:center;justify-content:center;font-size:52px;margin:0 auto 22px;border:1px solid rgba(60,221,199,0.15)">📈</div>' +
+        '<h2 style="font-family:Bebas Neue,sans-serif;font-size:clamp(40px,6vw,64px);letter-spacing:4px;color:#e4e1ee;margin-bottom:8px">KARAKTER BORSASI</h2>' +
+        '<div style="width:80px;height:4px;background:linear-gradient(90deg,#3cddc7,#60a5fa);margin:0 auto 20px;border-radius:2px"></div>' +
+        '<p style="font-size:17px;color:#9a969e;max-width:600px;margin:0 auto;line-height:1.7">Karakterlerin <b style="color:#3cddc7">sanal hisselerini</b> al-sat. Ucuzken al, değerlenince sat, portföyünü büyüt ve şehrin en zengin yatırımcısı ol!</p>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:32px">' +
+        feat('🪙', 'Her Gün 1000 Coin', 'Giriş yapınca her gün otomatik bütçe hesabına eklenir.') +
+        feat('📊', '200+ Karakter', 'Her hisse 100 Coin\'den başlar. Arz-talebe göre fiyat değişir.') +
+        feat('🔥', 'Oyunlar Fiyatı Etkiler', 'Diğer oyunlarda çok seçilen karakterlerin değeri yükselir.') +
+        feat('🏆', 'Haftalık Sıralama', 'Portföy değerine göre en zengin yatırımcılar listelenir.') +
+      '</div>' +
+      '<div style="background:#16161d;border:1px solid rgba(91,64,61,0.15);border-radius:18px;padding:26px 24px;margin-bottom:32px">' +
+        '<h3 class="fd" style="font-size:22px;letter-spacing:1px;color:#e4e1ee;text-align:center;margin-bottom:20px">NASIL ÇALIŞIR?</h3>' +
+        '<div style="display:flex;flex-direction:column;gap:16px;max-width:560px;margin:0 auto">' +
+          step(1, '<b style="color:#e4e1ee">Piyasayı incele.</b> Karakterleri fiyata, yükselişe veya düşüşe göre sırala; aradığını ara.') +
+          step(2, '<b style="color:#e4e1ee">Hisse al.</b> Bütçenle düşük gördüğün karakterlere yatırım yap. Alım fiyatı bir miktar yükseltir.') +
+          step(3, '<b style="color:#e4e1ee">Değerlenmesini bekle.</b> Karakter oyunlarda popülerleştikçe veya başkaları aldıkça fiyatı artar.') +
+          step(4, '<b style="color:#e4e1ee">Sat ve kâr et.</b> Yüksekken satarak Coin kazan. Portföyünü büyüt, sıralamada yüksel.') +
+        '</div>' +
+      '</div>' +
+      '<div style="text-align:center">' +
+        '<button class="btn bp" style="padding:18px 56px;font-size:19px;letter-spacing:1px;background:linear-gradient(135deg,#3cddc7,#60a5fa);border:none;color:#0d0d14;box-shadow:0 0 28px rgba(60,221,199,0.25)" onclick="stockEnter()">📈 Borsaya Gir</button>' +
+        (!loggedIn ? '<p style="font-size:13px;color:#6a6878;margin-top:14px">Fiyatları girişsiz de inceleyebilirsin. İşlem yapmak ve günlük 1000 Coin almak için <a style="color:#ffb4ac;cursor:pointer;text-decoration:underline" onclick="go(\'login\')">giriş yap</a>.</p>' : '') +
+      '</div>' +
+    '</div>';
+}
+
+function stockEnter() {
+  if (typeof checkBanned === 'function' && checkBanned()) return;
+  skState = { tab: 'market', market: [], portfolio: null, sort: 'price', q: '', page: 1, loading: true };
   _skRenderShell();
   _skLoad();
 }
@@ -43,13 +90,11 @@ function stockStart() {
 function _skRenderShell() {
   var ag = document.getElementById('ag');
   ag.innerHTML =
-    '<div style="max-width:1000px;margin:0 auto;padding:14px 14px 48px">' +
-      '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px">' +
-        '<button class="btn bg bsm" onclick="bk()">← Çık</button>' +
-        '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:26px">📈</span><span class="fd" style="font-size:24px;letter-spacing:2px;color:#e4e1ee">KARAKTER BORSASI</span></div>' +
-        '<div style="width:60px"></div>' +
+    '<div style="max-width:1180px;margin:0 auto;padding:18px 18px 56px;width:100%">' +
+      '<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:18px">' +
+        '<span style="font-size:28px">📈</span><span class="fd" style="font-size:26px;letter-spacing:2px;color:#e4e1ee">KARAKTER BORSASI</span>' +
       '</div>' +
-      '<div id="sk-tabs" style="display:flex;gap:8px;justify-content:center;margin-bottom:18px;flex-wrap:wrap"></div>' +
+      '<div id="sk-tabs" style="display:flex;gap:8px;justify-content:center;margin-bottom:20px;flex-wrap:wrap"></div>' +
       '<div id="sk-body" style="min-height:240px"><div style="text-align:center;padding:60px;color:#6a6878">Borsa yükleniyor...</div></div>' +
     '</div>';
   _skRenderTabs();
@@ -116,11 +161,11 @@ function renderStockMarket() {
 
   var sortBtns = [['price', 'En Değerli'], ['gain', 'En Çok Yükselen'], ['loss', 'En Çok Düşen'], ['name', 'İsim']];
   var controls = '<div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">' +
-    '<input id="sk-search" class="inp" placeholder="🔍 Karakter ara..." value="' + esc(skState.q) + '" style="flex:1;min-width:160px;padding:11px 14px" oninput="skState.q=this.value;_skRenderMarketList()">' +
+    '<input id="sk-search" class="inp" placeholder="🔍 Karakter ara..." value="' + esc(skState.q) + '" style="flex:1;min-width:160px;padding:12px 16px" oninput="skState.q=this.value;skState.page=1;_skRenderMarketList()">' +
     '</div>' +
-    '<div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">' + sortBtns.map(function(sb){
+    '<div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">' + sortBtns.map(function(sb){
       var active = skState.sort === sb[0];
-      return '<button onclick="skState.sort=\'' + sb[0] + '\';_skRenderMarketList()" style="padding:7px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid ' + (active ? 'rgba(255,180,172,0.25)' : 'rgba(91,64,61,0.15)') + ';background:' + (active ? '#292933' : '#1b1b24') + ';color:' + (active ? '#ffb4ac' : '#6a6878') + '">' + sb[1] + '</button>';
+      return '<button onclick="skState.sort=\'' + sb[0] + '\';skState.page=1;renderStockMarket()" style="padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid ' + (active ? 'rgba(255,180,172,0.25)' : 'rgba(91,64,61,0.15)') + ';background:' + (active ? '#292933' : '#1b1b24') + ';color:' + (active ? '#ffb4ac' : '#6a6878') + '">' + sb[1] + '</button>';
     }).join('') + '</div>';
 
   b.innerHTML = cashBar + controls + '<div id="sk-market-list"></div>';
@@ -142,19 +187,51 @@ function _skRenderMarketList() {
 
   if (!list.length) { el.innerHTML = '<div style="text-align:center;padding:40px;color:#6a6878">Sonuç yok.</div>'; return; }
 
+  // Sayfalama (sayfa başına 10)
+  var per = 10;
+  var totalPages = Math.max(1, Math.ceil(list.length / per));
+  if (!skState.page || skState.page < 1) skState.page = 1;
+  if (skState.page > totalPages) skState.page = totalPages;
+  var startIdx = (skState.page - 1) * per;
+  var pageItems = list.slice(startIdx, startIdx + per);
+
   var loggedIn = (typeof curUser !== 'undefined' && curUser);
-  el.innerHTML = '<div style="display:flex;flex-direction:column;gap:8px">' + list.map(function(r) {
+  var grid = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(430px,1fr));gap:11px">' + pageItems.map(function(r, idx) {
     var c = _skCharObj(r);
-    return '<div style="display:flex;align-items:center;gap:12px;background:#1f1f28;border:1px solid rgba(91,64,61,0.12);border-radius:13px;padding:10px 14px">' +
-      '<div style="width:48px;height:48px;border-radius:10px;overflow:hidden;flex-shrink:0;border:1px solid rgba(91,64,61,0.2)">' + cp(c, 48) + '</div>' +
+    var globalRank = startIdx + idx + 1;
+    return '<div style="display:flex;align-items:center;gap:13px;background:#1f1f28;border:1px solid rgba(91,64,61,0.12);border-radius:13px;padding:11px 15px">' +
+      '<div class="fd" style="width:26px;text-align:center;font-size:15px;color:#4a4858;flex-shrink:0">' + globalRank + '</div>' +
+      '<div style="width:52px;height:52px;border-radius:11px;overflow:hidden;flex-shrink:0;border:1px solid rgba(91,64,61,0.2)">' + cp(c, 52) + '</div>' +
       '<div style="flex:1;min-width:0;text-align:left">' +
-        '<div style="font-size:15px;font-weight:700;color:#e4e1ee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(r.name) + ' ' + esc(r.surname || '') + '</div>' +
-        '<div style="font-size:12px;color:#6a6878">' + _skChangeHtml(r.change_pct, true) + '</div>' +
+        '<div style="font-size:16px;font-weight:700;color:#e4e1ee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(r.name) + ' ' + esc(r.surname || '') + '</div>' +
+        '<div style="font-size:12px;color:#6a6878;margin-top:2px">' + _skChangeHtml(r.change_pct, true) + '</div>' +
       '</div>' +
-      '<div style="text-align:right;flex-shrink:0;min-width:80px"><div class="fd" style="font-size:22px;color:#e4e1ee">' + _skMoney(r.price) + '</div><div style="font-size:11px;color:#6a6878">Coin</div></div>' +
-      '<button class="btn ' + (loggedIn ? 'bp' : 'bs') + ' bsm" style="flex-shrink:0;padding:9px 16px" onclick="' + (loggedIn ? 'stockTradeModal(\'' + esc(String(r.char_id)) + '\')' : 'go(\'login\')') + '">İşlem</button>' +
+      '<div style="text-align:right;flex-shrink:0;min-width:74px"><div class="fd" style="font-size:23px;color:#e4e1ee;line-height:1">' + _skMoney(r.price) + '</div><div style="font-size:10px;color:#6a6878;letter-spacing:.5px">COIN</div></div>' +
+      '<button class="btn ' + (loggedIn ? 'bp' : 'bs') + ' bsm" style="flex-shrink:0;padding:10px 18px" onclick="' + (loggedIn ? 'stockTradeModal(\'' + esc(String(r.char_id)) + '\')' : 'go(\'login\')') + '">İşlem</button>' +
       '</div>';
   }).join('') + '</div>';
+
+  // Sayfalama kontrolleri
+  var pager = '';
+  if (totalPages > 1) {
+    pager = '<div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-top:20px">' +
+      '<button onclick="stockPage(-1)" ' + (skState.page === 1 ? 'disabled' : '') + ' style="width:44px;height:44px;border-radius:11px;border:1px solid rgba(91,64,61,0.2);background:' + (skState.page === 1 ? '#16161d;color:#3a3a44' : '#292933;color:#e4e1ee') + ';cursor:' + (skState.page === 1 ? 'default' : 'pointer') + ';font-size:20px;display:flex;align-items:center;justify-content:center">‹</button>' +
+      '<div style="text-align:center;min-width:150px"><div class="fd" style="font-size:18px;letter-spacing:1px;color:#e4e1ee">SAYFA ' + skState.page + ' / ' + totalPages + '</div><div style="font-size:12px;color:#6a6878">toplam ' + list.length + ' karakter</div></div>' +
+      '<button onclick="stockPage(1)" ' + (skState.page === totalPages ? 'disabled' : '') + ' style="width:44px;height:44px;border-radius:11px;border:1px solid rgba(91,64,61,0.2);background:' + (skState.page === totalPages ? '#16161d;color:#3a3a44' : '#292933;color:#e4e1ee') + ';cursor:' + (skState.page === totalPages ? 'default' : 'pointer') + ';font-size:20px;display:flex;align-items:center;justify-content:center">›</button>' +
+    '</div>';
+  }
+
+  el.innerHTML = grid + pager;
+}
+
+function stockPage(delta) {
+  if (!skState) return;
+  skState.page = (skState.page || 1) + delta;
+  if (skState.page < 1) skState.page = 1;
+  _skRenderMarketList();
+  // Liste başına yumuşak kaydır
+  var b = document.getElementById('sk-market-list');
+  if (b && b.scrollIntoView) { try { b.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {} }
 }
 
 // ── PORTFÖY ──
@@ -188,7 +265,7 @@ function renderStockPortfolio() {
   if (!p.holdings.length) {
     holdingsHtml = '<div style="text-align:center;padding:40px 20px;background:#1b1b24;border:1px solid rgba(91,64,61,0.12);border-radius:14px"><div style="font-size:44px;margin-bottom:10px">📥</div><p style="font-size:15px;color:#9a969e;margin-bottom:6px">Henüz hissen yok</p><p style="font-size:13px;color:#6a6878;margin-bottom:18px">Piyasadan karakter hissesi al, değer kazandıkça kâr et.</p><button class="btn bp bsm" onclick="stockTab(\'market\')">📊 Piyasaya Git</button></div>';
   } else {
-    holdingsHtml = '<p style="font-size:13px;font-weight:700;color:#9a969e;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Hisselerim</p><div style="display:flex;flex-direction:column;gap:8px">' + p.holdings.map(function(h) {
+    holdingsHtml = '<p style="font-size:13px;font-weight:700;color:#9a969e;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Hisselerim</p><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(430px,1fr));gap:10px">' + p.holdings.map(function(h) {
       var c = _skCharObj(h);
       var pl = (h.price - h.avg_cost) * h.shares;
       var plPct = h.avg_cost > 0 ? ((h.price / h.avg_cost - 1) * 100) : 0;
