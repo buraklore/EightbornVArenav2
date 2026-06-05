@@ -13,6 +13,28 @@ function _rkCharById(id) {
 }
 function _rkCid(c) { return String(c.dbId || c.id); }
 
+// ── Sıralama havuzu ──
+// Topluluk uzlaşısının oluşabilmesi için RANK oyunu 200+ karakterin tamamından değil,
+// SABİT ve KÜÇÜK bir havuzdan 5 karakter seçer. Böylece aynı karakter çiftleri tekrar
+// tekrar oylanır ve "%uyum" verisi birikir (yoksa herkes hep "ilk sıralayan" olur).
+// Havuzu büyütmek/küçültmek için bu sayıyı değiştir (küçük = veri daha hızlı oluşur, az çeşit).
+var RANK_POOL_SIZE = 20;
+function _rkHash(str) { var h = 0; for (var i = 0; i < str.length; i++) { h = ((h << 5) - h + str.charCodeAt(i)) | 0; } return h >>> 0; }
+function _rkPool() {
+  var active = chars.filter(function(c){ return c.a; });
+  // İstenirse admin/elle belirlenen havuz (window._rankPoolIds = ['c1','c5',...])
+  var ids = (typeof window !== 'undefined') ? window._rankPoolIds : null;
+  if (ids && ids.length >= 5) {
+    var set = {}; ids.forEach(function(x){ set[String(x)] = 1; });
+    var cur = active.filter(function(c){ return set[_rkCid(c)]; });
+    if (cur.length >= 5) return cur;
+  }
+  if (active.length <= RANK_POOL_SIZE) return active;
+  // Deterministik (herkeste aynı), alfabe/rol yanlılığı olmadan dağıtılmış sabit alt küme
+  var sorted = active.slice().sort(function(a, b){ return _rkHash(_rkCid(a)) - _rkHash(_rkCid(b)); });
+  return sorted.slice(0, RANK_POOL_SIZE);
+}
+
 function rankStart() {
   if (typeof checkBanned === 'function' && checkBanned()) return;
   var ag = document.getElementById('ag');
@@ -22,7 +44,7 @@ function rankStart() {
       '<h2 style="font-family:Bebas Neue,sans-serif;font-size:clamp(40px,6vw,64px);letter-spacing:4px;color:#e4e1ee;margin-bottom:8px">KARAKTER SIRALA</h2>' +
       '<div style="width:80px;height:4px;background:linear-gradient(90deg,#ffb95f,#ff544d);margin:0 auto 20px;border-radius:2px"></div>' +
       '<p style="font-size:16px;color:#9a969e;margin-bottom:8px;max-width:540px;margin-left:auto;margin-right:auto;line-height:1.7">Her turda bir <b style="color:#ffb95f">soru</b> ve 5 karakter gelir. Sürükle ya da oklarla sırala — sonra topluluk ne demiş gör!</p>' +
-      '<p style="font-size:14px;color:#6a6878;margin-bottom:32px">Aynı karakterler farklı soruda farklı sıraya girer. Sonsuz kombinasyon.</p>' +
+      '<p style="font-size:14px;color:#6a6878;margin-bottom:32px">Seçili karakterler her soruda farklı sıraya girer; oynadıkça topluluğun ortak sıralaması belirginleşir.</p>' +
       '<div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center">' +
         _rkModeBtn(3, 'Hızlı', '3 Tur', false) +
         _rkModeBtn(5, 'Klasik', '5 Tur', true) +
@@ -91,9 +113,9 @@ function rankNewRound() {
   s.lastCritId = crit.id;
   s.criterion = crit;
 
-  // Rastgele 5 aktif karakter
-  var active = chars.filter(function(c){ return c.a; });
-  var picked = shuf(active).slice(0, 5);
+  // Sabit havuzdan rastgele 5 karakter (topluluk verisinin oluşabilmesi için)
+  var pool = _rkPool();
+  var picked = shuf(pool).slice(0, 5);
   s.order = picked.map(_rkCid);
 
   renderRankRound();
