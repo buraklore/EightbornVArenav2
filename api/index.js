@@ -519,6 +519,18 @@ app.delete('/api/rank/criteria/:id', auth, adm, async function(req, res) {
   try { await ensureDb(); await db.deleteRankCriterion(parseInt(req.params.id)); res.json({ success: true }); }
   catch (e) { res.status(500).json({ error: 'Silinemedi.' }); }
 });
+app.get('/api/rank/config', async function(req, res) {
+  try { await ensureDb(); res.json(await db.getRankConfig()); }
+  catch (e) { res.status(500).json({ error: 'Yuklenemedi.' }); }
+});
+app.post('/api/admin/rank/config', auth, adm, async function(req, res) {
+  try {
+    await ensureDb();
+    var result = await db.setRankConfig(req.body.pool_ids, req.body.round_size);
+    if (result.error) return res.status(400).json(result);
+    res.json(result);
+  } catch (e) { console.error('admin/rank/config:', e.message); res.status(500).json({ error: 'Kaydedilemedi.' }); }
+});
 // Bir turun sıralamasını kaydeder ve topluluk uyuşma oranını döner (giriş gerektirmez — veri herkesten toplanır)
 app.post('/api/rank/score', async function(req, res) {
   try {
