@@ -1,6 +1,6 @@
 // ═══ ADMIN (simplified for focus on tournament) ═══
-const AT=[{k:'games',l:'Oyunlar',i:'🎮'},{k:'ranking',l:'Sıralama',i:'🏆'},{k:'users',l:'Kullanıcılar',i:'👤'},{k:'gameedit',l:'Oyun Düzenle',i:'✏️'},{k:'questions',l:'Sorular',i:'❓'},{k:'whoChars',l:'WHO Sonuçları',i:'🪞'},{k:'ads',l:'Reklamlar',i:'📢'},{k:'msgs',l:'Mesajlar',i:'📨'},{k:'hero',l:'Hero Görseli',i:'🖼️'},{k:'discord',l:'Discord',i:'🎮'},{k:'footerpages',l:'Footer Sayfaları',i:'📄'},{k:'chars',l:'Karakterler',i:'⚔️'},{k:'seo',l:'SEO',i:'🔍'}];
-function rAdm(){document.getElementById('adm-nav').innerHTML=AT.map(t=>'<button class="nl'+(aTab===t.k?' a':'')+'" style="justify-content:flex-start;width:100%;font-size:15px;padding:12px 16px" onclick="aTab=\''+t.k+'\';rAdm()">'+t.i+' '+t.l+'</button>').join('');const e=document.getElementById('adm-c');({chars:aChars,questions:aQuestions,games:aGames,ranking:aRanking,users:aUsers,ads:aAds,msgs:aMsgs,gameedit:aGameEdit,hero:aHero,discord:aDiscord,footerpages:aFooterPages,seo:aSeo,whoChars:aWhoChars})[aTab](e)}
+const AT=[{k:'games',l:'Oyunlar',i:'🎮'},{k:'ranking',l:'Sıralama',i:'🏆'},{k:'users',l:'Kullanıcılar',i:'👤'},{k:'gameedit',l:'Oyun Düzenle',i:'✏️'},{k:'questions',l:'Sorular',i:'❓'},{k:'rankcrit',l:'Sıralama Kriterleri',i:'🎯'},{k:'whoChars',l:'WHO Sonuçları',i:'🪞'},{k:'ads',l:'Reklamlar',i:'📢'},{k:'msgs',l:'Mesajlar',i:'📨'},{k:'hero',l:'Hero Görseli',i:'🖼️'},{k:'discord',l:'Discord',i:'🎮'},{k:'footerpages',l:'Footer Sayfaları',i:'📄'},{k:'chars',l:'Karakterler',i:'⚔️'},{k:'seo',l:'SEO',i:'🔍'}];
+function rAdm(){document.getElementById('adm-nav').innerHTML=AT.map(t=>'<button class="nl'+(aTab===t.k?' a':'')+'" style="justify-content:flex-start;width:100%;font-size:15px;padding:12px 16px" onclick="aTab=\''+t.k+'\';rAdm()">'+t.i+' '+t.l+'</button>').join('');const e=document.getElementById('adm-c');({chars:aChars,questions:aQuestions,games:aGames,ranking:aRanking,users:aUsers,ads:aAds,msgs:aMsgs,gameedit:aGameEdit,hero:aHero,discord:aDiscord,footerpages:aFooterPages,seo:aSeo,whoChars:aWhoChars,rankcrit:aRankCrit})[aTab](e)}
 
 function aChars(e){
   if(!window._dataReady){
@@ -636,7 +636,9 @@ function aGameEdit(e){
     {t:'FACE',n:'Yüzden Bil',d:'Bulanık fotoğraftan tanı'},
     {t:'MEM',n:'Eightborn Moruq',d:'Sunucu bilgi yarışması'},
     {t:'WHO',n:'Sen Kimsin?',d:'Hangi karaktere benziyorsun?'},
-    {t:'STREAM',n:'Yayıncı Oyunları',d:'Chat ile interaktif oyunlar'}];
+    {t:'STREAM',n:'Yayıncı Oyunları',d:'Chat ile interaktif oyunlar'},
+    {t:'RANK',n:'Karakter Sırala',d:'Karakterleri kritere göre sırala'},
+    {t:'STOCK',n:'Karakter Borsası',d:'Sanal hisse al-sat, yatırım yap'}];
   var streamerTypes = [
     {t:'S_QUOTE',n:'Replik Bil (Yayıncı)',d:'Repliği kime ait?'},
     {t:'S_FACE',n:'Yüzden Bil (Yayıncı)',d:'Karakteri tanı!'},
@@ -676,7 +678,7 @@ function aGameEdit(e){
 }
 
 function saveGameNames(){
-  var types = ['DIE','TEAM','QUOTE','FATE','FACE','MEM','WHO','STREAM','S_QUOTE','S_FACE','S_MEMORY','S_STORY','S_CDIE','S_CTEAM','S_CFATE'];
+  var types = ['DIE','TEAM','QUOTE','FATE','FACE','MEM','WHO','STREAM','RANK','STOCK','S_QUOTE','S_FACE','S_MEMORY','S_STORY','S_CDIE','S_CTEAM','S_CFATE'];
   var data = {};
   types.forEach(function(t){
     var nameEl = document.getElementById('gn-'+t);
@@ -1090,4 +1092,59 @@ function saveWhoResultChars() {
     // Update local cache
     window._whoResultChars = _whoResultChars.slice();
   });
+}
+
+// ═══ SIRALAMA KRİTERLERİ (Karakter Sırala oyunu) ═══
+function aRankCrit(e){
+  e.innerHTML='<div style="text-align:center;padding:40px;color:var(--t2)">Kriterler yükleniyor...</div>';
+  apiGet('/rank/criteria/admin').then(function(r){
+    var list=(r&&r.criteria)?r.criteria:[];
+    window._adminRankCrit=list;
+    var h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div><h3 class="fd" style="font-weight:600;font-size:15px">🎯 Sıralama Kriterleri <span class="badge bgl">'+list.length+'</span></h3><p style="font-size:12px;color:var(--t3);margin-top:2px">"Karakter Sırala" oyununda sorulan kriterler. Oyuncular 5 karakteri en çok → en az sıralar.</p></div><button class="btn bp bsm" onclick="rcMod()">+ Kriter Ekle</button></div>';
+    if(!list.length){ h+='<div class="card" style="text-align:center;padding:40px;color:var(--t3)">Henüz kriter yok. Ekleyin.</div>'; }
+    else {
+      h+=list.map(function(c){
+        return '<div class="card" style="margin-bottom:8px;padding:12px 14px;'+(c.active?'':'opacity:.5')+'"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><div style="display:flex;align-items:center;gap:10px;min-width:0"><span style="font-size:22px;flex-shrink:0">'+esc(c.emoji||'🏆')+'</span><span style="font-size:14px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(c.label)+'</span></div><div style="display:flex;align-items:center;gap:8px;flex-shrink:0"><button class="btn bg bsm" style="padding:3px 8px" onclick="rcMod('+c.id+')">✏️</button><div class="tgl '+(c.active?'on':'off')+'" title="Aktif/Pasif" onclick="rcToggle('+c.id+')"></div><button class="btn bg bsm" style="padding:3px 8px;color:var(--pk)" onclick="rcDel('+c.id+')">🗑️</button></div></div></div>';
+      }).join('');
+    }
+    e.innerHTML=h;
+  }).catch(function(){ e.innerHTML='<div class="card" style="padding:24px;text-align:center;color:var(--pk)">Yüklenemedi</div>'; });
+}
+
+function rcMod(id){
+  var c=id?(window._adminRankCrit||[]).find(function(x){return x.id==id}):null;
+  modal('<h3 class="fd">'+(c?'Kriter Düzenle':'Yeni Kriter')+'<button class="close" onclick="closeModal()">\u2715</button></h3>'+
+  '<div class="form-group"><label class="lbl">Kriter (soru biçiminde) *</label><input class="inp" id="rc-label" value="'+(c?esc(c.label):'')+'" placeholder="Örn: Hangisi daha zengin?"></div>'+
+  '<div class="form-group"><label class="lbl">Emoji</label><input class="inp" id="rc-emoji" value="'+(c?esc(c.emoji||'🏆'):'🏆')+'" style="text-align:center;font-size:22px" maxlength="6"></div>'+
+  '<p style="font-size:12px;color:var(--t3);margin-bottom:14px">Oyuncular bu kritere göre 5 karakteri "en çok → en az" sıralar.</p>'+
+  '<button class="btn bp" style="width:100%" onclick="rcSav('+(id||'0')+')">'+(c?'\ud83d\udcbe Güncelle':'\u2795 Ekle')+'</button>');
+}
+
+function rcSav(editId){
+  var label=sanitize(document.getElementById('rc-label').value,150);
+  if(!label){toast('Kriter metni zorunlu!',false);return}
+  var emoji=document.getElementById('rc-emoji').value.trim()||'🏆';
+  var data={label:label,emoji:emoji};
+  if(editId&&parseInt(editId)){data.id=parseInt(editId)}
+  apiPost('/rank/criteria',data).then(function(r){
+    if(r.error){toast(r.error,false);return}
+    toast(editId&&parseInt(editId)?'Güncellendi.':'Eklendi.');closeModal();aRankCrit(document.getElementById('adm-c'));
+  }).catch(function(){toast('Kayıt hatası',false)});
+}
+
+function rcToggle(id){
+  var c=(window._adminRankCrit||[]).find(function(x){return x.id==id});
+  if(!c)return;
+  apiPost('/rank/criteria',{id:id,label:c.label,emoji:c.emoji,active:!c.active}).then(function(r){
+    if(r.error){toast(r.error,false);return}
+    aRankCrit(document.getElementById('adm-c'));
+  }).catch(function(){toast('Hata',false)});
+}
+
+function rcDel(id){
+  if(typeof confirm==='function' && !confirm('Bu kriter ve ona ait tüm topluluk oyları silinecek. Emin misin?'))return;
+  apiDelete('/rank/criteria/'+id).then(function(r){
+    if(r.error){toast(r.error,false);return}
+    toast('Silindi.');aRankCrit(document.getElementById('adm-c'));
+  }).catch(function(){toast('Silinemedi',false)});
 }

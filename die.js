@@ -174,6 +174,8 @@ function renderDieSurvivor() {
   const survivor = s.alive[0];
   // Track survival win
   if(typeof apiPost==='function'){apiPost('/survival-win',{character_name:survivor.n+' '+survivor.s}).catch(function(){});}
+  // Borsa: hayatta kalan karakter "seçilmiş" sayılır → fiyatı hafifçe yükselir
+  if(typeof window.stockNoteSelections==='function'){window.stockNoteSelections([String(survivor.dbId||survivor.id)]);}
   const ag = document.getElementById('ag');
   ag.innerHTML = `
     <div style="flex:1;display:flex;align-items:center;justify-content:center"><div class="cg sci" style="text-align:center;padding:60px 32px;max-width:1100px;width:100%;position:relative;overflow:hidden" id="surv-box">

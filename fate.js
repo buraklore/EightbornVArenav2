@@ -172,6 +172,8 @@ function fatePick(fateId, charId) {
   
   fate.char = c;
   s.remaining = s.remaining.filter(x => x.id != charId);
+  // Borsa: kader atanan karakter "seçilmiş" sayılır → fiyatı hafifçe yükselir
+  if(typeof window.stockNoteSelections==='function'){window.stockNoteSelections([String(c.dbId||c.id)]);}
   
   showGameNotif(fate.emoji, c.n + ' \u2192 ' + fate.name, true);
   

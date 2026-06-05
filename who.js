@@ -233,6 +233,8 @@ async function analyzeWho() {
 
 function renderWhoResult(result, reason) {
   var ag = document.getElementById('ag');
+  // Borsa: çıkan karakter "seçilmiş" sayılır → fiyatı hafifçe yükselir
+  if(result && typeof window.stockNoteSelections==='function'){window.stockNoteSelections([String(result.dbId||result.id)]);}
   
   ag.innerHTML = `
     <div style="flex:1;display:flex;align-items:center;justify-content:center">

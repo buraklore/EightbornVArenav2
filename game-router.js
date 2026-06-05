@@ -1,12 +1,12 @@
 // ═══ GAME CARDS ═══
-let GD=[{t:'STREAM',e:'🎬',d:'Chatinizle oynayabileceğiniz interaktif oyunlar',gr:'linear-gradient(135deg,#ff544d,#ff544d)',on:true,isNew:true},{t:'DIE',e:'⚔️',d:'Son hayatta kalan kim?',gr:'linear-gradient(135deg,#ff544d,#ff544d)',on:true},{t:'TEAM',e:'👥',d:'8 kişilik ekibini oluştur ve geri kalan herkesi CK&#39;la!',gr:'linear-gradient(135deg,#60a5fa,#3cddc7)',on:true},{t:'FATE',e:'🎲',d:'Flört mü edeceksin yoksa ihanet mi?',gr:'linear-gradient(135deg,#ff544d,#ff544d)',on:true},{t:'FACE',e:'🤔',d:'Karakterlerin fotoğraflarından isimlerini tahmin et!',gr:'linear-gradient(135deg,#3cddc7,#3cddc7)',on:true},{t:'QUOTE',e:'💬',d:'Bu repliğin hangi karaktere ait olduğunu bilebilecek misin?',gr:'linear-gradient(135deg,#ffb95f,#ffb95f)',on:true},{t:'MEM',e:'🧠',d:'Eightborn hakkında ne kadar bilgilisin?',gr:'linear-gradient(135deg,#818cf8,#60a5fa)',on:true},{t:'WHO',e:'❓',d:'Hangi Eightborn karakterine benzediğini bul!',gr:'linear-gradient(135deg,#ffb4ac,#ff544d)',on:true}];
+let GD=[{t:'STREAM',e:'🎬',d:'Chatinizle oynayabileceğiniz interaktif oyunlar',gr:'linear-gradient(135deg,#ff544d,#ff544d)',on:true,isNew:true},{t:'DIE',e:'⚔️',d:'Son hayatta kalan kim?',gr:'linear-gradient(135deg,#ff544d,#ff544d)',on:true},{t:'TEAM',e:'👥',d:'8 kişilik ekibini oluştur ve geri kalan herkesi CK&#39;la!',gr:'linear-gradient(135deg,#60a5fa,#3cddc7)',on:true},{t:'FATE',e:'🎲',d:'Flört mü edeceksin yoksa ihanet mi?',gr:'linear-gradient(135deg,#ff544d,#ff544d)',on:true},{t:'FACE',e:'🤔',d:'Karakterlerin fotoğraflarından isimlerini tahmin et!',gr:'linear-gradient(135deg,#3cddc7,#3cddc7)',on:true},{t:'QUOTE',e:'💬',d:'Bu repliğin hangi karaktere ait olduğunu bilebilecek misin?',gr:'linear-gradient(135deg,#ffb95f,#ffb95f)',on:true},{t:'MEM',e:'🧠',d:'Eightborn hakkında ne kadar bilgilisin?',gr:'linear-gradient(135deg,#818cf8,#60a5fa)',on:true},{t:'WHO',e:'❓',d:'Hangi Eightborn karakterine benzediğini bul!',gr:'linear-gradient(135deg,#ffb4ac,#ff544d)',on:true},{t:'RANK',e:'🎯',d:'Karakterleri bir kritere göre sırala, toplulukla yarış!',gr:'linear-gradient(135deg,#ffb95f,#ff544d)',on:true,isNew:true},{t:'STOCK',e:'📈',d:'Sanal borsada karakter hisselerine yatırım yap!',gr:'linear-gradient(135deg,#3cddc7,#60a5fa)',on:true,isNew:true}];
 let TEAM_MAX=8;
 let CHAR_TYPES=['Lider', 'Yalancı', 'Dedikoducu', 'Korkak', 'Cesur', 'Aptal', 'Kavgacı', 'Araba Delisi', 'Silah Delisi', 'Sadık', 'Hain', 'Cimri', 'Hovarda', 'Soğukkanlı', 'Sinirli', 'Tembel', 'Çalışkan', 'Romantik', 'Kıskanç', 'Şüpheci', 'Maceracı', 'Karizmatik', 'Manipülatif', 'Fedakar', 'Bencil', 'Asi', 'Paracı', 'Hesapçı', 'Vicdanlı', 'Psikopat'];
-let GN={DIE:'Kim Hayatta Kalacak',TEAM:'Ekibini Kur',FATE:'Kaderini Seç',FACE:'Yüzden Bil',QUOTE:'Replik Bil',MEM:'Eightborn Moruq',WHO:'Sen Kimsin?',STREAM:'Yayıncı Oyunları'};
+let GN={DIE:'Kim Hayatta Kalacak',TEAM:'Ekibini Kur',FATE:'Kaderini Seç',FACE:'Yüzden Bil',QUOTE:'Replik Bil',MEM:'Eightborn Moruq',WHO:'Sen Kimsin?',STREAM:'Yayıncı Oyunları',RANK:'Karakter Sırala',STOCK:'Karakter Borsası'};
 function gcH(){
-  var diffs = {STREAM:'İNTERAKTİF !',DIE:'Kolay',TEAM:'Kolay',FATE:'Kolay',FACE:'Zor',QUOTE:'Zor',MEM:'Çok Zor',WHO:'KEŞFET!'};
-  var diffColors = {STREAM:'rgba(255,84,77,.08);color:#ffb4ac',DIE:'rgba(45,212,191,.08);color:#2dd4bf',TEAM:'rgba(45,212,191,.08);color:#2dd4bf',FATE:'rgba(45,212,191,.08);color:#2dd4bf',FACE:'rgba(255,84,77,.08);color:#ffb4ac',QUOTE:'rgba(255,84,77,.08);color:#ffb4ac',MEM:'rgba(255,84,77,.08);color:#ffb4ac',WHO:'rgba(139,92,246,.08);color:#ffb4ac'};
-  var iconBg = {STREAM:'rgba(232,67,62,.12)',DIE:'rgba(245,158,11,.1)',TEAM:'rgba(139,92,246,.1)',FATE:'rgba(255,84,77,.08)',FACE:'rgba(45,212,191,.1)',QUOTE:'rgba(245,158,11,.1)',MEM:'rgba(96,165,250,.1)',WHO:'rgba(139,92,246,.1)'};
+  var diffs = {STREAM:'İNTERAKTİF !',DIE:'Kolay',TEAM:'Kolay',FATE:'Kolay',FACE:'Zor',QUOTE:'Zor',MEM:'Çok Zor',WHO:'KEŞFET!',RANK:'YENİ!',STOCK:'YENİ!'};
+  var diffColors = {STREAM:'rgba(255,84,77,.08);color:#ffb4ac',DIE:'rgba(45,212,191,.08);color:#2dd4bf',TEAM:'rgba(45,212,191,.08);color:#2dd4bf',FATE:'rgba(45,212,191,.08);color:#2dd4bf',FACE:'rgba(255,84,77,.08);color:#ffb4ac',QUOTE:'rgba(255,84,77,.08);color:#ffb4ac',MEM:'rgba(255,84,77,.08);color:#ffb4ac',WHO:'rgba(139,92,246,.08);color:#ffb4ac',RANK:'rgba(255,185,95,.08);color:#ffb95f',STOCK:'rgba(60,221,199,.08);color:#3cddc7'};
+  var iconBg = {STREAM:'rgba(232,67,62,.12)',DIE:'rgba(245,158,11,.1)',TEAM:'rgba(139,92,246,.1)',FATE:'rgba(255,84,77,.08)',FACE:'rgba(45,212,191,.1)',QUOTE:'rgba(245,158,11,.1)',MEM:'rgba(96,165,250,.1)',WHO:'rgba(139,92,246,.1)',RANK:'rgba(255,185,95,.1)',STOCK:'rgba(60,221,199,.1)'};
   
   return '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;max-width:1400px;margin:0 auto;padding:0 24px">' + GD.filter(function(g){return g.on}).map(function(g,i){
     var isStreamer = g.t === 'STREAM';
@@ -61,14 +61,14 @@ function play(t){
   var gc=document.getElementById('games-con');gc.style.maxWidth='none';gc.style.padding='0';
   if(t==='STREAM') { if(window._pushUrl) window._pushUrl('streamer-menu'); }
   else { if(window._pushUrl) window._pushUrl('game', t); }
-  if(t==='DIE')dieStart();else if(t==='TEAM')teamStart();else if(t==='FATE')fateStart();else if(t==='FACE')faceStart();else if(t==='QUOTE')quoteStart();else if(t==='MEM')memStart();else if(t==='WHO')whoStart();else if(t==='STREAM')streamStart();else genericGame(t);
+  if(t==='DIE')dieStart();else if(t==='TEAM')teamStart();else if(t==='FATE')fateStart();else if(t==='FACE')faceStart();else if(t==='QUOTE')quoteStart();else if(t==='MEM')memStart();else if(t==='WHO')whoStart();else if(t==='STREAM')streamStart();else if(t==='RANK')rankStart();else if(t==='STOCK')stockStart();else genericGame(t);
 }
 function bk(){
   document.getElementById('ag').classList.add('hid');
   document.getElementById('gg').style.display='';
   document.getElementById('games-hdr').style.display='';
   var gc=document.getElementById('games-con');gc.style.maxWidth='';gc.style.padding='';
-  tState=null;dState=null;tmState=null;ftState=null;fcState=null;rqState=null;mState=null;whState=null;
+  tState=null;dState=null;tmState=null;ftState=null;fcState=null;rqState=null;mState=null;whState=null;rkState=null;skState=null;
   if(window._pushUrl) window._pushUrl('games');
 }
 
@@ -283,6 +283,8 @@ window.addEventListener('load', function() {
       {e:'\ud83e\udd14',t:'FACE',n:'Yüzden Bil',d:'Bulanık fotoğraftan karakterin kim olduğunu bul',diff:'Zor',dc:'rgba(255,84,77,.08);color:#ffb4ac',ib:'linear-gradient(135deg,#292933,#1f1f28)'},
       {e:'\ud83e\udde0',t:'MEM',n:'Eightborn Moruq',d:'Sunucu hakkında ne kadar bilgilisin? Test et',diff:'Çok Zor',dc:'rgba(255,84,77,.08);color:#ffb4ac',ib:'linear-gradient(135deg,#292933,#1f1f28)'},
       {e:'\u2753',t:'WHO',n:'Sen Kimsin?',d:'Kişilik testine gir — hangi karaktere benziyorsun?',diff:'KEŞFET!',dc:'rgba(139,92,246,.08);color:#8b5cf6',ib:'linear-gradient(135deg,#292933,#1f1f28)'},
+      {e:'\ud83c\udfaf',t:'RANK',n:'Karakter Sırala',d:'Karakterleri kritere göre sırala, toplulukla yarış',diff:'YENİ!',dc:'rgba(255,185,95,.08);color:#ffb95f',ib:'linear-gradient(135deg,#292933,#1f1f28)'},
+      {e:'\ud83d\udcc8',t:'STOCK',n:'Karakter Borsası',d:'Sanal borsada hisse al-sat, en zengin yatırımcı ol',diff:'YENİ!',dc:'rgba(60,221,199,.08);color:#3cddc7',ib:'linear-gradient(135deg,#292933,#1f1f28)'},
       {e:'\ud83c\udfae',t:'RPSIM',n:'RP Simülasyonu',d:'Şehrin kralı mı olacaksın soytarısı mı?',diff:'YAKINDA',dc:'rgba(100,100,100,.08);color:#666',ib:'linear-gradient(135deg,#292933,#1f1f28)',soon:true}
     ];
     // Apply custom names
@@ -319,8 +321,8 @@ window.addEventListener('load', function() {
   // ═══ URL ROUTING ═══
   var _routeMap = {home:'/',oyunlar:'games',siralama:'lb',iletisim:'contact',giris:'login',kayit:'register',admin:'admin',profil:'profile'};
   var _reverseRoute = {home:'/',games:'/oyunlar',lb:'/siralama',contact:'/iletisim',login:'/giris',register:'/kayit',admin:'/admin',profile:'/profil'};
-  var _gameUrls = {DIE:'/oyun/hayatta-kal',TEAM:'/oyun/ekibini-kur',QUOTE:'/oyun/replik-bil',FACE:'/oyun/yuzden-bil',MEM:'/oyun/eightborn-moruq',FATE:'/oyun/kaderini-sec',WHO:'/oyun/sen-kimsin',STREAM:'/yayinci'};
-  var _urlToGame = {'hayatta-kal':'DIE','ekibini-kur':'TEAM','replik-bil':'QUOTE','yuzden-bil':'FACE','eightborn-moruq':'MEM','kaderini-sec':'FATE','sen-kimsin':'WHO'};
+  var _gameUrls = {DIE:'/oyun/hayatta-kal',TEAM:'/oyun/ekibini-kur',QUOTE:'/oyun/replik-bil',FACE:'/oyun/yuzden-bil',MEM:'/oyun/eightborn-moruq',FATE:'/oyun/kaderini-sec',WHO:'/oyun/sen-kimsin',STREAM:'/yayinci',RANK:'/oyun/karakter-sirala',STOCK:'/oyun/borsa'};
+  var _urlToGame = {'hayatta-kal':'DIE','ekibini-kur':'TEAM','replik-bil':'QUOTE','yuzden-bil':'FACE','eightborn-moruq':'MEM','kaderini-sec':'FATE','sen-kimsin':'WHO','karakter-sirala':'RANK','borsa':'STOCK'};
   var _skipPush = false;
 
   window._pushUrl = function(page, extra) {

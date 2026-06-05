@@ -134,6 +134,8 @@ function teamPick(action, charId) {
   
   if (action === 'add') {
     s.team.push(c);
+    // Borsa: ekibe seçilen karakter "seçilmiş" sayılır → fiyatı hafifçe yükselir
+    if(typeof window.stockNoteSelections==='function'){window.stockNoteSelections([String(c.dbId||c.id)]);}
     if (s.team.length >= TEAM_MAX) {
       showTeamNotif('👥', c.n + ' ekibine katıldı!', 'Ekip tamamlandı!', true);
     } else {
