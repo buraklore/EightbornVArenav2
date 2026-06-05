@@ -14,25 +14,18 @@ function _rkCharById(id) {
 function _rkCid(c) { return String(c.dbId || c.id); }
 
 // ── Sıralama havuzu ──
-// Topluluk uzlaşısının oluşabilmesi için RANK oyunu 200+ karakterin tamamından değil,
-// SABİT ve KÜÇÜK bir havuzdan 5 karakter seçer. Böylece aynı karakter çiftleri tekrar
-// tekrar oylanır ve "%uyum" verisi birikir (yoksa herkes hep "ilk sıralayan" olur).
-// Havuzu büyütmek/küçültmek için bu sayıyı değiştir (küçük = veri daha hızlı oluşur, az çeşit).
-var RANK_POOL_SIZE = 20;
-function _rkHash(str) { var h = 0; for (var i = 0; i < str.length; i++) { h = ((h << 5) - h + str.charCodeAt(i)) | 0; } return h >>> 0; }
+// Admin panelinden seçilen karakter havuzundan (rkState.poolIds) tur başına rkState.roundSize karakter seçilir.
+// Havuz seçilmemişse tüm aktif karakterler kullanılır — karakter-bazlı skorlama sayesinde bu da çalışır
+// (uzlaşı, tam aynı ikilinin değil karakterlerin küresel kazanma oranıyla oluşur).
 function _rkPool() {
   var active = chars.filter(function(c){ return c.a; });
-  // İstenirse admin/elle belirlenen havuz (window._rankPoolIds = ['c1','c5',...])
-  var ids = (typeof window !== 'undefined') ? window._rankPoolIds : null;
-  if (ids && ids.length >= 5) {
+  var ids = (rkState && rkState.poolIds) ? rkState.poolIds : null;
+  if (ids && ids.length >= 2) {
     var set = {}; ids.forEach(function(x){ set[String(x)] = 1; });
     var cur = active.filter(function(c){ return set[_rkCid(c)]; });
-    if (cur.length >= 5) return cur;
+    if (cur.length >= 2) return cur;
   }
-  if (active.length <= RANK_POOL_SIZE) return active;
-  // Deterministik (herkeste aynı), alfabe/rol yanlılığı olmadan dağıtılmış sabit alt küme
-  var sorted = active.slice().sort(function(a, b){ return _rkHash(_rkCid(a)) - _rkHash(_rkCid(b)); });
-  return sorted.slice(0, RANK_POOL_SIZE);
+  return active;
 }
 
 function rankStart() {
@@ -68,19 +61,27 @@ function _rkModeBtn(rounds, title, sub, primary) {
 function rankBegin(rounds) {
   var ag = document.getElementById('ag');
   ag.innerHTML = '<div style="text-align:center;padding:60px;color:#9a969e">Sorular yükleniyor...</div>';
-  apiGet('/rank/criteria').then(function(r) {
+  Promise.all([apiGet('/rank/criteria'), apiGet('/rank/config').catch(function(){ return {}; })]).then(function(res) {
+    var r = res[0] || {};
+    var cfg = res[1] || {};
     var criteria = (r && r.criteria) ? r.criteria : [];
     if (!criteria.length) {
       ag.innerHTML = '<div style="text-align:center;padding:60px;color:#ffb4ac">Henüz kriter eklenmemiş. Lütfen daha sonra tekrar deneyin.<br><br><button class="btn bg" onclick="bk()">← Geri</button></div>';
       return;
     }
+    var roundSize = (cfg && cfg.round_size) ? cfg.round_size : 5;
+    var poolIds = (cfg && cfg.pool_ids && cfg.pool_ids.length) ? cfg.pool_ids.map(String) : null;
+    // Etkin havuz boyutu (seçili havuz varsa onunla, yoksa tüm aktiflerle)
     var active = chars.filter(function(c){ return c.a; });
-    if (active.length < 5) {
-      ag.innerHTML = '<div style="text-align:center;padding:60px;color:#ffb4ac">Yeterli karakter yok.<br><br><button class="btn bg" onclick="bk()">← Geri</button></div>';
+    var poolCount = poolIds ? active.filter(function(c){ return poolIds.indexOf(_rkCid(c)) !== -1; }).length : active.length;
+    if (poolCount < roundSize) {
+      ag.innerHTML = '<div style="text-align:center;padding:60px;color:#ffb4ac">Havuzda yeterli karakter yok (en az ' + roundSize + ' gerekli).<br><br><button class="btn bg" onclick="bk()">← Geri</button></div>';
       return;
     }
     rkState = {
       criteria: criteria,
+      poolIds: poolIds,
+      roundSize: roundSize,
       totalRounds: rounds,
       round: 0,
       points: [],          // her turun puanı (0-100)
@@ -113,9 +114,10 @@ function rankNewRound() {
   s.lastCritId = crit.id;
   s.criterion = crit;
 
-  // Sabit havuzdan rastgele 5 karakter (topluluk verisinin oluşabilmesi için)
+  // Havuzdan tur başına N karakter (admin ayarı; varsayılan 5)
   var pool = _rkPool();
-  var picked = shuf(pool).slice(0, 5);
+  var rs = Math.min(rkState.roundSize || 5, pool.length);
+  var picked = shuf(pool).slice(0, rs);
   s.order = picked.map(_rkCid);
 
   renderRankRound();
