@@ -43,6 +43,35 @@ async function init() {
   await query("CREATE TABLE IF NOT EXISTS saved_duels (id SERIAL PRIMARY KEY, creator_id INTEGER REFERENCES users(id), creator_username VARCHAR(20) NOT NULL, title VARCHAR(100) NOT NULL, characters TEXT NOT NULL, created_at TIMESTAMP DEFAULT NOW())");
   // Streamer links table
   await query("CREATE TABLE IF NOT EXISTS streamer_links (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) UNIQUE, youtube_url VARCHAR(300) DEFAULT '', kick_url VARCHAR(300) DEFAULT '', updated_at TIMESTAMP DEFAULT NOW())");
+
+  // ═══ KARAKTER SIRALA (RANK) ═══
+  // Sıralama kriterleri (admin yönetir)
+  await query("CREATE TABLE IF NOT EXISTS rank_criteria (id SERIAL PRIMARY KEY, label VARCHAR(150) NOT NULL, emoji VARCHAR(12) DEFAULT '🏆', active BOOLEAN DEFAULT true, created_at TIMESTAMP DEFAULT NOW())");
+  // İkili (pairwise) topluluk oyları. char_a < char_b (string olarak kanonikleştirilir).
+  await query("CREATE TABLE IF NOT EXISTS rank_votes (criterion_id INTEGER NOT NULL, char_a VARCHAR(20) NOT NULL, char_b VARCHAR(20) NOT NULL, a_over_b INTEGER DEFAULT 0, b_over_a INTEGER DEFAULT 0, PRIMARY KEY (criterion_id, char_a, char_b))");
+  // 18 varsayılan kriteri yalnızca tablo boşsa ekle
+  var rcCount = await query("SELECT COUNT(*) AS c FROM rank_criteria");
+  if (parseInt(rcCount.rows[0].c) === 0) {
+    var defaultCriteria = [
+      ['Hangisi daha zengin?', '💰'], ['Hangisi daha tehlikeli?', '☠️'], ['Hangisi daha karizmatik?', '✨'],
+      ['Hangisi daha güvenilir?', '🤝'], ['Hangisi daha zeki?', '🧠'], ['Hangisi daha iyi dövüşür?', '🥊'],
+      ['Hangisi daha hain?', '🐍'], ['Hangisi daha cesur?', '🦁'], ['Hangisi daha komik?', '😂'],
+      ['Hangisi daha gizemli?', '🌑'], ['Hangisi daha sadık?', '🐶'], ['Hangisi daha korkutucu?', '😱'],
+      ['Hangisi daha romantik?', '💘'], ['Hangisi ile takılırdın?', '🍻'], ['Hangisi daha iyi lider?', '👑'],
+      ['Hangisi daha çok drama çıkarır?', '🎭'], ['Hangisine güvenirsin?', '🔒'], ['Hangisi daha şanslı?', '🍀']
+    ];
+    for (var dci = 0; dci < defaultCriteria.length; dci++) {
+      await query("INSERT INTO rank_criteria (label, emoji) VALUES ($1, $2)", [defaultCriteria[dci][0], defaultCriteria[dci][1]]);
+    }
+  }
+
+  // ═══ KARAKTER BORSASI (STOCK) ═══
+  // Hisse fiyatları. char_id, frontend'in gönderdiği kimliktir (dbId veya c-prefixli) — bu yüzden VARCHAR.
+  await query("CREATE TABLE IF NOT EXISTS stock_prices (char_id VARCHAR(20) PRIMARY KEY, price NUMERIC(12,2) DEFAULT 100, prev_price NUMERIC(12,2) DEFAULT 100, shares_out INTEGER DEFAULT 0, pop_score INTEGER DEFAULT 0, updated_at TIMESTAMP DEFAULT NOW())");
+  await query("CREATE TABLE IF NOT EXISTS stock_wallets (user_id INTEGER PRIMARY KEY REFERENCES users(id), cash NUMERIC(14,2) DEFAULT 1000, last_grant DATE, week_start_value NUMERIC(14,2), week_start DATE)");
+  await query("CREATE TABLE IF NOT EXISTS stock_holdings (user_id INTEGER NOT NULL REFERENCES users(id), char_id VARCHAR(20) NOT NULL, shares INTEGER DEFAULT 0, avg_cost NUMERIC(12,2) DEFAULT 0, PRIMARY KEY (user_id, char_id))");
+  await query("CREATE TABLE IF NOT EXISTS stock_tx (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id), char_id VARCHAR(20), side VARCHAR(4), shares INTEGER, price NUMERIC(12,2), created_at TIMESTAMP DEFAULT NOW())");
+
   var r = await query("SELECT id FROM users WHERE role = 'ADMIN'");
   if (r.rows.length === 0) {
     // #4 Security: Güçlü varsayılan şifre — env yoksa random üret
@@ -259,7 +288,13 @@ module.exports = {
   updateUserScore: updateUserScore, updateLastActive: updateLastActive, deleteUser: deleteUser, getDiscordLink: getDiscordLink, setDiscordLink: setDiscordLink,
   getUserProfile: getUserProfile,
   saveDuel: saveDuel, getDuels: getDuels, deleteDuel: deleteDuel,
-  getStreamerLink: getStreamerLink, saveStreamerLink: saveStreamerLink
+  getStreamerLink: getStreamerLink, saveStreamerLink: saveStreamerLink,
+  // Karakter Sırala
+  getRankCriteria: getRankCriteria, upsertRankCriterion: upsertRankCriterion, deleteRankCriterion: deleteRankCriterion,
+  scoreAndRecordRanking: scoreAndRecordRanking,
+  // Karakter Borsası
+  ensureWallet: ensureWallet, getStockMarket: getStockMarket, getStockPortfolio: getStockPortfolio,
+  tradeStock: tradeStock, noteStockSelections: noteStockSelections, getStockLeaderboard: getStockLeaderboard
 };
 
 // ═══ SAVED DUELS ═══
@@ -313,4 +348,319 @@ async function getUserProfile(username) {
 async function getAllCharactersLite() {
   var r = await query("SELECT id, name, surname, gender, rep, tip, CASE WHEN img LIKE '/images/%' THEN img ELSE '' END as img, active FROM characters ORDER BY name");
   return r.rows;
+}
+
+// ═══════════════════════════════════════════════════════════
+// KARAKTER SIRALA (RANK)
+// ═══════════════════════════════════════════════════════════
+async function getRankCriteria(includeInactive) {
+  if (includeInactive) {
+    var r = await query("SELECT id, label, emoji, active FROM rank_criteria ORDER BY id");
+    return r.rows;
+  }
+  var r2 = await query("SELECT id, label, emoji FROM rank_criteria WHERE active = true ORDER BY id");
+  return r2.rows;
+}
+
+async function upsertRankCriterion(d) {
+  var label = (d.label || '').trim().substring(0, 150);
+  var emoji = ((d.emoji || '').trim().substring(0, 12)) || '🏆';
+  var active = (d.active !== false);
+  var numId = parseInt(d.id);
+  if (numId && !isNaN(numId)) {
+    var chk = await query("SELECT id FROM rank_criteria WHERE id = $1", [numId]);
+    if (chk.rows.length > 0) {
+      await query("UPDATE rank_criteria SET label=$1, emoji=$2, active=$3 WHERE id=$4", [label, emoji, active, numId]);
+      return numId;
+    }
+  }
+  var r = await query("INSERT INTO rank_criteria (label, emoji, active) VALUES ($1,$2,$3) RETURNING id", [label, emoji, active]);
+  return r.rows[0].id;
+}
+
+async function deleteRankCriterion(id) {
+  await query("DELETE FROM rank_criteria WHERE id = $1", [id]);
+  await query("DELETE FROM rank_votes WHERE criterion_id = $1", [id]);
+}
+
+// order: char id string dizisi, order[0] = en üst ("en çok"). Skoru ÖNCE hesaplar, SONRA oyları kaydeder.
+async function scoreAndRecordRanking(criterionId, order) {
+  var ids = order.map(String);
+  var n = ids.length;
+  var pairs = [];
+  for (var i = 0; i < n; i++) {
+    for (var j = i + 1; j < n; j++) {
+      var x = ids[i], y = ids[j]; // kullanıcı: x > y
+      var lo = x < y ? x : y;
+      var hi = x < y ? y : x;
+      pairs.push({ x: x, y: y, lo: lo, hi: hi });
+    }
+  }
+  // Bu kritere ait, bu karakterleri içeren mevcut oyları çek
+  var existing = await query(
+    "SELECT char_a, char_b, a_over_b, b_over_a FROM rank_votes WHERE criterion_id = $1 AND char_a = ANY($2) AND char_b = ANY($2)",
+    [criterionId, ids]
+  );
+  var votesMap = {};
+  existing.rows.forEach(function(row){ votesMap[row.char_a + '|' + row.char_b] = row; });
+
+  var winTally = {};
+  ids.forEach(function(id){ winTally[id] = 0; });
+
+  var concordant = 0, dataPairs = 0;
+  pairs.forEach(function(p){
+    var row = votesMap[p.lo + '|' + p.hi];
+    var aOverB = row ? parseInt(row.a_over_b) : 0; // lo, hi'nin üstünde
+    var bOverA = row ? parseInt(row.b_over_a) : 0; // hi, lo'nun üstünde
+    var total = aOverB + bOverA;
+    var userSaysLoOverHi = (p.x === p.lo);
+    if (total > 0) {
+      dataPairs++;
+      var commLoOverHi = aOverB >= bOverA; // eşitlikte lo
+      if (userSaysLoOverHi === commLoOverHi) concordant++;
+      var pLo = aOverB / total;
+      winTally[p.lo] += pLo;
+      winTally[p.hi] += (1 - pLo);
+    } else {
+      winTally[p.lo] += 0.5;
+      winTally[p.hi] += 0.5;
+    }
+  });
+
+  var agreement = dataPairs > 0 ? Math.round((concordant / dataPairs) * 100) : null;
+
+  // Oyları kaydet (UPSERT)
+  for (var k = 0; k < pairs.length; k++) {
+    var pp = pairs[k];
+    var incA = (pp.x === pp.lo) ? 1 : 0;
+    var incB = (pp.x === pp.lo) ? 0 : 1;
+    await query(
+      "INSERT INTO rank_votes (criterion_id, char_a, char_b, a_over_b, b_over_a) VALUES ($1,$2,$3,$4,$5) " +
+      "ON CONFLICT (criterion_id, char_a, char_b) DO UPDATE SET a_over_b = rank_votes.a_over_b + $4, b_over_a = rank_votes.b_over_a + $5",
+      [criterionId, pp.lo, pp.hi, incA, incB]
+    );
+  }
+
+  // Kritere ait gönderim sayacı
+  var subKey = 'rank_subs_' + criterionId;
+  var subCur = await getConfig(subKey);
+  var subCount = subCur ? parseInt(subCur) + 1 : 1;
+  await setConfig(subKey, String(subCount));
+
+  // Topluluk uzlaşı sıralaması (kazanma payına göre azalan)
+  var consensus = ids.slice().sort(function(a, b){
+    var d = winTally[b] - winTally[a];
+    if (Math.abs(d) > 1e-9) return d;
+    return ids.indexOf(a) - ids.indexOf(b);
+  });
+
+  return {
+    agreement: agreement,
+    data_pairs: dataPairs,
+    total_pairs: pairs.length,
+    submissions: subCount,
+    consensus: consensus,
+    first: agreement === null
+  };
+}
+
+// ═══════════════════════════════════════════════════════════
+// KARAKTER BORSASI (STOCK)
+// ═══════════════════════════════════════════════════════════
+function _today() { return new Date().toISOString().slice(0, 10); }
+function _weekStart() {
+  var d = new Date();
+  var day = (d.getUTCDay() + 6) % 7; // Pazartesi = 0
+  d.setUTCDate(d.getUTCDate() - day);
+  return d.toISOString().slice(0, 10);
+}
+function _round2(x) { return Math.round((Number(x) || 0) * 100) / 100; }
+
+async function _portfolioValue(userId, cash) {
+  var r = await query("SELECT COALESCE(SUM(h.shares * p.price), 0) AS hv FROM stock_holdings h JOIN stock_prices p ON p.char_id = h.char_id WHERE h.user_id = $1", [userId]);
+  return _round2((Number(cash) || 0) + parseFloat(r.rows[0].hv || 0));
+}
+
+// Cüzdanı garanti et + günlük 1000 hibe + haftalık snapshot
+async function ensureWallet(userId) {
+  var w = await query("SELECT user_id, cash, last_grant, week_start_value, week_start FROM stock_wallets WHERE user_id = $1", [userId]);
+  if (w.rows.length === 0) {
+    await query("INSERT INTO stock_wallets (user_id, cash, last_grant, week_start, week_start_value) VALUES ($1, 1000, $2, $3, 1000) ON CONFLICT (user_id) DO NOTHING", [userId, _today(), _weekStart()]);
+    w = await query("SELECT user_id, cash, last_grant, week_start_value, week_start FROM stock_wallets WHERE user_id = $1", [userId]);
+  }
+  var wallet = w.rows[0];
+  var today = _today();
+  var lastGrant = wallet.last_grant ? new Date(wallet.last_grant).toISOString().slice(0, 10) : null;
+  if (lastGrant !== today) {
+    await query("UPDATE stock_wallets SET cash = cash + 1000, last_grant = $1 WHERE user_id = $2", [today, userId]);
+    wallet.cash = parseFloat(wallet.cash) + 1000;
+    wallet.last_grant = today;
+    wallet._granted = true;
+  }
+  var wk = _weekStart();
+  var curWeek = wallet.week_start ? new Date(wallet.week_start).toISOString().slice(0, 10) : null;
+  if (curWeek !== wk) {
+    var pv = await _portfolioValue(userId, parseFloat(wallet.cash));
+    await query("UPDATE stock_wallets SET week_start = $1, week_start_value = $2 WHERE user_id = $3", [wk, pv, userId]);
+    wallet.week_start = wk;
+    wallet.week_start_value = pv;
+  }
+  return wallet;
+}
+
+// Tüm piyasa (karakterler tablosu evren; fiyatı olmayan 100). Günlük prev_price snapshot'ı (lazy).
+async function getStockMarket() {
+  var today = _today();
+  var meta = await getConfig('stock_daily_date');
+  if (meta !== today) {
+    await query("UPDATE stock_prices SET prev_price = price");
+    await setConfig('stock_daily_date', today);
+  }
+  var r = await query(
+    "SELECT CAST(ch.id AS VARCHAR) AS char_id, ch.name, ch.surname, ch.gender, ch.tip, " +
+    "CASE WHEN ch.img LIKE '/images/%' THEN ch.img ELSE '' END AS img, " +
+    "COALESCE(p.price, 100) AS price, COALESCE(p.prev_price, 100) AS prev_price, " +
+    "COALESCE(p.shares_out, 0) AS shares_out, COALESCE(p.pop_score, 0) AS pop_score " +
+    "FROM characters ch LEFT JOIN stock_prices p ON p.char_id = CAST(ch.id AS VARCHAR) " +
+    "WHERE ch.active = true ORDER BY ch.name"
+  );
+  return r.rows.map(function(row){
+    var price = parseFloat(row.price), prev = parseFloat(row.prev_price);
+    return {
+      char_id: row.char_id, name: row.name, surname: row.surname, gender: row.gender, tip: row.tip, img: row.img,
+      price: _round2(price), prev_price: _round2(prev),
+      change: _round2(price - prev), change_pct: prev > 0 ? _round2((price - prev) / prev * 100) : 0,
+      shares_out: parseInt(row.shares_out), pop_score: parseInt(row.pop_score)
+    };
+  });
+}
+
+async function getStockPortfolio(userId) {
+  var wallet = await ensureWallet(userId);
+  var h = await query("SELECT h.char_id, h.shares, h.avg_cost, p.price FROM stock_holdings h LEFT JOIN stock_prices p ON p.char_id = h.char_id WHERE h.user_id = $1 AND h.shares > 0 ORDER BY (h.shares * COALESCE(p.price,0)) DESC", [userId]);
+  var cash = parseFloat(wallet.cash);
+  var holdings = h.rows.map(function(row){
+    var price = parseFloat(row.price != null ? row.price : 100);
+    var shares = parseInt(row.shares);
+    return { char_id: row.char_id, shares: shares, avg_cost: _round2(row.avg_cost), price: _round2(price), value: _round2(shares * price) };
+  });
+  var holdingsValue = holdings.reduce(function(s, x){ return s + x.value; }, 0);
+  var total = _round2(cash + holdingsValue);
+  var wsv = wallet.week_start_value != null ? parseFloat(wallet.week_start_value) : total;
+  return {
+    cash: _round2(cash),
+    holdings: holdings,
+    holdings_value: _round2(holdingsValue),
+    total: total,
+    week_start_value: _round2(wsv),
+    week_change: _round2(total - wsv),
+    week_change_pct: wsv > 0 ? _round2((total - wsv) / wsv * 100) : 0,
+    granted: !!wallet._granted
+  };
+}
+
+async function tradeStock(userId, charId, side, qty) {
+  charId = String(charId);
+  qty = parseInt(qty);
+  if (!qty || qty < 1) return { error: 'Geçersiz adet.' };
+  if (qty > 100000) return { error: 'Adet çok büyük.' };
+  if (side !== 'buy' && side !== 'sell') return { error: 'Geçersiz işlem.' };
+
+  await ensureWallet(userId);
+
+  var pr = await query("SELECT price FROM stock_prices WHERE char_id = $1", [charId]);
+  var price;
+  if (pr.rows.length === 0) {
+    var chk = await query("SELECT 1 FROM characters WHERE CAST(id AS VARCHAR) = $1 AND active = true", [charId]);
+    if (chk.rows.length === 0) return { error: 'Karakter bulunamadı.' };
+    await query("INSERT INTO stock_prices (char_id, price, prev_price) VALUES ($1, 100, 100) ON CONFLICT (char_id) DO NOTHING", [charId]);
+    price = 100;
+  } else {
+    price = parseFloat(pr.rows[0].price);
+  }
+
+  var cost = _round2(qty * price);
+  var wRow = await query("SELECT cash FROM stock_wallets WHERE user_id = $1", [userId]);
+  var cash = parseFloat(wRow.rows[0].cash);
+
+  if (side === 'buy') {
+    if (cash < cost) return { error: 'Yetersiz bakiye.' };
+    var hRow = await query("SELECT shares, avg_cost FROM stock_holdings WHERE user_id = $1 AND char_id = $2", [userId, charId]);
+    if (hRow.rows.length === 0) {
+      await query("INSERT INTO stock_holdings (user_id, char_id, shares, avg_cost) VALUES ($1,$2,$3,$4)", [userId, charId, qty, price]);
+    } else {
+      var oldShares = parseInt(hRow.rows[0].shares);
+      var oldAvg = parseFloat(hRow.rows[0].avg_cost);
+      var newShares = oldShares + qty;
+      var newAvg = _round2((oldShares * oldAvg + qty * price) / newShares);
+      await query("UPDATE stock_holdings SET shares = $1, avg_cost = $2 WHERE user_id = $3 AND char_id = $4", [newShares, newAvg, userId, charId]);
+    }
+    await query("UPDATE stock_wallets SET cash = cash - $1 WHERE user_id = $2", [cost, userId]);
+    var fUp = Math.min(0.25, 0.004 * qty);
+    var newPrice = _round2(price * (1 + fUp));
+    await query("UPDATE stock_prices SET price = $1, shares_out = shares_out + $2, updated_at = NOW() WHERE char_id = $3", [newPrice, qty, charId]);
+    await query("INSERT INTO stock_tx (user_id, char_id, side, shares, price) VALUES ($1,$2,'buy',$3,$4)", [userId, charId, qty, price]);
+    return { success: true, side: 'buy', shares: qty, price: _round2(price), cost: cost, new_price: newPrice };
+  } else {
+    var hRow2 = await query("SELECT shares FROM stock_holdings WHERE user_id = $1 AND char_id = $2", [userId, charId]);
+    var have = hRow2.rows.length ? parseInt(hRow2.rows[0].shares) : 0;
+    if (have < qty) return { error: 'Yetersiz hisse.' };
+    var proceeds = cost;
+    await query("UPDATE stock_holdings SET shares = shares - $1 WHERE user_id = $2 AND char_id = $3", [qty, userId, charId]);
+    await query("UPDATE stock_wallets SET cash = cash + $1 WHERE user_id = $2", [proceeds, userId]);
+    var fDn = Math.min(0.25, 0.004 * qty);
+    var newPrice2 = Math.max(5, _round2(price * (1 - fDn)));
+    await query("UPDATE stock_prices SET price = $1, shares_out = GREATEST(0, shares_out - $2), updated_at = NOW() WHERE char_id = $3", [newPrice2, qty, charId]);
+    await query("INSERT INTO stock_tx (user_id, char_id, side, shares, price) VALUES ($1,$2,'sell',$3,$4)", [userId, charId, qty, price]);
+    return { success: true, side: 'sell', shares: qty, price: _round2(price), proceeds: proceeds, new_price: newPrice2 };
+  }
+}
+
+// Oyunlardan gelen "seçim" sinyali: seçilen karakterlerin fiyatını hafifçe yükseltir
+async function noteStockSelections(ids) {
+  if (!Array.isArray(ids) || ids.length === 0) return { updated: 0 };
+  var uniq = [];
+  ids.forEach(function(id){ var s = String(id); if (s && uniq.indexOf(s) === -1) uniq.push(s); });
+  uniq = uniq.slice(0, 20);
+  var updated = 0;
+  for (var i = 0; i < uniq.length; i++) {
+    var charId = uniq[i];
+    var chk = await query("SELECT 1 FROM characters WHERE CAST(id AS VARCHAR) = $1 AND active = true", [charId]);
+    if (chk.rows.length === 0) continue;
+    var pr = await query("SELECT price FROM stock_prices WHERE char_id = $1", [charId]);
+    if (pr.rows.length === 0) {
+      await query("INSERT INTO stock_prices (char_id, price, prev_price, pop_score) VALUES ($1, 101, 100, 1) ON CONFLICT (char_id) DO NOTHING", [charId]);
+    } else {
+      var price = parseFloat(pr.rows[0].price);
+      var newPrice = _round2(Math.min(price * 1.01, price + 50));
+      await query("UPDATE stock_prices SET price = $1, pop_score = pop_score + 1, updated_at = NOW() WHERE char_id = $2", [newPrice, charId]);
+    }
+    updated++;
+  }
+  return { updated: updated };
+}
+
+async function getStockLeaderboard() {
+  var r = await query(
+    "SELECT u.id AS user_id, u.username, w.cash, w.week_start_value, " +
+    "COALESCE(SUM(h.shares * COALESCE(p.price,0)), 0) AS holdings_value " +
+    "FROM stock_wallets w JOIN users u ON u.id = w.user_id " +
+    "LEFT JOIN stock_holdings h ON h.user_id = w.user_id " +
+    "LEFT JOIN stock_prices p ON p.char_id = h.char_id " +
+    "GROUP BY u.id, u.username, w.cash, w.week_start_value"
+  );
+  var rows = r.rows.map(function(row){
+    var cash = parseFloat(row.cash || 0);
+    var hv = parseFloat(row.holdings_value || 0);
+    var total = _round2(cash + hv);
+    var wsv = row.week_start_value != null ? parseFloat(row.week_start_value) : total;
+    return {
+      user_id: row.user_id, username: row.username,
+      total: total, cash: _round2(cash), holdings_value: _round2(hv),
+      week_change: _round2(total - wsv),
+      week_change_pct: wsv > 0 ? _round2((total - wsv) / wsv * 100) : 0
+    };
+  });
+  rows.sort(function(a, b){ return b.total - a.total; });
+  return rows.slice(0, 50);
 }

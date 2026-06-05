@@ -77,7 +77,7 @@ app.post('/api/auth/login', async function(req, res) { try { await ensureDb(); v
 app.get('/api/auth/me', auth, async function(req, res) { try { await ensureDb(); var user = await db.findUserById(req.user.id); if (!user) return res.status(404).json({ error: 'Bulunamadi.' }); if (user.banned) return res.status(403).json({ error: 'Hesabiniz yasaklanmistir.' }); res.json({ user: user }); } catch (e) { res.status(500).json({ error: 'Hata.' }); } });
 app.post('/api/auth/logout', function(req, res) { res.clearCookie('ebv_token'); res.json({ success: true }); });
 
-app.post('/api/scores/save', auth, async function(req, res) { try { await ensureDb(); var score = req.body.score; var validGames = ['MEMORY','FACE','QUOTE']; if (!validGames.includes(req.body.game_type) || typeof score !== 'number' || score < 0) return res.status(400).json({ error: 'Gecersiz.' }); var total = req.body.game_type === "MEMORY" ? await db.getQuestionCount() : (req.body.total || score); if (score > total) return res.status(400).json({ error: 'Gecersiz skor.' }); await db.saveScore(req.user.id, req.body.game_type, score, total); var user = await db.findUserById(req.user.id); res.json({ success: true, best_score: user.best_score, games_played: user.games_played }); } catch (e) { res.status(500).json({ error: 'Kaydedilemedi.' }); } });
+app.post('/api/scores/save', auth, async function(req, res) { try { await ensureDb(); var score = req.body.score; var validGames = ['MEMORY','FACE','QUOTE','RANK']; if (!validGames.includes(req.body.game_type) || typeof score !== 'number' || score < 0) return res.status(400).json({ error: 'Gecersiz.' }); var total = req.body.game_type === "MEMORY" ? await db.getQuestionCount() : (req.body.total || score); if (score > total) return res.status(400).json({ error: 'Gecersiz skor.' }); await db.saveScore(req.user.id, req.body.game_type, score, total); var user = await db.findUserById(req.user.id); res.json({ success: true, best_score: user.best_score, games_played: user.games_played }); } catch (e) { res.status(500).json({ error: 'Kaydedilemedi.' }); } });
 app.get('/api/scores/game-leaderboard', async function(req, res) {
   try { await ensureDb(); var gt = req.query.game || 'MEMORY'; var lb = await db.getGameLeaderboard(gt); res.json({ leaderboard: lb, game_type: gt }); }
   catch (e) { res.status(500).json({ error: 'Yuklenemedi.' }); }
@@ -493,6 +493,85 @@ app.get('/api/profile/:username', async function(req, res) {
     console.error('Profile error:', e.message);
     res.status(500).json({ error: 'Profil yüklenemedi.' });
   }
+});
+
+// ═══════════════════════════════════════════════════════════
+// KARAKTER SIRALA (RANK)
+// ═══════════════════════════════════════════════════════════
+app.get('/api/rank/criteria', async function(req, res) {
+  try { await ensureDb(); res.json({ criteria: await db.getRankCriteria(false) }); }
+  catch (e) { res.status(500).json({ error: 'Yuklenemedi.' }); }
+});
+app.get('/api/rank/criteria/admin', auth, adm, async function(req, res) {
+  try { await ensureDb(); res.json({ criteria: await db.getRankCriteria(true) }); }
+  catch (e) { res.status(500).json({ error: 'Yuklenemedi.' }); }
+});
+app.post('/api/rank/criteria', auth, adm, async function(req, res) {
+  try {
+    await ensureDb();
+    var label = (req.body.label || '').trim();
+    if (!label) return res.status(400).json({ error: 'Kriter metni zorunlu.' });
+    var id = await db.upsertRankCriterion({ id: req.body.id, label: label, emoji: req.body.emoji, active: req.body.active });
+    res.json({ success: true, id: id });
+  } catch (e) { console.error(e.message); res.status(500).json({ error: 'Kaydedilemedi.' }); }
+});
+app.delete('/api/rank/criteria/:id', auth, adm, async function(req, res) {
+  try { await ensureDb(); await db.deleteRankCriterion(parseInt(req.params.id)); res.json({ success: true }); }
+  catch (e) { res.status(500).json({ error: 'Silinemedi.' }); }
+});
+// Bir turun sıralamasını kaydeder ve topluluk uyuşma oranını döner (giriş gerektirmez — veri herkesten toplanır)
+app.post('/api/rank/score', async function(req, res) {
+  try {
+    await ensureDb();
+    var critId = parseInt(req.body.criterion_id);
+    var order = req.body.order;
+    if (!critId || isNaN(critId)) return res.status(400).json({ error: 'Gecersiz kriter.' });
+    if (!Array.isArray(order) || order.length < 2 || order.length > 8) return res.status(400).json({ error: 'Gecersiz siralama.' });
+    // Benzersiz, geçerli string id'ler
+    var seen = {}; var clean = [];
+    for (var i = 0; i < order.length; i++) {
+      var s = String(order[i]).trim();
+      if (!s || s.length > 20 || seen[s]) return res.status(400).json({ error: 'Gecersiz siralama.' });
+      seen[s] = true; clean.push(s);
+    }
+    // Kriter gerçekten var mı?
+    var crit = await db.query("SELECT id FROM rank_criteria WHERE id = $1", [critId]);
+    if (crit.rows.length === 0) return res.status(404).json({ error: 'Kriter bulunamadi.' });
+    var result = await db.scoreAndRecordRanking(critId, clean);
+    res.json(result);
+  } catch (e) { console.error('rank/score:', e.message); res.status(500).json({ error: 'Islenemedi.' }); }
+});
+
+// ═══════════════════════════════════════════════════════════
+// KARAKTER BORSASI (STOCK)
+// ═══════════════════════════════════════════════════════════
+app.get('/api/stock/market', async function(req, res) {
+  try { await ensureDb(); res.json({ market: await db.getStockMarket() }); }
+  catch (e) { console.error('stock/market:', e.message); res.status(500).json({ error: 'Piyasa yuklenemedi.' }); }
+});
+app.get('/api/stock/portfolio', auth, async function(req, res) {
+  try { await ensureDb(); res.json(await db.getStockPortfolio(req.user.id)); }
+  catch (e) { console.error('stock/portfolio:', e.message); res.status(500).json({ error: 'Portfoy yuklenemedi.' }); }
+});
+app.post('/api/stock/trade', auth, async function(req, res) {
+  try {
+    await ensureDb();
+    var charId = req.body.char_id;
+    var side = req.body.side;
+    var shares = parseInt(req.body.shares);
+    if (!charId) return res.status(400).json({ error: 'Karakter gerekli.' });
+    var result = await db.tradeStock(req.user.id, charId, side, shares);
+    if (result.error) return res.status(400).json(result);
+    res.json(result);
+  } catch (e) { console.error('stock/trade:', e.message); res.status(500).json({ error: 'Islem basarisiz.' }); }
+});
+app.post('/api/stock/select', async function(req, res) {
+  try { await ensureDb(); var r = await db.noteStockSelections(req.body.ids || []); res.json({ success: true, updated: r.updated }); }
+  catch (e) { res.json({ success: false }); }
+});
+app.get('/api/stock/leaderboard', async function(req, res) {
+  try { await ensureDb(); res.json({ leaderboard: await db.getStockLeaderboard() }); }
+  catch (e) { res.status(500).json({ error: 'Yuklenemedi.' }); }
 });
 
 // #12 Security: module.exports dosya sonunda — tüm route'lar kayıtlı
