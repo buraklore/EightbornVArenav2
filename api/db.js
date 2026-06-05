@@ -294,7 +294,9 @@ module.exports = {
   scoreAndRecordRanking: scoreAndRecordRanking,
   // Karakter Borsası
   ensureWallet: ensureWallet, getStockMarket: getStockMarket, getStockPortfolio: getStockPortfolio,
-  tradeStock: tradeStock, noteStockSelections: noteStockSelections, getStockLeaderboard: getStockLeaderboard
+  tradeStock: tradeStock, noteStockSelections: noteStockSelections, getStockLeaderboard: getStockLeaderboard,
+  ensureStockCycle: ensureStockCycle, getStockCycleInfo: getStockCycleInfo,
+  adminSetStockPrice: adminSetStockPrice, adminSetUserCash: adminSetUserCash, getAdminStockWallets: getAdminStockWallets
 };
 
 // ═══ SAVED DUELS ═══
@@ -475,6 +477,12 @@ function _weekStart() {
   return d.toISOString().slice(0, 10);
 }
 function _round2(x) { return Math.round((Number(x) || 0) * 100) / 100; }
+function _daysBetween(aStr, bStr) {
+  var a = new Date(aStr + 'T00:00:00Z'), b = new Date(bStr + 'T00:00:00Z');
+  return Math.round((b - a) / 86400000);
+}
+var STOCK_CYCLE_DAYS = 15;
+var STOCK_START_CASH = 1000; // tek seferlik başlangıç bütçesi (günlük hibe ayrı: 100)
 
 async function _portfolioValue(userId, cash) {
   var r = await query("SELECT COALESCE(SUM(h.shares * p.price), 0) AS hv FROM stock_holdings h JOIN stock_prices p ON p.char_id = h.char_id WHERE h.user_id = $1", [userId]);
@@ -492,8 +500,8 @@ async function ensureWallet(userId) {
   var today = _today();
   var lastGrant = wallet.last_grant ? new Date(wallet.last_grant).toISOString().slice(0, 10) : null;
   if (lastGrant !== today) {
-    await query("UPDATE stock_wallets SET cash = cash + 1000, last_grant = $1 WHERE user_id = $2", [today, userId]);
-    wallet.cash = parseFloat(wallet.cash) + 1000;
+    await query("UPDATE stock_wallets SET cash = cash + 100, last_grant = $1 WHERE user_id = $2", [today, userId]);
+    wallet.cash = parseFloat(wallet.cash) + 100;
     wallet.last_grant = today;
     wallet._granted = true;
   }
@@ -579,40 +587,43 @@ async function tradeStock(userId, charId, side, qty) {
     price = parseFloat(pr.rows[0].price);
   }
 
-  var cost = _round2(qty * price);
   var wRow = await query("SELECT cash FROM stock_wallets WHERE user_id = $1", [userId]);
   var cash = parseFloat(wRow.rows[0].cash);
 
   if (side === 'buy') {
+    // Anti-arbitraj: alım, ETKİ SONRASI fiyattan gerçekleşir (kendi etkini ödersin).
+    // Böylece resting fiyat = alım fiyatı → ne anlık sahte kâr olur ne de al-sat döngüsü kâr ettirir.
+    var fUp = Math.min(0.25, 0.004 * qty);
+    var execBuy = _round2(price * (1 + fUp));
+    var cost = _round2(qty * execBuy);
     if (cash < cost) return { error: 'Yetersiz bakiye.' };
     var hRow = await query("SELECT shares, avg_cost FROM stock_holdings WHERE user_id = $1 AND char_id = $2", [userId, charId]);
     if (hRow.rows.length === 0) {
-      await query("INSERT INTO stock_holdings (user_id, char_id, shares, avg_cost) VALUES ($1,$2,$3,$4)", [userId, charId, qty, price]);
+      await query("INSERT INTO stock_holdings (user_id, char_id, shares, avg_cost) VALUES ($1,$2,$3,$4)", [userId, charId, qty, execBuy]);
     } else {
       var oldShares = parseInt(hRow.rows[0].shares);
       var oldAvg = parseFloat(hRow.rows[0].avg_cost);
       var newShares = oldShares + qty;
-      var newAvg = _round2((oldShares * oldAvg + qty * price) / newShares);
+      var newAvg = _round2((oldShares * oldAvg + qty * execBuy) / newShares);
       await query("UPDATE stock_holdings SET shares = $1, avg_cost = $2 WHERE user_id = $3 AND char_id = $4", [newShares, newAvg, userId, charId]);
     }
     await query("UPDATE stock_wallets SET cash = cash - $1 WHERE user_id = $2", [cost, userId]);
-    var fUp = Math.min(0.25, 0.004 * qty);
-    var newPrice = _round2(price * (1 + fUp));
-    await query("UPDATE stock_prices SET price = $1, shares_out = shares_out + $2, updated_at = NOW() WHERE char_id = $3", [newPrice, qty, charId]);
-    await query("INSERT INTO stock_tx (user_id, char_id, side, shares, price) VALUES ($1,$2,'buy',$3,$4)", [userId, charId, qty, price]);
-    return { success: true, side: 'buy', shares: qty, price: _round2(price), cost: cost, new_price: newPrice };
+    await query("UPDATE stock_prices SET price = $1, shares_out = shares_out + $2, updated_at = NOW() WHERE char_id = $3", [execBuy, qty, charId]);
+    await query("INSERT INTO stock_tx (user_id, char_id, side, shares, price) VALUES ($1,$2,'buy',$3,$4)", [userId, charId, qty, execBuy]);
+    return { success: true, side: 'buy', shares: qty, price: execBuy, cost: cost, new_price: execBuy };
   } else {
     var hRow2 = await query("SELECT shares FROM stock_holdings WHERE user_id = $1 AND char_id = $2", [userId, charId]);
     var have = hRow2.rows.length ? parseInt(hRow2.rows[0].shares) : 0;
     if (have < qty) return { error: 'Yetersiz hisse.' };
-    var proceeds = cost;
+    // Anti-arbitraj: satım, ETKİ SONRASI (düşürülmüş) fiyattan gerçekleşir.
+    var fDn = Math.min(0.25, 0.004 * qty);
+    var execSell = Math.max(5, _round2(price * (1 - fDn)));
+    var proceeds = _round2(qty * execSell);
     await query("UPDATE stock_holdings SET shares = shares - $1 WHERE user_id = $2 AND char_id = $3", [qty, userId, charId]);
     await query("UPDATE stock_wallets SET cash = cash + $1 WHERE user_id = $2", [proceeds, userId]);
-    var fDn = Math.min(0.25, 0.004 * qty);
-    var newPrice2 = Math.max(5, _round2(price * (1 - fDn)));
-    await query("UPDATE stock_prices SET price = $1, shares_out = GREATEST(0, shares_out - $2), updated_at = NOW() WHERE char_id = $3", [newPrice2, qty, charId]);
-    await query("INSERT INTO stock_tx (user_id, char_id, side, shares, price) VALUES ($1,$2,'sell',$3,$4)", [userId, charId, qty, price]);
-    return { success: true, side: 'sell', shares: qty, price: _round2(price), proceeds: proceeds, new_price: newPrice2 };
+    await query("UPDATE stock_prices SET price = $1, shares_out = GREATEST(0, shares_out - $2), updated_at = NOW() WHERE char_id = $3", [execSell, qty, charId]);
+    await query("INSERT INTO stock_tx (user_id, char_id, side, shares, price) VALUES ($1,$2,'sell',$3,$4)", [userId, charId, qty, execSell]);
+    return { success: true, side: 'sell', shares: qty, price: execSell, proceeds: proceeds, new_price: execSell };
   }
 }
 
@@ -663,4 +674,77 @@ async function getStockLeaderboard() {
   });
   rows.sort(function(a, b){ return b.total - a.total; });
   return rows.slice(0, 50);
+}
+
+// ═══ 15 GÜNLÜK SEZON + ŞAMPİYON ═══
+async function ensureStockCycle() {
+  var today = _today();
+  var start = await getConfig('stock_cycle_start');
+  if (!start) { await setConfig('stock_cycle_start', today); return { reset: false }; }
+  if (_daysBetween(start, today) >= STOCK_CYCLE_DAYS) {
+    // Sıfırlamadan ÖNCE mevcut 1.'yi bu sezonun şampiyonu yap
+    var lb = await getStockLeaderboard();
+    var champ = (lb && lb.length && lb[0].total > STOCK_START_CASH) ? lb[0].username : '';
+    // Herkesi sıfırla: hisseleri sil, nakdi başlangıca çek, fiyatları 100'e döndür
+    await query("DELETE FROM stock_holdings");
+    await query("UPDATE stock_wallets SET cash = $1, week_start_value = $1, week_start = $2, last_grant = $3", [STOCK_START_CASH, _weekStart(), today]);
+    await query("UPDATE stock_prices SET price = 100, prev_price = 100, shares_out = 0, pop_score = 0, updated_at = NOW()");
+    await setConfig('stock_champion', champ || '');
+    await setConfig('stock_cycle_start', today);
+    return { reset: true, champion: champ };
+  }
+  return { reset: false };
+}
+
+async function getStockCycleInfo() {
+  var today = _today();
+  var start = await getConfig('stock_cycle_start');
+  var champ = await getConfig('stock_champion');
+  var daysLeft = STOCK_CYCLE_DAYS;
+  if (start) daysLeft = Math.max(0, STOCK_CYCLE_DAYS - _daysBetween(start, today));
+  return { champion: champ || '', days_left: daysLeft, cycle_days: STOCK_CYCLE_DAYS };
+}
+
+// ═══ ADMIN: borsa fiyatı / kullanıcı bakiyesi düzenleme ═══
+async function adminSetStockPrice(charId, price) {
+  charId = String(charId);
+  price = _round2(price);
+  if (!(price >= 1)) return { error: 'Geçersiz fiyat (en az 1).' };
+  var chk = await query("SELECT 1 FROM characters WHERE CAST(id AS VARCHAR) = $1", [charId]);
+  if (chk.rows.length === 0) return { error: 'Karakter bulunamadı.' };
+  var ex = await query("SELECT 1 FROM stock_prices WHERE char_id = $1", [charId]);
+  if (ex.rows.length === 0) {
+    await query("INSERT INTO stock_prices (char_id, price, prev_price) VALUES ($1, $2, $2) ON CONFLICT (char_id) DO NOTHING", [charId, price]);
+  } else {
+    await query("UPDATE stock_prices SET price = $1, prev_price = $1, updated_at = NOW() WHERE char_id = $2", [price, charId]);
+  }
+  return { success: true, char_id: charId, price: price };
+}
+
+async function adminSetUserCash(userId, cash) {
+  userId = parseInt(userId);
+  cash = _round2(cash);
+  if (!userId || cash < 0) return { error: 'Geçersiz değer.' };
+  var u = await query("SELECT id FROM users WHERE id = $1", [userId]);
+  if (u.rows.length === 0) return { error: 'Kullanıcı bulunamadı.' };
+  var w = await query("SELECT user_id FROM stock_wallets WHERE user_id = $1", [userId]);
+  if (w.rows.length === 0) {
+    await query("INSERT INTO stock_wallets (user_id, cash, last_grant, week_start, week_start_value) VALUES ($1, $2, $3, $4, $2) ON CONFLICT (user_id) DO NOTHING", [userId, cash, _today(), _weekStart()]);
+  } else {
+    await query("UPDATE stock_wallets SET cash = $1 WHERE user_id = $2", [cash, userId]);
+  }
+  return { success: true, user_id: userId, cash: cash };
+}
+
+async function getAdminStockWallets() {
+  var r = await query(
+    "SELECT u.id AS user_id, u.username, COALESCE(w.cash, 0) AS cash, " +
+    "COALESCE((SELECT SUM(h.shares * COALESCE(p.price,0)) FROM stock_holdings h LEFT JOIN stock_prices p ON p.char_id = h.char_id WHERE h.user_id = u.id), 0) AS holdings_value, " +
+    "(w.user_id IS NOT NULL) AS has_wallet " +
+    "FROM users u LEFT JOIN stock_wallets w ON w.user_id = u.id ORDER BY (COALESCE(w.cash,0)) DESC"
+  );
+  return r.rows.map(function(row){
+    var cash = parseFloat(row.cash || 0), hv = parseFloat(row.holdings_value || 0);
+    return { user_id: row.user_id, username: row.username, cash: _round2(cash), total: _round2(cash + hv), has_wallet: !!row.has_wallet };
+  });
 }

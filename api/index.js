@@ -546,16 +546,17 @@ app.post('/api/rank/score', async function(req, res) {
 // KARAKTER BORSASI (STOCK)
 // ═══════════════════════════════════════════════════════════
 app.get('/api/stock/market', async function(req, res) {
-  try { await ensureDb(); res.json({ market: await db.getStockMarket() }); }
+  try { await ensureDb(); await db.ensureStockCycle(); res.json({ market: await db.getStockMarket() }); }
   catch (e) { console.error('stock/market:', e.message); res.status(500).json({ error: 'Piyasa yuklenemedi.' }); }
 });
 app.get('/api/stock/portfolio', auth, async function(req, res) {
-  try { await ensureDb(); res.json(await db.getStockPortfolio(req.user.id)); }
+  try { await ensureDb(); await db.ensureStockCycle(); res.json(await db.getStockPortfolio(req.user.id)); }
   catch (e) { console.error('stock/portfolio:', e.message); res.status(500).json({ error: 'Portfoy yuklenemedi.' }); }
 });
 app.post('/api/stock/trade', auth, async function(req, res) {
   try {
     await ensureDb();
+    await db.ensureStockCycle();
     var charId = req.body.char_id;
     var side = req.body.side;
     var shares = parseInt(req.body.shares);
@@ -570,8 +571,36 @@ app.post('/api/stock/select', async function(req, res) {
   catch (e) { res.json({ success: false }); }
 });
 app.get('/api/stock/leaderboard', async function(req, res) {
-  try { await ensureDb(); res.json({ leaderboard: await db.getStockLeaderboard() }); }
+  try {
+    await ensureDb();
+    await db.ensureStockCycle();
+    var lb = await db.getStockLeaderboard();
+    var info = await db.getStockCycleInfo();
+    res.json({ leaderboard: lb, champion: info.champion, days_left: info.days_left, cycle_days: info.cycle_days });
+  }
   catch (e) { res.status(500).json({ error: 'Yuklenemedi.' }); }
+});
+
+// ── ADMIN: borsa yönetimi ──
+app.get('/api/admin/stock/wallets', auth, adm, async function(req, res) {
+  try { await ensureDb(); res.json({ wallets: await db.getAdminStockWallets() }); }
+  catch (e) { console.error('admin/stock/wallets:', e.message); res.status(500).json({ error: 'Yuklenemedi.' }); }
+});
+app.post('/api/admin/stock/set-price', auth, adm, async function(req, res) {
+  try {
+    await ensureDb();
+    var result = await db.adminSetStockPrice(req.body.char_id, parseFloat(req.body.price));
+    if (result.error) return res.status(400).json(result);
+    res.json(result);
+  } catch (e) { console.error('admin/stock/set-price:', e.message); res.status(500).json({ error: 'Kaydedilemedi.' }); }
+});
+app.post('/api/admin/stock/set-cash', auth, adm, async function(req, res) {
+  try {
+    await ensureDb();
+    var result = await db.adminSetUserCash(req.body.user_id, parseFloat(req.body.cash));
+    if (result.error) return res.status(400).json(result);
+    res.json(result);
+  } catch (e) { console.error('admin/stock/set-cash:', e.message); res.status(500).json({ error: 'Kaydedilemedi.' }); }
 });
 
 // #12 Security: module.exports dosya sonunda — tüm route'lar kayıtlı
