@@ -1,6 +1,6 @@
 // ═══ ADMIN (simplified for focus on tournament) ═══
-const AT=[{k:'games',l:'Oyunlar',i:'🎮'},{k:'ranking',l:'Sıralama',i:'🏆'},{k:'users',l:'Kullanıcılar',i:'👤'},{k:'gameedit',l:'Oyun Düzenle',i:'✏️'},{k:'questions',l:'Sorular',i:'❓'},{k:'rankcrit',l:'Sıralama Kriterleri',i:'🎯'},{k:'stock',l:'Karakter Borsası',i:'📈'},{k:'whoChars',l:'WHO Sonuçları',i:'🪞'},{k:'ads',l:'Reklamlar',i:'📢'},{k:'msgs',l:'Mesajlar',i:'📨'},{k:'hero',l:'Hero Görseli',i:'🖼️'},{k:'discord',l:'Discord',i:'🎮'},{k:'footerpages',l:'Footer Sayfaları',i:'📄'},{k:'chars',l:'Karakterler',i:'⚔️'},{k:'seo',l:'SEO',i:'🔍'}];
-function rAdm(){document.getElementById('adm-nav').innerHTML=AT.map(t=>'<button class="nl'+(aTab===t.k?' a':'')+'" style="justify-content:flex-start;width:100%;font-size:15px;padding:12px 16px" onclick="aTab=\''+t.k+'\';rAdm()">'+t.i+' '+t.l+'</button>').join('');const e=document.getElementById('adm-c');({chars:aChars,questions:aQuestions,games:aGames,ranking:aRanking,users:aUsers,ads:aAds,msgs:aMsgs,gameedit:aGameEdit,hero:aHero,discord:aDiscord,footerpages:aFooterPages,seo:aSeo,whoChars:aWhoChars,rankcrit:aRankCrit,stock:aStock})[aTab](e)}
+const AT=[{k:'games',l:'Oyunlar',i:'🎮'},{k:'ranking',l:'Sıralama',i:'🏆'},{k:'users',l:'Kullanıcılar',i:'👤'},{k:'gameedit',l:'Oyun Düzenle',i:'✏️'},{k:'questions',l:'Sorular',i:'❓'},{k:'rankcrit',l:'Sıralama Kriterleri',i:'🎯'},{k:'rankpool',l:'Sıralama Havuzu',i:'🎲'},{k:'stock',l:'Karakter Borsası',i:'📈'},{k:'whoChars',l:'WHO Sonuçları',i:'🪞'},{k:'ads',l:'Reklamlar',i:'📢'},{k:'msgs',l:'Mesajlar',i:'📨'},{k:'hero',l:'Hero Görseli',i:'🖼️'},{k:'discord',l:'Discord',i:'🎮'},{k:'footerpages',l:'Footer Sayfaları',i:'📄'},{k:'chars',l:'Karakterler',i:'⚔️'},{k:'seo',l:'SEO',i:'🔍'}];
+function rAdm(){document.getElementById('adm-nav').innerHTML=AT.map(t=>'<button class="nl'+(aTab===t.k?' a':'')+'" style="justify-content:flex-start;width:100%;font-size:15px;padding:12px 16px" onclick="aTab=\''+t.k+'\';rAdm()">'+t.i+' '+t.l+'</button>').join('');const e=document.getElementById('adm-c');({chars:aChars,questions:aQuestions,games:aGames,ranking:aRanking,users:aUsers,ads:aAds,msgs:aMsgs,gameedit:aGameEdit,hero:aHero,discord:aDiscord,footerpages:aFooterPages,seo:aSeo,whoChars:aWhoChars,rankcrit:aRankCrit,rankpool:aRankPool,stock:aStock})[aTab](e)}
 
 function aChars(e){
   if(!window._dataReady){
@@ -1147,6 +1147,78 @@ function rcDel(id){
     if(r.error){toast(r.error,false);return}
     toast('Silindi.');aRankCrit(document.getElementById('adm-c'));
   }).catch(function(){toast('Silinemedi',false)});
+}
+
+// ═══ SIRALAMA HAVUZU YÖNETİMİ ═══
+// "Karakter Sırala" oyununda çıkacak karakterler + tur başına karakter sayısı
+function _rkpCid(c){ return String(c.dbId || c.id); }
+function aRankPool(e){
+  e.innerHTML='<div style="text-align:center;padding:40px;color:var(--t2)">Havuz yükleniyor...</div>';
+  apiGet('/rank/config').then(function(cfg){
+    cfg = cfg || {};
+    window._rkPoolSel = {};
+    (cfg.pool_ids || []).forEach(function(id){ window._rkPoolSel[String(id)] = 1; });
+    window._rkRoundSize = cfg.round_size || 5;
+    window._rkPoolQ = '';
+    _rkPoolRender(e);
+  }).catch(function(){ e.innerHTML='<div style="text-align:center;padding:40px;color:#ffb4ac">Yüklenemedi. Tekrar deneyin.</div>'; });
+}
+function _rkPoolCount(){ return Object.keys(window._rkPoolSel||{}).filter(function(k){return window._rkPoolSel[k];}).length; }
+function _rkPoolRender(e){
+  if(!e) e=document.getElementById('adm-c');
+  var active = (typeof chars!=='undefined'?chars:[]).filter(function(c){ return c.a; });
+  var q = (window._rkPoolQ||'').trim().toLowerCase();
+  var shown = active.filter(function(c){ if(!q) return true; return ((c.n||'')+' '+(c.s||'')).toLowerCase().indexOf(q)!==-1; });
+  var rows = shown.map(function(c){
+    var id=_rkpCid(c);
+    var checked = window._rkPoolSel[id] ? 'checked' : '';
+    return '<label style="display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid var(--bg1);cursor:pointer">'+
+      '<input type="checkbox" '+checked+' onchange="_rkPoolToggle(\''+id+'\',this.checked)" style="width:18px;height:18px;flex-shrink:0;cursor:pointer">'+
+      '<div style="width:32px;height:32px;border-radius:7px;overflow:hidden;flex-shrink:0">'+cp(c,32)+'</div>'+
+      '<span style="font-size:14px;color:var(--t1)">'+esc(c.n)+' '+esc(c.s||'')+'</span>'+
+      (c.tip?'<span style="margin-left:auto;font-size:11px;color:var(--t3)">'+esc(c.tip)+'</span>':'')+
+    '</label>';
+  }).join('');
+  var sel=_rkPoolCount();
+  e.innerHTML=
+    '<h3 class="fd" style="font-weight:600;font-size:15px">🎲 Sıralama Havuzu</h3>'+
+    '<p style="font-size:12px;color:var(--t3);margin:2px 0 14px;line-height:1.6">“Karakter Sırala” oyununda hangi karakterlerin çıkacağını ve her turda kaç tanesinin gösterileceğini buradan seçersin. <b>Havuzu boş bırakırsan tüm aktif karakterler kullanılır.</b> Daha az karakter = topluluk uzlaşısı daha hızlı oluşur.</p>'+
+    '<div style="display:flex;align-items:center;gap:10px;background:var(--bg1);border-radius:10px;padding:12px 14px;margin-bottom:12px;flex-wrap:wrap">'+
+      '<label class="lbl" style="margin:0">Tur başına karakter</label>'+
+      '<input class="inp" id="rk-round-size" type="number" min="2" max="12" value="'+(window._rkRoundSize||5)+'" style="width:84px;text-align:center">'+
+      '<span style="font-size:12px;color:var(--t3)">2–12 (oyuncu her turda bu kadar karakteri sıralar)</span>'+
+    '</div>'+
+    '<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">'+
+      '<input class="inp" placeholder="🔍 Karakter ara..." value="'+esc(window._rkPoolQ||'')+'" oninput="window._rkPoolQ=this.value;_rkPoolRender()" style="flex:1;min-width:160px">'+
+      '<button class="btn bg bsm" onclick="_rkPoolSelectAllShown()">Görünenleri Seç</button>'+
+      '<button class="btn bg bsm" onclick="_rkPoolClear()">Temizle</button>'+
+    '</div>'+
+    '<div style="font-size:13px;color:var(--t2);margin-bottom:8px">Seçili: <b id="rk-pool-count" style="color:#ffb95f">'+sel+'</b> karakter'+(sel===0?' <span style="color:var(--t3)">(boş = tüm aktif karakterler)</span>':'')+'</div>'+
+    '<div style="max-height:430px;overflow-y:auto;border:1px solid var(--bg1);border-radius:10px;margin-bottom:14px">'+(rows||'<div style="padding:24px;text-align:center;color:var(--t3)">Sonuç yok.</div>')+'</div>'+
+    '<button class="btn bp" onclick="_rkPoolSave()">💾 Kaydet</button>';
+}
+function _rkPoolToggle(id, checked){
+  if(!window._rkPoolSel) window._rkPoolSel={};
+  if(checked) window._rkPoolSel[id]=1; else delete window._rkPoolSel[id];
+  var el=document.getElementById('rk-pool-count'); if(el) el.textContent=_rkPoolCount();
+}
+function _rkPoolSelectAllShown(){
+  var q=(window._rkPoolQ||'').trim().toLowerCase();
+  var active=(typeof chars!=='undefined'?chars:[]).filter(function(c){return c.a;});
+  active.forEach(function(c){ var nm=((c.n||'')+' '+(c.s||'')).toLowerCase(); if(!q||nm.indexOf(q)!==-1) window._rkPoolSel[_rkpCid(c)]=1; });
+  _rkPoolRender();
+}
+function _rkPoolClear(){ window._rkPoolSel={}; _rkPoolRender(); }
+function _rkPoolSave(){
+  var sizeEl=document.getElementById('rk-round-size');
+  var size=parseInt(sizeEl?sizeEl.value:5)||5;
+  if(size<2||size>12){ toast('Tur başına karakter sayısı 2–12 arasında olmalı.',false); return; }
+  var ids=Object.keys(window._rkPoolSel||{}).filter(function(k){return window._rkPoolSel[k];});
+  if(ids.length>0 && ids.length<size){ toast('Havuz boşsa tüm aktifler kullanılır; ama seçtiysen en az tur boyutu kadar ('+size+') karakter seçmelisin.',false); return; }
+  apiPost('/admin/rank/config',{pool_ids:ids, round_size:size}).then(function(r){
+    if(!r||r.error){ toast((r&&r.error)?r.error:'Kaydedilemedi.',false); return; }
+    toast('✅ Havuz kaydedildi: '+(ids.length?ids.length+' karakter':'tüm aktif karakterler')+', tur başına '+size+'.');
+  }).catch(function(){ toast('Bağlantı hatası.',false); });
 }
 
 // ═══ KARAKTER BORSASI YÖNETİMİ ═══
