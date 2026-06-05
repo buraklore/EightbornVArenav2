@@ -68,7 +68,8 @@ async function init() {
   // ═══ KARAKTER BORSASI (STOCK) ═══
   // Hisse fiyatları. char_id, frontend'in gönderdiği kimliktir (dbId veya c-prefixli) — bu yüzden VARCHAR.
   await query("CREATE TABLE IF NOT EXISTS stock_prices (char_id VARCHAR(20) PRIMARY KEY, price NUMERIC(12,2) DEFAULT 100, prev_price NUMERIC(12,2) DEFAULT 100, shares_out INTEGER DEFAULT 0, pop_score INTEGER DEFAULT 0, updated_at TIMESTAMP DEFAULT NOW())");
-  await query("CREATE TABLE IF NOT EXISTS stock_wallets (user_id INTEGER PRIMARY KEY REFERENCES users(id), cash NUMERIC(14,2) DEFAULT 1000, last_grant DATE, week_start_value NUMERIC(14,2), week_start DATE)");
+  await query("CREATE TABLE IF NOT EXISTS stock_wallets (user_id INTEGER PRIMARY KEY REFERENCES users(id), cash NUMERIC(14,2) DEFAULT 1000, last_grant DATE, week_start_value NUMERIC(14,2), week_start DATE, last_played TIMESTAMP)");
+  await query("ALTER TABLE stock_wallets ADD COLUMN IF NOT EXISTS last_played TIMESTAMP").catch(function(){});
   await query("CREATE TABLE IF NOT EXISTS stock_holdings (user_id INTEGER NOT NULL REFERENCES users(id), char_id VARCHAR(20) NOT NULL, shares INTEGER DEFAULT 0, avg_cost NUMERIC(12,2) DEFAULT 0, PRIMARY KEY (user_id, char_id))");
   await query("CREATE TABLE IF NOT EXISTS stock_tx (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id), char_id VARCHAR(20), side VARCHAR(4), shares INTEGER, price NUMERIC(12,2), created_at TIMESTAMP DEFAULT NOW())");
 
@@ -295,7 +296,7 @@ module.exports = {
   // Karakter Borsası
   ensureWallet: ensureWallet, getStockMarket: getStockMarket, getStockPortfolio: getStockPortfolio,
   tradeStock: tradeStock, noteStockSelections: noteStockSelections, getStockLeaderboard: getStockLeaderboard,
-  ensureStockCycle: ensureStockCycle, getStockCycleInfo: getStockCycleInfo,
+  ensureStockCycle: ensureStockCycle, getStockCycleInfo: getStockCycleInfo, getStockPlayState: getStockPlayState,
   adminSetStockPrice: adminSetStockPrice, adminSetUserCash: adminSetUserCash, getAdminStockWallets: getAdminStockWallets
 };
 
@@ -483,6 +484,10 @@ function _daysBetween(aStr, bStr) {
 }
 var STOCK_CYCLE_DAYS = 15;
 var STOCK_START_CASH = 1000; // tek seferlik başlangıç bütçesi (günlük hibe ayrı: 100)
+// ── Oynama oturumu (üyeler, saatlik) ──
+// İlk işlemde oturum başlar; SESSION boyunca al-sat serbest, sonra COOLDOWN dolana dek kilitli (gözatma her zaman serbest).
+var STOCK_TRADE_SESSION_SEC = 900;   // 15 dk aktif işlem penceresi
+var STOCK_TRADE_COOLDOWN_SEC = 3600; // 60 dk: bir sonraki oturuma kadar
 
 async function _portfolioValue(userId, cash) {
   var r = await query("SELECT COALESCE(SUM(h.shares * p.price), 0) AS hv FROM stock_holdings h JOIN stock_prices p ON p.char_id = h.char_id WHERE h.user_id = $1", [userId]);
@@ -575,6 +580,17 @@ async function tradeStock(userId, charId, side, qty) {
   if (side !== 'buy' && side !== 'sell') return { error: 'Geçersiz işlem.' };
 
   await ensureWallet(userId);
+
+  // ── Oynama oturumu kilidi: ilk işlem oturumu başlatır, SESSION sonrası COOLDOWN dolana dek kilitli ──
+  var psRow = await query("SELECT last_played FROM stock_wallets WHERE user_id = $1", [userId]);
+  var _lp = (psRow.rows.length && psRow.rows[0].last_played) ? new Date(psRow.rows[0].last_played).getTime() : null;
+  var _elapsed = _lp ? (Date.now() - _lp) / 1000 : null;
+  if (_elapsed === null || _elapsed >= STOCK_TRADE_COOLDOWN_SEC) {
+    await query("UPDATE stock_wallets SET last_played = NOW() WHERE user_id = $1", [userId]); // yeni oturum
+  } else if (_elapsed >= STOCK_TRADE_SESSION_SEC) {
+    var _wait = Math.ceil(STOCK_TRADE_COOLDOWN_SEC - _elapsed);
+    return { error: 'İşlem oturumun doldu. Yaklaşık ' + Math.max(1, Math.ceil(_wait / 60)) + ' dk sonra tekrar işlem yapabilirsin.', cooldown: true, wait_sec: _wait };
+  } // aksi halde aktif oturum içinde — devam
 
   var pr = await query("SELECT price FROM stock_prices WHERE char_id = $1", [charId]);
   var price;
@@ -703,6 +719,22 @@ async function getStockCycleInfo() {
   var daysLeft = STOCK_CYCLE_DAYS;
   if (start) daysLeft = Math.max(0, STOCK_CYCLE_DAYS - _daysBetween(start, today));
   return { champion: champ || '', days_left: daysLeft, cycle_days: STOCK_CYCLE_DAYS };
+}
+
+// Üyenin işlem oturumu durumu: ready (yeni oturum açılabilir) / active (oturum içinde) / cooldown (kilitli)
+async function getStockPlayState(userId) {
+  await ensureWallet(userId);
+  var r = await query("SELECT last_played FROM stock_wallets WHERE user_id = $1", [userId]);
+  var lp = (r.rows.length && r.rows[0].last_played) ? new Date(r.rows[0].last_played).getTime() : null;
+  var elapsed = lp ? (Date.now() - lp) / 1000 : null;
+  var S = STOCK_TRADE_SESSION_SEC, C = STOCK_TRADE_COOLDOWN_SEC;
+  if (elapsed === null || elapsed >= C) {
+    return { state: 'ready', can_trade: true, session_left: S, cooldown_left: 0, session_sec: S, cooldown_sec: C };
+  }
+  if (elapsed < S) {
+    return { state: 'active', can_trade: true, session_left: Math.ceil(S - elapsed), cooldown_left: 0, session_sec: S, cooldown_sec: C };
+  }
+  return { state: 'cooldown', can_trade: false, session_left: 0, cooldown_left: Math.ceil(C - elapsed), session_sec: S, cooldown_sec: C };
 }
 
 // ═══ ADMIN: borsa fiyatı / kullanıcı bakiyesi düzenleme ═══
