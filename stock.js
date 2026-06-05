@@ -74,8 +74,12 @@ function stockStart() {
         '</div>' +
       '</div>' +
       '<div style="text-align:center">' +
-        '<button class="btn bp" style="padding:18px 56px;font-size:19px;letter-spacing:1px;background:linear-gradient(135deg,#3cddc7,#60a5fa);border:none;color:#0d0d14;box-shadow:0 0 28px rgba(60,221,199,0.25)" onclick="stockEnter()">📈 Borsaya Gir</button>' +
-        (!loggedIn ? '<p style="font-size:13px;color:#6a6878;margin-top:14px">Fiyatları girişsiz de inceleyebilirsin. İşlem yapmak ve günlük 100 Coin almak için <a style="color:#ffb4ac;cursor:pointer;text-decoration:underline" onclick="go(\'login\')">giriş yap</a>.</p>' : '') +
+        (loggedIn
+          ? '<button class="btn bp" style="padding:18px 56px;font-size:19px;letter-spacing:1px;background:linear-gradient(135deg,#3cddc7,#60a5fa);border:none;color:#0d0d14;box-shadow:0 0 28px rgba(60,221,199,0.25)" onclick="stockEnter()">📈 Borsaya Gir</button>'
+          : '<button class="btn bp" style="padding:18px 56px;font-size:19px;letter-spacing:1px;background:linear-gradient(135deg,#3cddc7,#60a5fa);border:none;color:#0d0d14;box-shadow:0 0 28px rgba(60,221,199,0.25)" onclick="go(\'login\')">🔑 Giriş Yap</button>') +
+        (!loggedIn
+          ? '<p style="font-size:13px;color:#6a6878;margin-top:14px">Karakter Borsası <b style="color:#9a969e">üyelere özeldir</b>. Oynamak için <a style="color:#ffb4ac;cursor:pointer;text-decoration:underline" onclick="go(\'login\')">giriş yap</a> — her gün 100 Coin bütçe seni bekliyor.</p>'
+          : '<p style="font-size:13px;color:#6a6878;margin-top:14px">Üyeler saatte bir <b style="color:#3cddc7">~15 dakikalık işlem oturumu</b> açar; fiyatları her zaman izleyebilirsin.</p>') +
         '<div style="display:flex;align-items:center;gap:10px;justify-content:center;background:rgba(255,84,77,0.06);border:1px solid rgba(255,84,77,0.18);border-radius:12px;padding:12px 18px;margin:22px auto 0;max-width:560px">' +
           '<span style="font-size:18px;flex-shrink:0">⚠️</span>' +
           '<span style="font-size:13px;color:#9a969e;line-height:1.5;text-align:left">Bu tamamen <b style="color:#ffb4ac">sanal bir oyundur</b>. Coin ve hisseler gerçek değildir, <b style="color:#ffb4ac">gerçek para kazandırmaz</b> ve gerçek parayla ilişkisi yoktur.</span>' +
@@ -86,7 +90,8 @@ function stockStart() {
 
 function stockEnter() {
   if (typeof checkBanned === 'function' && checkBanned()) return;
-  skState = { tab: 'market', market: [], portfolio: null, sort: 'price', q: '', page: 1, loading: true };
+  if (typeof curUser === 'undefined' || !curUser) { go('login'); return; } // borsa üyelere özel
+  skState = { tab: 'market', market: [], portfolio: null, playState: null, sort: 'price', q: '', page: 1, loading: true };
   _skRenderShell();
   _skLoad();
 }
@@ -124,13 +129,14 @@ function stockTab(t) {
 function _skLoad(cb) {
   var tasks = [apiGet('/stock/market')];
   var loggedIn = (typeof curUser !== 'undefined' && curUser);
-  if (loggedIn) tasks.push(apiGet('/stock/portfolio'));
+  if (loggedIn) { tasks.push(apiGet('/stock/portfolio')); tasks.push(apiGet('/stock/play-state')); }
   Promise.all(tasks).then(function(res) {
     skState.market = (res[0] && res[0].market) ? res[0].market : [];
     if (loggedIn && res[1] && !res[1].error) {
       skState.portfolio = res[1];
       if (res[1].granted) toast('🪙 Günlük 100 Coin hesabına eklendi!');
     }
+    if (loggedIn && res[2] && !res[2].error) skState.playState = res[2];
     skState.loading = false;
     if (cb) cb();
     _skRenderBody();
@@ -146,6 +152,30 @@ function _skRenderBody() {
   if (skState.tab === 'market') renderStockMarket();
   else if (skState.tab === 'portfolio') renderStockPortfolio();
   else if (skState.tab === 'leaderboard') renderStockLeaderboard();
+}
+
+// Oturum durum bandı (sadece üyeler)
+function _skPlayBar() {
+  var ps = skState && skState.playState;
+  if (!ps || (typeof curUser === 'undefined' || !curUser)) return '';
+  if (ps.state === 'cooldown') {
+    var m = Math.max(1, Math.ceil((ps.cooldown_left || 0) / 60));
+    return '<div style="display:flex;align-items:center;gap:10px;background:rgba(255,185,95,0.08);border:1px solid rgba(255,185,95,0.22);border-radius:12px;padding:11px 16px;margin-bottom:16px">' +
+      '<span style="font-size:18px;flex-shrink:0">⏳</span>' +
+      '<span style="font-size:13px;color:#cfcdd6;line-height:1.5">İşlem oturumun doldu. Yaklaşık <b style="color:#ffb95f">' + m + ' dk</b> sonra tekrar al-sat yapabilirsin — bu sürede fiyatları izlemeye devam edebilirsin.</span>' +
+    '</div>';
+  }
+  if (ps.state === 'active') {
+    var ms = Math.max(1, Math.ceil((ps.session_left || 0) / 60));
+    return '<div style="display:flex;align-items:center;gap:10px;background:rgba(60,221,199,0.06);border:1px solid rgba(60,221,199,0.18);border-radius:12px;padding:11px 16px;margin-bottom:16px">' +
+      '<span style="font-size:18px;flex-shrink:0">🟢</span>' +
+      '<span style="font-size:13px;color:#cfcdd6;line-height:1.5">İşlem oturumun <b style="color:#3cddc7">açık</b> — kalan süre yaklaşık <b style="color:#3cddc7">' + ms + ' dk</b>.</span>' +
+    '</div>';
+  }
+  return '<div style="display:flex;align-items:center;gap:10px;background:#1b1b24;border:1px solid rgba(91,64,61,0.15);border-radius:12px;padding:11px 16px;margin-bottom:16px">' +
+    '<span style="font-size:18px;flex-shrink:0">⏱️</span>' +
+    '<span style="font-size:13px;color:#9a969e;line-height:1.5">İlk al-sat işlemin <b style="color:#cfcdd6">~15 dakikalık</b> bir oturum başlatır; saatte bir kez yeni oturum açabilirsin.</span>' +
+  '</div>';
 }
 
 // ── PİYASA ──
@@ -172,7 +202,7 @@ function renderStockMarket() {
       return '<button onclick="skState.sort=\'' + sb[0] + '\';skState.page=1;renderStockMarket()" style="padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid ' + (active ? 'rgba(255,180,172,0.25)' : 'rgba(91,64,61,0.15)') + ';background:' + (active ? '#292933' : '#1b1b24') + ';color:' + (active ? '#ffb4ac' : '#6a6878') + '">' + sb[1] + '</button>';
     }).join('') + '</div>';
 
-  b.innerHTML = cashBar + controls + '<div id="sk-market-list"></div>' +
+  b.innerHTML = cashBar + _skPlayBar() + controls + '<div id="sk-market-list"></div>' +
     '<p style="text-align:center;font-size:11px;color:#4a4858;margin-top:24px">⚠️ Sanal oyun — Coin ve hisseler gerçek değildir, gerçek para kazandırmaz.</p>';
   _skRenderMarketList();
 }
@@ -201,9 +231,15 @@ function _skRenderMarketList() {
   var pageItems = list.slice(startIdx, startIdx + per);
 
   var loggedIn = (typeof curUser !== 'undefined' && curUser);
+  var canTrade = !(skState.playState && skState.playState.can_trade === false);
   var grid = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(430px,1fr));gap:11px">' + pageItems.map(function(r, idx) {
     var c = _skCharObj(r);
     var globalRank = startIdx + idx + 1;
+    var tradeBtn = !loggedIn
+      ? '<button class="btn bs bsm" style="flex-shrink:0;padding:10px 18px" onclick="go(\'login\')">İşlem</button>'
+      : (canTrade
+          ? '<button class="btn bp bsm" style="flex-shrink:0;padding:10px 18px" onclick="stockTradeModal(\'' + esc(String(r.char_id)) + '\')">İşlem</button>'
+          : '<button class="btn bsm" style="flex-shrink:0;padding:10px 18px;background:#16161d;color:#6a6878;border:1px solid rgba(91,64,61,0.18);cursor:default" disabled title="İşlem oturumun doldu — fiyatları izleyebilirsin">⏳ Bekle</button>');
     return '<div style="display:flex;align-items:center;gap:13px;background:#1f1f28;border:1px solid rgba(91,64,61,0.12);border-radius:13px;padding:11px 15px">' +
       '<div class="fd" style="width:26px;text-align:center;font-size:15px;color:#4a4858;flex-shrink:0">' + globalRank + '</div>' +
       '<div style="width:52px;height:52px;border-radius:11px;overflow:hidden;flex-shrink:0;border:1px solid rgba(91,64,61,0.2)">' + cp(c, 52) + '</div>' +
@@ -212,7 +248,7 @@ function _skRenderMarketList() {
         '<div style="font-size:12px;color:#6a6878;margin-top:2px">' + _skChangeHtml(r.change_pct, true) + '</div>' +
       '</div>' +
       '<div style="text-align:right;flex-shrink:0;min-width:74px"><div class="fd" style="font-size:23px;color:#e4e1ee;line-height:1">' + _skMoney(r.price) + '</div><div style="font-size:10px;color:#6a6878;letter-spacing:.5px">COIN</div></div>' +
-      '<button class="btn ' + (loggedIn ? 'bp' : 'bs') + ' bsm" style="flex-shrink:0;padding:10px 18px" onclick="' + (loggedIn ? 'stockTradeModal(\'' + esc(String(r.char_id)) + '\')' : 'go(\'login\')') + '">İşlem</button>' +
+      tradeBtn +
       '</div>';
   }).join('') + '</div>';
 
@@ -352,6 +388,11 @@ function renderStockLeaderboard() {
 // ── İŞLEM (AL/SAT) MODALI ──
 function stockTradeModal(charId) {
   if (typeof curUser === 'undefined' || !curUser) { go('login'); return; }
+  if (skState.playState && skState.playState.can_trade === false) {
+    var cm = Math.max(1, Math.ceil((skState.playState.cooldown_left || 0) / 60));
+    toast('⏳ İşlem oturumun doldu. Yaklaşık ' + cm + ' dk sonra tekrar dene.', false);
+    return;
+  }
   charId = String(charId);
   var row = skState.market.find(function(r){ return String(r.char_id) === charId; });
   if (!row) { toast('Karakter bulunamadı.', false); return; }
@@ -431,6 +472,7 @@ function stockDoTrade(side) {
   if (!charId || !i) return;
   var qty = Math.max(1, parseInt(i.value) || 1);
   apiPost('/stock/trade', { char_id: charId, side: side, shares: qty }).then(function(r) {
+    if (r && r.cooldown) { toast(r.error || '⏳ İşlem oturumun doldu.', false); closeModal(); _skLoad(); return; }
     if (!r || r.error) { toast((r && r.error) ? r.error : 'İşlem başarısız.', false); return; }
     if (side === 'buy') {
       toast('📈 ' + qty + ' hisse alındı! (' + _skMoney(r.cost) + ' Coin)');
