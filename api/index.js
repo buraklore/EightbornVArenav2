@@ -553,6 +553,10 @@ app.get('/api/stock/portfolio', auth, async function(req, res) {
   try { await ensureDb(); await db.ensureStockCycle(); res.json(await db.getStockPortfolio(req.user.id)); }
   catch (e) { console.error('stock/portfolio:', e.message); res.status(500).json({ error: 'Portfoy yuklenemedi.' }); }
 });
+app.get('/api/stock/play-state', auth, async function(req, res) {
+  try { await ensureDb(); await db.ensureStockCycle(); res.json(await db.getStockPlayState(req.user.id)); }
+  catch (e) { console.error('stock/play-state:', e.message); res.status(500).json({ error: 'Durum yuklenemedi.' }); }
+});
 app.post('/api/stock/trade', auth, async function(req, res) {
   try {
     await ensureDb();
