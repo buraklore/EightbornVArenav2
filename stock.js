@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════
 // KARAKTER BORSASI — STOCK MARKET
-// Sanal hisse, günlük 1000 bütçe, al/sat, haftalık sıralama
+// Sanal hisse, günlük 100 bütçe, al/sat, haftalık sıralama
 // ═══════════════════════════════════════════════════
 let skState = null;
 
@@ -59,7 +59,7 @@ function stockStart() {
         '<p style="font-size:17px;color:#9a969e;max-width:600px;margin:0 auto;line-height:1.7">Karakterlerin <b style="color:#3cddc7">sanal hisselerini</b> al-sat. Ucuzken al, değerlenince sat, portföyünü büyüt ve şehrin en zengin yatırımcısı ol!</p>' +
       '</div>' +
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:32px">' +
-        feat('🪙', 'Her Gün 1000 Coin', 'Giriş yapınca her gün otomatik bütçe hesabına eklenir.') +
+        feat('🪙', 'Her Gün 100 Coin', 'Giriş yapınca her gün otomatik bütçe hesabına eklenir.') +
         feat('📊', '200+ Karakter', 'Her hisse 100 Coin\'den başlar. Arz-talebe göre fiyat değişir.') +
         feat('🔥', 'Oyunlar Fiyatı Etkiler', 'Diğer oyunlarda çok seçilen karakterlerin değeri yükselir.') +
         feat('🏆', 'Haftalık Sıralama', 'Portföy değerine göre en zengin yatırımcılar listelenir.') +
@@ -75,7 +75,11 @@ function stockStart() {
       '</div>' +
       '<div style="text-align:center">' +
         '<button class="btn bp" style="padding:18px 56px;font-size:19px;letter-spacing:1px;background:linear-gradient(135deg,#3cddc7,#60a5fa);border:none;color:#0d0d14;box-shadow:0 0 28px rgba(60,221,199,0.25)" onclick="stockEnter()">📈 Borsaya Gir</button>' +
-        (!loggedIn ? '<p style="font-size:13px;color:#6a6878;margin-top:14px">Fiyatları girişsiz de inceleyebilirsin. İşlem yapmak ve günlük 1000 Coin almak için <a style="color:#ffb4ac;cursor:pointer;text-decoration:underline" onclick="go(\'login\')">giriş yap</a>.</p>' : '') +
+        (!loggedIn ? '<p style="font-size:13px;color:#6a6878;margin-top:14px">Fiyatları girişsiz de inceleyebilirsin. İşlem yapmak ve günlük 100 Coin almak için <a style="color:#ffb4ac;cursor:pointer;text-decoration:underline" onclick="go(\'login\')">giriş yap</a>.</p>' : '') +
+        '<div style="display:flex;align-items:center;gap:10px;justify-content:center;background:rgba(255,84,77,0.06);border:1px solid rgba(255,84,77,0.18);border-radius:12px;padding:12px 18px;margin:22px auto 0;max-width:560px">' +
+          '<span style="font-size:18px;flex-shrink:0">⚠️</span>' +
+          '<span style="font-size:13px;color:#9a969e;line-height:1.5;text-align:left">Bu tamamen <b style="color:#ffb4ac">sanal bir oyundur</b>. Coin ve hisseler gerçek değildir, <b style="color:#ffb4ac">gerçek para kazandırmaz</b> ve gerçek parayla ilişkisi yoktur.</span>' +
+        '</div>' +
       '</div>' +
     '</div>';
 }
@@ -125,7 +129,7 @@ function _skLoad(cb) {
     skState.market = (res[0] && res[0].market) ? res[0].market : [];
     if (loggedIn && res[1] && !res[1].error) {
       skState.portfolio = res[1];
-      if (res[1].granted) toast('🪙 Günlük 1000 Coin hesabına eklendi!');
+      if (res[1].granted) toast('🪙 Günlük 100 Coin hesabına eklendi!');
     }
     skState.loading = false;
     if (cb) cb();
@@ -156,7 +160,7 @@ function renderStockMarket() {
       '<div style="text-align:right"><div style="font-size:12px;color:#6a6878;text-transform:uppercase;letter-spacing:1px;font-weight:600">Toplam Varlık</div><div class="fd" style="font-size:26px;color:#e4e1ee">' + _skMoney(p.total) + ' Coin</div></div>' +
       '</div>';
   } else if (typeof curUser === 'undefined' || !curUser) {
-    cashBar = '<div style="background:#1b1b24;border:1px solid rgba(91,64,61,0.15);border-radius:14px;padding:14px 18px;margin-bottom:16px;text-align:center;font-size:14px;color:#9a969e">Fiyatları inceliyorsun. İşlem yapmak ve günlük <b style="color:#ffb95f">1000 Coin</b> almak için <a style="color:#ffb4ac;cursor:pointer;text-decoration:underline" onclick="go(\'login\')">giriş yap</a>.</div>';
+    cashBar = '<div style="background:#1b1b24;border:1px solid rgba(91,64,61,0.15);border-radius:14px;padding:14px 18px;margin-bottom:16px;text-align:center;font-size:14px;color:#9a969e">Fiyatları inceliyorsun. İşlem yapmak ve günlük <b style="color:#ffb95f">100 Coin</b> almak için <a style="color:#ffb4ac;cursor:pointer;text-decoration:underline" onclick="go(\'login\')">giriş yap</a>.</div>';
   }
 
   var sortBtns = [['price', 'En Değerli'], ['gain', 'En Çok Yükselen'], ['loss', 'En Çok Düşen'], ['name', 'İsim']];
@@ -168,7 +172,8 @@ function renderStockMarket() {
       return '<button onclick="skState.sort=\'' + sb[0] + '\';skState.page=1;renderStockMarket()" style="padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid ' + (active ? 'rgba(255,180,172,0.25)' : 'rgba(91,64,61,0.15)') + ';background:' + (active ? '#292933' : '#1b1b24') + ';color:' + (active ? '#ffb4ac' : '#6a6878') + '">' + sb[1] + '</button>';
     }).join('') + '</div>';
 
-  b.innerHTML = cashBar + controls + '<div id="sk-market-list"></div>';
+  b.innerHTML = cashBar + controls + '<div id="sk-market-list"></div>' +
+    '<p style="text-align:center;font-size:11px;color:#4a4858;margin-top:24px">⚠️ Sanal oyun — Coin ve hisseler gerçek değildir, gerçek para kazandırmaz.</p>';
   _skRenderMarketList();
 }
 
@@ -239,7 +244,7 @@ function renderStockPortfolio() {
   var b = document.getElementById('sk-body');
   if (!b) return;
   if (typeof curUser === 'undefined' || !curUser) {
-    b.innerHTML = '<div style="text-align:center;padding:60px 20px"><div style="font-size:56px;margin-bottom:16px">💼</div><p style="font-size:17px;color:#e4e1ee;margin-bottom:8px">Portföyünü görmek için giriş yap</p><p style="font-size:14px;color:#6a6878;margin-bottom:24px">Her gün 1000 Coin sanal bütçe seni bekliyor.</p><button class="btn bp" onclick="go(\'login\')">Giriş Yap</button></div>';
+    b.innerHTML = '<div style="text-align:center;padding:60px 20px"><div style="font-size:56px;margin-bottom:16px">💼</div><p style="font-size:17px;color:#e4e1ee;margin-bottom:8px">Portföyünü görmek için giriş yap</p><p style="font-size:14px;color:#6a6878;margin-bottom:24px">Her gün 100 Coin sanal bütçe seni bekliyor.</p><button class="btn bp" onclick="go(\'login\')">Giriş Yap</button></div>';
     return;
   }
   var p = skState.portfolio;
@@ -309,7 +314,14 @@ function renderStockLeaderboard() {
 
   apiGet('/stock/leaderboard').then(function(r) {
     var lb = (r && r.leaderboard) ? r.leaderboard : [];
-    var head = moversHtml + '<p style="font-size:13px;font-weight:700;color:#ffb4ac;text-transform:uppercase;letter-spacing:1px;margin:4px 0 10px">💰 En Zengin Yatırımcılar</p>';
+    var champion = (r && r.champion) ? r.champion : '';
+    var daysLeft = (r && typeof r.days_left === 'number') ? r.days_left : null;
+    var cycleDays = (r && r.cycle_days) ? r.cycle_days : 15;
+    var seasonBanner = '<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 20px;background:linear-gradient(135deg,rgba(255,185,95,0.07),rgba(96,165,250,0.05));border:1px solid rgba(255,185,95,0.16);border-radius:14px;padding:13px 18px;margin-bottom:20px;text-align:center">';
+    if (daysLeft !== null) seasonBanner += '<span style="font-size:13px;color:#9a969e">🏆 ' + cycleDays + ' günlük sezon — ' + (daysLeft > 0 ? '<b style="color:#ffb95f">' + daysLeft + ' gün</b> sonra sıfırlanır' : '<b style="color:#ffb95f">bugün sıfırlanıyor</b>') + '</span>';
+    if (champion) seasonBanner += '<span style="font-size:13px;color:#9a969e">👑 Sezon şampiyonu: <b style="color:#ffd700">' + esc(champion) + '</b></span>';
+    seasonBanner += '</div>';
+    var head = seasonBanner + moversHtml + '<p style="font-size:13px;font-weight:700;color:#ffb4ac;text-transform:uppercase;letter-spacing:1px;margin:4px 0 10px">💰 En Zengin Yatırımcılar</p>';
     if (!lb.length) {
       b.innerHTML = head + '<div style="text-align:center;padding:48px;color:#6a6878"><div style="font-size:48px;margin-bottom:12px">📈</div>Henüz yatırımcı yok. İlk sen ol!</div>';
       return;
@@ -322,9 +334,10 @@ function renderStockLeaderboard() {
       var wkCol = u.week_change > 0 ? '#3cddc7' : (u.week_change < 0 ? '#ff544d' : '#6a6878');
       var wkSign = u.week_change > 0 ? '+' : '';
       var isMe = (typeof curUser !== 'undefined' && curUser && curUser.username === u.username);
+      var isChamp = champion && u.username === champion;
       rows += '<div style="display:grid;grid-template-columns:70px 1fr 130px 110px;align-items:center;padding:15px 20px;border-bottom:1px solid rgba(91,64,61,0.06);' + (isMe ? 'background:rgba(255,185,95,0.06)' : '') + '">' +
         '<div><span style="display:inline-flex;width:32px;height:32px;border-radius:8px;align-items:center;justify-content:center;font-weight:700;font-size:' + (i < 3 ? '24' : '14') + 'px;' + rankBg + '">' + rankEmoji + '</span></div>' +
-        '<div style="font-size:15px;font-weight:600;color:#e4e1ee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(u.username) + (isMe ? ' <span style="font-size:11px;color:#ffb95f">(sen)</span>' : '') + '</div>' +
+        '<div style="font-size:15px;font-weight:600;color:#e4e1ee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (isChamp ? '<span title="Sezon şampiyonu">👑</span> ' : '') + esc(u.username) + (isMe ? ' <span style="font-size:11px;color:#ffb95f">(sen)</span>' : '') + '</div>' +
         '<div style="text-align:right;font-family:Bebas Neue,sans-serif;font-size:20px;color:#e4e1ee">' + _skMoney(u.total) + ' Coin</div>' +
         '<div style="text-align:right;font-size:13px;font-weight:700;color:' + wkCol + '">' + wkSign + (u.week_change_pct).toFixed(1) + '%</div>' +
         '</div>';

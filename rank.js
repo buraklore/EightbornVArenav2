@@ -156,7 +156,6 @@ function renderRankList() {
         '<div style="width:62px;height:62px;border-radius:12px;overflow:hidden;flex-shrink:0;border:1px solid rgba(91,64,61,0.2)">' + cp(c, 62) + '</div>' +
         '<div style="flex:1;min-width:0;text-align:left">' +
           '<div style="font-size:18px;font-weight:700;color:#e4e1ee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2">' + esc(c.n) + ' ' + esc(c.s) + '</div>' +
-          (c.tip ? '<div style="display:inline-block;margin-top:5px;font-size:12px;color:#9a969e;background:#16161d;border:1px solid rgba(91,64,61,0.18);border-radius:6px;padding:2px 9px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(c.tip) + '</div>' : '') +
         '</div>' +
         '<div style="font-size:20px;color:#4a4858;flex-shrink:0;padding:0 2px">⠿</div>' +
         '<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">' +

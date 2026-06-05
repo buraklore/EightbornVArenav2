@@ -1,6 +1,6 @@
 // ═══ ADMIN (simplified for focus on tournament) ═══
-const AT=[{k:'games',l:'Oyunlar',i:'🎮'},{k:'ranking',l:'Sıralama',i:'🏆'},{k:'users',l:'Kullanıcılar',i:'👤'},{k:'gameedit',l:'Oyun Düzenle',i:'✏️'},{k:'questions',l:'Sorular',i:'❓'},{k:'rankcrit',l:'Sıralama Kriterleri',i:'🎯'},{k:'whoChars',l:'WHO Sonuçları',i:'🪞'},{k:'ads',l:'Reklamlar',i:'📢'},{k:'msgs',l:'Mesajlar',i:'📨'},{k:'hero',l:'Hero Görseli',i:'🖼️'},{k:'discord',l:'Discord',i:'🎮'},{k:'footerpages',l:'Footer Sayfaları',i:'📄'},{k:'chars',l:'Karakterler',i:'⚔️'},{k:'seo',l:'SEO',i:'🔍'}];
-function rAdm(){document.getElementById('adm-nav').innerHTML=AT.map(t=>'<button class="nl'+(aTab===t.k?' a':'')+'" style="justify-content:flex-start;width:100%;font-size:15px;padding:12px 16px" onclick="aTab=\''+t.k+'\';rAdm()">'+t.i+' '+t.l+'</button>').join('');const e=document.getElementById('adm-c');({chars:aChars,questions:aQuestions,games:aGames,ranking:aRanking,users:aUsers,ads:aAds,msgs:aMsgs,gameedit:aGameEdit,hero:aHero,discord:aDiscord,footerpages:aFooterPages,seo:aSeo,whoChars:aWhoChars,rankcrit:aRankCrit})[aTab](e)}
+const AT=[{k:'games',l:'Oyunlar',i:'🎮'},{k:'ranking',l:'Sıralama',i:'🏆'},{k:'users',l:'Kullanıcılar',i:'👤'},{k:'gameedit',l:'Oyun Düzenle',i:'✏️'},{k:'questions',l:'Sorular',i:'❓'},{k:'rankcrit',l:'Sıralama Kriterleri',i:'🎯'},{k:'stock',l:'Karakter Borsası',i:'📈'},{k:'whoChars',l:'WHO Sonuçları',i:'🪞'},{k:'ads',l:'Reklamlar',i:'📢'},{k:'msgs',l:'Mesajlar',i:'📨'},{k:'hero',l:'Hero Görseli',i:'🖼️'},{k:'discord',l:'Discord',i:'🎮'},{k:'footerpages',l:'Footer Sayfaları',i:'📄'},{k:'chars',l:'Karakterler',i:'⚔️'},{k:'seo',l:'SEO',i:'🔍'}];
+function rAdm(){document.getElementById('adm-nav').innerHTML=AT.map(t=>'<button class="nl'+(aTab===t.k?' a':'')+'" style="justify-content:flex-start;width:100%;font-size:15px;padding:12px 16px" onclick="aTab=\''+t.k+'\';rAdm()">'+t.i+' '+t.l+'</button>').join('');const e=document.getElementById('adm-c');({chars:aChars,questions:aQuestions,games:aGames,ranking:aRanking,users:aUsers,ads:aAds,msgs:aMsgs,gameedit:aGameEdit,hero:aHero,discord:aDiscord,footerpages:aFooterPages,seo:aSeo,whoChars:aWhoChars,rankcrit:aRankCrit,stock:aStock})[aTab](e)}
 
 function aChars(e){
   if(!window._dataReady){
@@ -1147,4 +1147,108 @@ function rcDel(id){
     if(r.error){toast(r.error,false);return}
     toast('Silindi.');aRankCrit(document.getElementById('adm-c'));
   }).catch(function(){toast('Silinemedi',false)});
+}
+
+// ═══ KARAKTER BORSASI YÖNETİMİ ═══
+var _admStk = { tab: 'prices', prices: [], wallets: [], pq: '', wq: '' };
+
+function aStock(e) {
+  _admStk = { tab: 'prices', prices: [], wallets: [], pq: '', wq: '' };
+  e.innerHTML =
+    '<h3 class="fd" style="font-weight:600;font-size:15px;margin-bottom:6px">📈 Karakter Borsası Yönetimi</h3>' +
+    '<p style="font-size:12px;color:var(--t3);margin-bottom:16px">Karakter hisse fiyatlarını ve kullanıcıların Coin bakiyelerini düzenle. (Sanal oyun — gerçek para değildir.)</p>' +
+    '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">' +
+      '<button id="astk-tp" class="btn bsm bp" onclick="_admStkTab(\'prices\')">🎯 Karakter Fiyatları</button>' +
+      '<button id="astk-tw" class="btn bsm bg" onclick="_admStkTab(\'wallets\')">👤 Kullanıcı Bakiyeleri</button>' +
+    '</div>' +
+    '<div id="astk-body"><div style="text-align:center;padding:30px;color:var(--t3)">Yükleniyor...</div></div>';
+  apiGet('/stock/market').then(function(r){ _admStk.prices = (r && r.market) ? r.market : []; if (_admStk.tab === 'prices') _admStkRender(); }).catch(function(){});
+  apiGet('/admin/stock/wallets').then(function(r){ _admStk.wallets = (r && r.wallets) ? r.wallets : []; if (_admStk.tab === 'wallets') _admStkRender(); }).catch(function(){});
+  _admStkRender();
+}
+
+function _admStkTab(t) {
+  _admStk.tab = t;
+  var tp = document.getElementById('astk-tp'), tw = document.getElementById('astk-tw');
+  if (tp) tp.className = 'btn bsm ' + (t === 'prices' ? 'bp' : 'bg');
+  if (tw) tw.className = 'btn bsm ' + (t === 'wallets' ? 'bp' : 'bg');
+  _admStkRender();
+}
+
+function _admStkRender() {
+  var b = document.getElementById('astk-body');
+  if (!b) return;
+  if (_admStk.tab === 'prices') {
+    b.innerHTML = '<input class="inp" placeholder="🔍 Karakter ara..." value="' + esc(_admStk.pq) + '" oninput="_admStk.pq=this.value;_admStkListPrices()" style="margin-bottom:12px;padding:10px 14px;width:100%">' +
+      '<div id="astk-list"><div style="text-align:center;padding:24px;color:var(--t3)">Yükleniyor...</div></div>';
+    _admStkListPrices();
+  } else {
+    b.innerHTML = '<input class="inp" placeholder="🔍 Kullanıcı ara..." value="' + esc(_admStk.wq) + '" oninput="_admStk.wq=this.value;_admStkListWallets()" style="margin-bottom:12px;padding:10px 14px;width:100%">' +
+      '<div id="astk-list"><div style="text-align:center;padding:24px;color:var(--t3)">Yükleniyor...</div></div>';
+    _admStkListWallets();
+  }
+}
+
+function _admStkListPrices() {
+  var el = document.getElementById('astk-list');
+  if (!el) return;
+  if (!_admStk.prices.length) { el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--t3)">Veri yok.</div>'; return; }
+  var q = (_admStk.pq || '').trim().toLowerCase();
+  var list = _admStk.prices.filter(function(r){ return !q || ((r.name || '') + ' ' + (r.surname || '')).toLowerCase().indexOf(q) !== -1; });
+  if (!list.length) { el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--t3)">Sonuç yok.</div>'; return; }
+  var shown = list.slice(0, 100);
+  el.innerHTML = '<div class="card" style="padding:0;overflow:hidden">' + shown.map(function(r){
+    var cid = esc(String(r.char_id));
+    return '<div style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-bottom:1px solid #2a2a3a20">' +
+      '<div style="width:40px;height:40px;border-radius:9px;overflow:hidden;flex-shrink:0">' + cp({ n: r.name || '', s: r.surname || '', g: r.gender || 'M', img: r.img || '', id: r.char_id }, 40) + '</div>' +
+      '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(r.name) + ' ' + esc(r.surname || '') + '</div><div style="font-size:11px;color:var(--t3)">Şu an: ' + r.price + ' Coin</div></div>' +
+      '<input id="spx-' + cid + '" class="inp" type="number" value="' + r.price + '" min="1" style="width:90px;padding:7px 10px;font-size:13px;flex-shrink:0">' +
+      '<button class="btn bp bsm" style="padding:7px 14px;flex-shrink:0" onclick="skpSave(\'' + cid + '\')">Kaydet</button>' +
+      '</div>';
+  }).join('') + '</div>' + (list.length > 100 ? '<p style="text-align:center;font-size:11px;color:var(--t3);margin-top:8px">İlk 100 gösteriliyor — aramayla daralt.</p>' : '');
+}
+
+function skpSave(charId) {
+  var inp = document.getElementById('spx-' + charId);
+  if (!inp) return;
+  var price = parseFloat(inp.value);
+  if (!(price >= 1)) { toast('Geçersiz fiyat (en az 1).'); return; }
+  apiPost('/admin/stock/set-price', { char_id: charId, price: price }).then(function(r){
+    if (r && r.success) {
+      toast('✅ Fiyat güncellendi: ' + r.price + ' Coin');
+      var row = _admStk.prices.find(function(x){ return String(x.char_id) === String(charId); });
+      if (row) { row.price = r.price; row.prev_price = r.price; row.change_pct = 0; }
+    } else { toast((r && r.error) || 'Kaydedilemedi.'); }
+  }).catch(function(){ toast('Kaydedilemedi.'); });
+}
+
+function _admStkListWallets() {
+  var el = document.getElementById('astk-list');
+  if (!el) return;
+  if (!_admStk.wallets.length) { el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--t3)">Kullanıcı yok.</div>'; return; }
+  var q = (_admStk.wq || '').trim().toLowerCase();
+  var list = _admStk.wallets.filter(function(w){ return !q || (w.username || '').toLowerCase().indexOf(q) !== -1; });
+  if (!list.length) { el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--t3)">Sonuç yok.</div>'; return; }
+  var shown = list.slice(0, 100);
+  el.innerHTML = '<div class="card" style="padding:0;overflow:hidden">' + shown.map(function(w){
+    return '<div style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-bottom:1px solid #2a2a3a20">' +
+      '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(w.username) + (w.has_wallet ? '' : ' <span style="font-size:10px;color:var(--t3)">(cüzdan yok)</span>') + '</div><div style="font-size:11px;color:var(--t3)">Nakit: ' + w.cash + ' · Toplam varlık: ' + w.total + ' Coin</div></div>' +
+      '<input id="scx-' + w.user_id + '" class="inp" type="number" value="' + w.cash + '" min="0" style="width:100px;padding:7px 10px;font-size:13px;flex-shrink:0">' +
+      '<button class="btn bp bsm" style="padding:7px 14px;flex-shrink:0" onclick="skuSave(' + w.user_id + ')">Kaydet</button>' +
+      '</div>';
+  }).join('') + '</div>' + (list.length > 100 ? '<p style="text-align:center;font-size:11px;color:var(--t3);margin-top:8px">İlk 100 gösteriliyor — aramayla daralt.</p>' : '');
+}
+
+function skuSave(userId) {
+  var inp = document.getElementById('scx-' + userId);
+  if (!inp) return;
+  var cash = parseFloat(inp.value);
+  if (!(cash >= 0)) { toast('Geçersiz değer.'); return; }
+  apiPost('/admin/stock/set-cash', { user_id: userId, cash: cash }).then(function(r){
+    if (r && r.success) {
+      toast('✅ Bakiye güncellendi: ' + r.cash + ' Coin');
+      var w = _admStk.wallets.find(function(x){ return x.user_id === userId; });
+      if (w) { var diff = r.cash - w.cash; w.cash = r.cash; w.total = Math.round((w.total + diff) * 100) / 100; w.has_wallet = true; }
+    } else { toast((r && r.error) || 'Kaydedilemedi.'); }
+  }).catch(function(){ toast('Kaydedilemedi.'); });
 }
