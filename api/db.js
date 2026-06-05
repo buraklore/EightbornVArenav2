@@ -293,6 +293,7 @@ module.exports = {
   // Karakter Sırala
   getRankCriteria: getRankCriteria, upsertRankCriterion: upsertRankCriterion, deleteRankCriterion: deleteRankCriterion,
   scoreAndRecordRanking: scoreAndRecordRanking,
+  getRankConfig: getRankConfig, setRankConfig: setRankConfig,
   // Karakter Borsası
   ensureWallet: ensureWallet, getStockMarket: getStockMarket, getStockPortfolio: getStockPortfolio,
   tradeStock: tradeStock, noteStockSelections: noteStockSelections, getStockLeaderboard: getStockLeaderboard,
@@ -399,40 +400,39 @@ async function scoreAndRecordRanking(criterionId, order) {
       pairs.push({ x: x, y: y, lo: lo, hi: hi });
     }
   }
-  // Bu kritere ait, bu karakterleri içeren mevcut oyları çek
+
+  // ── KARAKTER-BAZLI SKORLAMA ──
+  // Her karakterin bu kriterdeki TÜM oylarını (herkese karşı) çek — sadece bu beşli içinde değil.
+  // Böylece tam aynı ikili daha önce hiç gelmese bile, karakterlerin küresel kazanma oranıyla
+  // topluluk sıralaması ve uyum hesaplanabilir.
   var existing = await query(
-    "SELECT char_a, char_b, a_over_b, b_over_a FROM rank_votes WHERE criterion_id = $1 AND char_a = ANY($2) AND char_b = ANY($2)",
+    "SELECT char_a, char_b, a_over_b, b_over_a FROM rank_votes WHERE criterion_id = $1 AND (char_a = ANY($2) OR char_b = ANY($2))",
     [criterionId, ids]
   );
-  var votesMap = {};
-  existing.rows.forEach(function(row){ votesMap[row.char_a + '|' + row.char_b] = row; });
+  var wins = {}, games = {};
+  ids.forEach(function(id){ wins[id] = 0; games[id] = 0; });
+  existing.rows.forEach(function(row){
+    var a = row.char_a, b = row.char_b;
+    var ab = parseInt(row.a_over_b) || 0, ba = parseInt(row.b_over_a) || 0, tot = ab + ba;
+    if (tot === 0) return;
+    if (wins[a] !== undefined) { wins[a] += ab; games[a] += tot; }
+    if (wins[b] !== undefined) { wins[b] += ba; games[b] += tot; }
+  });
+  // Laplace yumuşatmalı güç (win-rate): verisi olmayan = 0.5 (nötr), uçlar (1/1, 0/1) yumuşatılır
+  function strength(id){ return (wins[id] + 1) / (games[id] + 2); }
 
-  var winTally = {};
-  ids.forEach(function(id){ winTally[id] = 0; });
-
+  // Uyum: SADECE iki karakterin de verisi olan çiftler üzerinden (gerçek topluluk sinyali)
   var concordant = 0, dataPairs = 0;
   pairs.forEach(function(p){
-    var row = votesMap[p.lo + '|' + p.hi];
-    var aOverB = row ? parseInt(row.a_over_b) : 0; // lo, hi'nin üstünde
-    var bOverA = row ? parseInt(row.b_over_a) : 0; // hi, lo'nun üstünde
-    var total = aOverB + bOverA;
-    var userSaysLoOverHi = (p.x === p.lo);
-    if (total > 0) {
+    if (games[p.x] > 0 && games[p.y] > 0) {
       dataPairs++;
-      var commLoOverHi = aOverB >= bOverA; // eşitlikte lo
-      if (userSaysLoOverHi === commLoOverHi) concordant++;
-      var pLo = aOverB / total;
-      winTally[p.lo] += pLo;
-      winTally[p.hi] += (1 - pLo);
-    } else {
-      winTally[p.lo] += 0.5;
-      winTally[p.hi] += 0.5;
+      // kullanıcı x'i y'nin üstüne koydu; topluluk x'i daha güçlü görüyorsa uyumlu
+      if (strength(p.x) >= strength(p.y)) concordant++;
     }
   });
-
   var agreement = dataPairs > 0 ? Math.round((concordant / dataPairs) * 100) : null;
 
-  // Oyları kaydet (UPSERT)
+  // Oyları kaydet (UPSERT) — ham ikili veriyi biriktirmeye devam
   for (var k = 0; k < pairs.length; k++) {
     var pp = pairs[k];
     var incA = (pp.x === pp.lo) ? 1 : 0;
@@ -450,9 +450,9 @@ async function scoreAndRecordRanking(criterionId, order) {
   var subCount = subCur ? parseInt(subCur) + 1 : 1;
   await setConfig(subKey, String(subCount));
 
-  // Topluluk uzlaşı sıralaması (kazanma payına göre azalan)
+  // Topluluk uzlaşı sıralaması (küresel güce göre azalan)
   var consensus = ids.slice().sort(function(a, b){
-    var d = winTally[b] - winTally[a];
+    var d = strength(b) - strength(a);
     if (Math.abs(d) > 1e-9) return d;
     return ids.indexOf(a) - ids.indexOf(b);
   });
@@ -465,6 +465,30 @@ async function scoreAndRecordRanking(criterionId, order) {
     consensus: consensus,
     first: agreement === null
   };
+}
+
+// ── Sıralama havuzu + tur ayarı (admin) ──
+async function getRankConfig() {
+  var poolRaw = await getConfig('rank_pool_ids');
+  var sizeRaw = await getConfig('rank_round_size');
+  var pool = [];
+  if (poolRaw) { try { var p = JSON.parse(poolRaw); if (Array.isArray(p)) pool = p.map(String); } catch (e) {} }
+  var size = sizeRaw ? parseInt(sizeRaw) : 5;
+  if (!(size >= 2 && size <= 12)) size = 5;
+  return { pool_ids: pool, round_size: size };
+}
+async function setRankConfig(poolIds, roundSize) {
+  var size = parseInt(roundSize);
+  if (!(size >= 2 && size <= 12)) return { error: 'Tur başına karakter sayısı 2–12 arasında olmalı.' };
+  var pool = Array.isArray(poolIds) ? poolIds.map(String).filter(Boolean) : [];
+  var seen = {}, uniq = [];
+  pool.forEach(function(x){ if (!seen[x]) { seen[x] = 1; uniq.push(x); } });
+  if (uniq.length > 0 && uniq.length < size) {
+    return { error: 'Havuzdaki karakter sayısı (' + uniq.length + '), tur başına sayıdan (' + size + ') az olamaz.' };
+  }
+  await setConfig('rank_pool_ids', JSON.stringify(uniq));
+  await setConfig('rank_round_size', String(size));
+  return { success: true, pool_ids: uniq, round_size: size };
 }
 
 // ═══════════════════════════════════════════════════════════
