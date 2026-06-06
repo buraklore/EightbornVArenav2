@@ -770,7 +770,6 @@ function renderRpsimScenario(){
     charBlock = '<div class="rp-fadeup" style="display:flex;flex-direction:column;align-items:center;margin-bottom:20px">' +
       '<div class="rp-avatar" style="width:112px;height:112px;border-radius:50%;overflow:hidden;border:3px solid rgba(167,139,250,0.4)">' + (typeof cp === 'function' ? cp(s.curChar, 112) : '') + '</div>' +
       '<div style="font-size:16px;color:#e4e1ee;font-weight:700;margin-top:11px">' + _rpEsc((s.curChar.n || '') + ' ' + (s.curChar.s || '')) + '</div>' +
-      (s.curChar.tip ? '<div style="font-size:12px;color:#a78bfa;margin-top:3px;letter-spacing:.5px;text-transform:uppercase">' + _rpEsc(s.curChar.tip) + '</div>' : '') +
     '</div>';
   }
   var choices = sc.choices.map(function(ch, idx){
