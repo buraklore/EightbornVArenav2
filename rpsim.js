@@ -508,58 +508,99 @@ function _rpText(t){
     .replace(/\{char\}/g, '<b style="color:#e4e1ee">' + _rpEsc(name) + '</b>')
     .replace(/\{name\}/g, '<b style="color:#a78bfa">' + _rpEsc(pname) + '</b>');
 }
+function _rpEnsureStyle(){
+  if (typeof document === 'undefined' || document.getElementById('rpsim-style')) return;
+  var st = document.createElement('style');
+  st.id = 'rpsim-style';
+  st.textContent =
+    '@keyframes rpFade{from{opacity:0}to{opacity:1}}' +
+    '@keyframes rpFadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}' +
+    '@keyframes rpPop{0%{opacity:0;transform:scale(.82)}60%{transform:scale(1.05)}100%{opacity:1;transform:scale(1)}}' +
+    '@keyframes rpGlow{0%,100%{box-shadow:0 0 20px rgba(167,139,250,.18)}50%{box-shadow:0 0 38px rgba(167,139,250,.42)}}' +
+    '.rp-fade{animation:rpFade .4s ease both}' +
+    '.rp-fadeup{animation:rpFadeUp .45s ease both}' +
+    '.rp-pop{animation:rpPop .5s cubic-bezier(.2,.9,.3,1.3) both}' +
+    '.rp-choice{transition:transform .15s ease,border-color .15s ease,background .15s ease}' +
+    '.rp-choice:hover{transform:translateY(-2px);border-color:#a78bfa !important;background:#2a2433 !important}' +
+    '.rp-choice:hover .rp-arrow{transform:translateX(4px);color:#a78bfa}' +
+    '.rp-avatar{animation:rpGlow 2.8s ease-in-out infinite}';
+  (document.head || document.body).appendChild(st);
+}
 function _rpStatBar(){
   var s = rpsimState.stats;
-  function bar(v, col){ return '<div style="width:60px;height:7px;border-radius:4px;background:#26262f;overflow:hidden;display:inline-block;vertical-align:middle"><div style="width:' + v + '%;height:100%;background:' + col + '"></div></div>'; }
-  return '<div style="display:inline-flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:center;background:#1b1b24;border:1px solid rgba(91,64,61,0.18);border-radius:50px;padding:10px 22px">' +
-    '<span style="font-size:15px;color:#ffd98a;font-weight:800">💰 ' + s.money + '</span>' +
-    '<span style="font-size:13px;color:#ffb95f;display:inline-flex;align-items:center;gap:7px">👑 ' + bar(s.rep, '#ffb95f') + ' ' + s.rep + '</span>' +
-    '<span style="font-size:13px;color:#ff6a63;display:inline-flex;align-items:center;gap:7px">🔥 ' + bar(s.heat, 'linear-gradient(90deg,#ffb95f,#ff544d)') + ' ' + s.heat + '</span>' +
+  function bar(v, col){ return '<div style="height:6px;border-radius:4px;background:#2a2a35;overflow:hidden;margin-top:8px"><div style="width:' + v + '%;height:100%;background:' + col + ';border-radius:4px;transition:width .4s ease"></div></div>'; }
+  function card(emoji, label, val, col, barHtml){
+    return '<div style="flex:1;min-width:96px;background:#1b1b24;border:1px solid rgba(91,64,61,0.2);border-radius:14px;padding:13px 15px">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:19px">' + emoji + '</span><span class="fd" style="font-size:23px;color:' + col + ';line-height:1">' + val + '</span></div>' +
+      '<div style="font-size:10px;letter-spacing:1.2px;color:#6a6878;margin-top:4px">' + label + '</div>' + (barHtml || '') +
+    '</div>';
+  }
+  var heatCol = s.heat >= 70 ? '#ff544d' : '#ff8a80';
+  return '<div style="display:flex;gap:10px;width:100%">' +
+    card('💰', 'PARA', s.money, '#ffd98a', '') +
+    card('👑', 'İTİBAR', s.rep, '#ffb95f', bar(s.rep, '#ffb95f')) +
+    card('🔥', 'TEHLİKE', s.heat, heatCol, bar(s.heat, 'linear-gradient(90deg,#ffb95f,#ff544d)')) +
   '</div>';
 }
-function _rpChips(ch){
-  if (ch.ch) return '<span style="font-size:11px;color:#a78bfa;font-weight:700;letter-spacing:.3px">🎲 RİSKLİ</span>';
-  var p = [];
-  if (ch.m) p.push('<span style="color:' + (ch.m > 0 ? '#ffd98a' : '#ff8a80') + '">💰' + (ch.m > 0 ? '+' : '') + ch.m + '</span>');
-  if (ch.r) p.push('<span style="color:' + (ch.r > 0 ? '#ffb95f' : '#ff8a80') + '">👑' + (ch.r > 0 ? '+' : '') + ch.r + '</span>');
-  if (ch.h) p.push('<span style="color:' + (ch.h > 0 ? '#ff6a63' : '#3cddc7') + '">🔥' + (ch.h > 0 ? '+' : '') + ch.h + '</span>');
-  return p.length ? '<span style="font-size:11px;display:flex;gap:10px;font-weight:700">' + p.join('') + '</span>' : '';
+function _rpDeltaRow(d){
+  if (!d) return '';
+  var chips = [];
+  function chip(emoji, label, val, good){
+    var col = good ? '#7ee0c8' : '#ff8a80';
+    var arrow = val > 0 ? '▲' : '▼';
+    var sign = val > 0 ? '+' : '';
+    return '<div class="rp-pop" style="display:flex;flex-direction:column;align-items:center;gap:3px;background:' + (good ? 'rgba(60,221,199,0.08)' : 'rgba(255,84,77,0.08)') + ';border:1px solid ' + col + '40;border-radius:13px;padding:11px 18px;min-width:80px">' +
+      '<div style="font-size:11px;color:#9a969e;letter-spacing:.5px">' + emoji + ' ' + label + '</div>' +
+      '<div class="fd" style="font-size:20px;color:' + col + '">' + arrow + ' ' + sign + val + '</div>' +
+    '</div>';
+  }
+  if (d.m) chips.push(chip('💰', 'Para', d.m, d.m > 0));
+  if (d.r) chips.push(chip('👑', 'İtibar', d.r, d.r > 0));
+  if (d.h) chips.push(chip('🔥', 'Tehlike', d.h, d.h < 0)); // tehlikenin azalması iyidir
+  if (!chips.length) return '<div style="margin-top:18px;font-size:13px;color:#6a6878">Tablolar değişmedi — ama her seçim bir iz bırakır.</div>';
+  return '<div style="display:flex;gap:11px;justify-content:center;flex-wrap:wrap;margin-top:22px">' + chips.join('') + '</div>';
 }
 
 function renderRpsimScenario(){
+  _rpEnsureStyle();
   var s = rpsimState;
   var ag = document.getElementById('ag');
   var sc = s.cur;
-  // segment çubuğu
   var segs = '';
   for (var i = 1; i <= s.totalRounds; i++) {
     var done = i < s.turn, cur = i === s.turn;
-    segs += '<div style="flex:1;height:5px;border-radius:3px;background:' + (done ? '#a78bfa' : (cur ? 'linear-gradient(90deg,#a78bfa,#ffb95f)' : '#26262f')) + '"></div>';
+    segs += '<div style="flex:1;height:6px;border-radius:3px;background:' + (done ? '#a78bfa' : (cur ? 'linear-gradient(90deg,#a78bfa,#ffb95f)' : '#26262f')) + '"></div>';
   }
   var charBlock = '';
   if (s.curChar) {
-    charBlock = '<div style="display:flex;flex-direction:column;align-items:center;margin-bottom:14px">' +
-      '<div style="width:84px;height:84px;border-radius:50%;overflow:hidden;border:2px solid rgba(167,139,250,0.35);box-shadow:0 0 22px rgba(167,139,250,0.15)">' + (typeof cp === 'function' ? cp(s.curChar, 84) : '') + '</div>' +
-      '<div style="font-size:13px;color:#a78bfa;font-weight:700;margin-top:7px">' + _rpEsc((s.curChar.n || '') + ' ' + (s.curChar.s || '')) + (s.curChar.tip ? ' · ' + _rpEsc(s.curChar.tip) : '') + '</div>' +
+    charBlock = '<div class="rp-fadeup" style="display:flex;flex-direction:column;align-items:center;margin-bottom:20px">' +
+      '<div class="rp-avatar" style="width:112px;height:112px;border-radius:50%;overflow:hidden;border:3px solid rgba(167,139,250,0.4)">' + (typeof cp === 'function' ? cp(s.curChar, 112) : '') + '</div>' +
+      '<div style="font-size:16px;color:#e4e1ee;font-weight:700;margin-top:11px">' + _rpEsc((s.curChar.n || '') + ' ' + (s.curChar.s || '')) + '</div>' +
+      (s.curChar.tip ? '<div style="font-size:12px;color:#a78bfa;margin-top:3px;letter-spacing:.5px;text-transform:uppercase">' + _rpEsc(s.curChar.tip) + '</div>' : '') +
     '</div>';
   }
   var choices = sc.choices.map(function(ch, idx){
-    return '<button class="rp-choice" onclick="rpsimChoose(' + idx + ')" style="display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;text-align:left;background:#1f1f28;border:1px solid rgba(91,64,61,0.2);border-radius:13px;padding:15px 18px;margin-bottom:10px;cursor:pointer;transition:all .15s" ' +
-      'onmouseover="this.style.borderColor=\'#a78bfa\';this.style.background=\'#26222e\'" onmouseout="this.style.borderColor=\'rgba(91,64,61,0.2)\';this.style.background=\'#1f1f28\'">' +
-      '<span style="font-size:15px;color:#e4e1ee;font-weight:600;line-height:1.4">' + _rpEsc(ch.t) + '</span>' +
-      _rpChips(ch) +
+    return '<button class="rp-choice rp-fade" onclick="rpsimChoose(' + idx + ')" style="display:flex;align-items:center;gap:15px;width:100%;text-align:left;background:#1f1f28;border:1px solid rgba(91,64,61,0.22);border-radius:14px;padding:18px 20px;margin-bottom:12px;cursor:pointer;animation-delay:' + (idx * 70) + 'ms">' +
+      '<span style="flex-shrink:0;width:32px;height:32px;border-radius:50%;background:rgba(167,139,250,0.14);color:#a78bfa;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:15px">' + (idx + 1) + '</span>' +
+      '<span style="flex:1;font-size:16px;color:#e4e1ee;font-weight:600;line-height:1.45">' + _rpEsc(ch.t) + '</span>' +
+      '<span class="rp-arrow" style="flex-shrink:0;font-size:24px;color:#6a6878;transition:all .15s">›</span>' +
     '</button>';
   }).join('');
   ag.innerHTML =
-    '<div style="max-width:680px;margin:0 auto;padding:10px 18px 52px;width:100%">' +
-      '<div style="display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:22px">' +
-        '<div class="fd" style="font-size:15px;letter-spacing:2px;color:#9a969e">👤 ' + _rpEsc(s.playerName || '') + ' · TUR ' + s.turn + ' / ' + s.totalRounds + '</div>' +
-        '<div style="display:flex;gap:4px;width:100%;max-width:440px">' + segs + '</div>' +
+    '<div style="max-width:840px;margin:0 auto;padding:8px 18px 56px;width:100%">' +
+      '<div style="margin-bottom:24px">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">' +
+          '<span class="fd" style="font-size:15px;letter-spacing:1.5px;color:#cfcdd6">👤 ' + _rpEsc(s.playerName || '') + '</span>' +
+          '<span class="fd" style="font-size:15px;letter-spacing:1.5px;color:#9a969e">TUR ' + s.turn + ' / ' + s.totalRounds + '</span>' +
+        '</div>' +
+        '<div style="display:flex;gap:4px;margin-bottom:18px">' + segs + '</div>' +
         _rpStatBar() +
       '</div>' +
       charBlock +
-      '<div style="text-align:center;margin-bottom:8px"><h2 class="fd" style="font-size:clamp(26px,4.5vw,38px);color:#e4e1ee;letter-spacing:.5px">' + _rpEsc(sc.title) + '</h2></div>' +
-      '<p style="font-size:16px;color:#cfcdd6;line-height:1.75;text-align:center;max-width:560px;margin:0 auto 24px">' + _rpText(sc.text) + '</p>' +
+      '<div class="rp-fadeup" style="text-align:center;margin-bottom:12px"><h2 class="fd" style="font-size:clamp(30px,5vw,48px);color:#e4e1ee;letter-spacing:.5px;line-height:1.08">' + _rpEsc(sc.title) + '</h2></div>' +
+      '<div class="rp-fadeup" style="background:linear-gradient(135deg,rgba(167,139,250,0.07),rgba(255,185,95,0.03));border:1px solid rgba(167,139,250,0.14);border-radius:18px;padding:24px 28px;margin:0 auto 28px;max-width:680px">' +
+        '<p style="font-size:18px;color:#e8e6ef;line-height:1.8;text-align:center;margin:0">' + _rpText(sc.text) + '</p>' +
+      '</div>' +
       '<div>' + choices + '</div>' +
     '</div>';
 }
@@ -567,6 +608,7 @@ function renderRpsimScenario(){
 function rpsimChoose(i){
   var s = rpsimState; if (!s || !s.cur) return;
   var ch = s.cur.choices[i]; if (!ch) return;
+  var before = { money: s.stats.money, rep: s.stats.rep, heat: s.stats.heat };
   var outcome = ch.out || '';
   if (ch.ch) {
     var roll = Math.random() < ch.ch.p;
@@ -578,25 +620,32 @@ function rpsimChoose(i){
     _rpApply(ch);
     s._roll = null;
   }
-  if (outcome) renderRpsimOutcome(outcome);
+  s._delta = { m: s.stats.money - before.money, r: s.stats.rep - before.rep, h: s.stats.heat - before.heat };
+  if (outcome || s._delta.m || s._delta.r || s._delta.h) renderRpsimOutcome(outcome);
   else rpsimNext();
 }
 
 function renderRpsimOutcome(text){
+  _rpEnsureStyle();
   var s = rpsimState;
   var ag = document.getElementById('ag');
   var busted = s.stats.heat >= 100;
-  var col = s._roll === true ? '#3cddc7' : (s._roll === false ? '#ff6a63' : '#a78bfa');
-  var tag = s._roll === true ? '✓ ŞANS YANINDA' : (s._roll === false ? '✗ TERS GİTTİ' : '');
+  var roll = s._roll;
+  var headEmoji, headText, col;
+  if (roll === true) { headEmoji = '🎉'; headText = 'ŞANS SENDEN YANA!'; col = '#3cddc7'; }
+  else if (roll === false) { headEmoji = '💥'; headText = 'TERS GİTTİ!'; col = '#ff6a63'; }
+  else { headEmoji = '🎬'; headText = 'KARARIN'; col = '#a78bfa'; }
   ag.innerHTML =
-    '<div style="max-width:600px;margin:0 auto;padding:30px 20px 52px;width:100%">' +
-      '<div style="margin-bottom:20px;text-align:center">' + _rpStatBar() + '</div>' +
-      '<div style="background:#1b1b24;border:1px solid ' + col + '40;border-left:4px solid ' + col + ';border-radius:14px;padding:24px 22px;text-align:center">' +
-        (tag ? '<div style="font-size:12px;font-weight:800;letter-spacing:1px;color:' + col + ';margin-bottom:10px">' + tag + '</div>' : '') +
-        '<p style="font-size:16px;color:#e4e1ee;line-height:1.7">' + _rpText(text) + '</p>' +
+    '<div style="max-width:680px;margin:0 auto;padding:22px 18px 56px;width:100%">' +
+      '<div style="margin-bottom:24px">' + _rpStatBar() + '</div>' +
+      '<div class="rp-pop" style="background:#1b1b24;border:1px solid ' + col + '55;border-radius:20px;padding:32px 28px;text-align:center;box-shadow:0 10px 40px ' + col + '14">' +
+        '<div style="font-size:50px;line-height:1;margin-bottom:8px">' + headEmoji + '</div>' +
+        '<div style="font-size:13px;font-weight:800;letter-spacing:1.5px;color:' + col + ';margin-bottom:16px">' + headText + '</div>' +
+        '<p style="font-size:18px;color:#e8e6ef;line-height:1.75;margin:0">' + _rpText(text || '') + '</p>' +
+        _rpDeltaRow(s._delta) +
       '</div>' +
-      (busted ? '<p style="text-align:center;color:#ff6a63;font-size:14px;margin-top:16px">🚔 Tehlike tavan yaptı...</p>' : '') +
-      '<button class="btn bp" style="width:100%;padding:16px;font-size:17px;margin-top:18px;background:linear-gradient(135deg,#a78bfa,#8b5cf6);border:none" onclick="rpsimNext()">' + (busted ? 'Sonu Gör →' : 'Devam →') + '</button>' +
+      (busted ? '<p style="text-align:center;color:#ff6a63;font-size:14px;margin-top:18px;font-weight:600">🚔 Tehlike tavan yaptı, işler kontrolden çıkıyor...</p>' : '') +
+      '<button class="btn bp rp-fade" style="width:100%;padding:18px;font-size:18px;margin-top:22px;background:linear-gradient(135deg,#a78bfa,#8b5cf6);border:none;animation-delay:.28s" onclick="rpsimNext()">' + (busted ? 'Sonu Gör →' : 'Devam →') + '</button>' +
     '</div>';
 }
 
@@ -621,21 +670,22 @@ function renderRpsimEnd(end){
       '<div style="font-size:11px;color:#6a6878;letter-spacing:.5px">' + label + '</div>' +
     '</div>';
   }
+  _rpEnsureStyle();
   ag.innerHTML =
-    '<div style="max-width:600px;margin:0 auto;padding:34px 20px 52px;width:100%;text-align:center">' +
+    '<div class="rp-fadeup" style="max-width:640px;margin:0 auto;padding:34px 20px 56px;width:100%;text-align:center">' +
       '<div style="font-size:13px;letter-spacing:2px;color:#9a969e;margin-bottom:8px">' + _rpEsc((s.playerName || '').toUpperCase()) + ' · ŞEHİRDEKİ HİKAYEN BİTTİ</div>' +
-      '<div style="font-size:84px;line-height:1;margin:10px 0 6px">' + end.emoji + '</div>' +
-      '<h2 class="fd" style="font-size:clamp(34px,6vw,56px);letter-spacing:1px;color:' + end.color + ';margin-bottom:6px">' + _rpEsc(end.title) + '</h2>' +
-      '<div style="width:80px;height:4px;background:' + end.color + ';margin:0 auto 18px;border-radius:2px;opacity:.7"></div>' +
-      '<p style="font-size:16px;color:#cfcdd6;line-height:1.75;max-width:520px;margin:0 auto 26px">' + _rpEsc(end.text) + '</p>' +
-      '<div style="display:flex;gap:10px;margin-bottom:24px">' +
+      '<div class="rp-pop" style="font-size:92px;line-height:1;margin:14px 0 6px;filter:drop-shadow(0 0 30px ' + end.color + '66)">' + end.emoji + '</div>' +
+      '<h2 class="fd rp-pop" style="font-size:clamp(36px,6.5vw,60px);letter-spacing:1px;color:' + end.color + ';margin-bottom:6px">' + _rpEsc(end.title) + '</h2>' +
+      '<div style="width:80px;height:4px;background:' + end.color + ';margin:0 auto 20px;border-radius:2px;opacity:.7"></div>' +
+      '<p style="font-size:17px;color:#cfcdd6;line-height:1.8;max-width:540px;margin:0 auto 28px">' + _rpEsc(end.text) + '</p>' +
+      '<div style="display:flex;gap:10px;margin-bottom:26px">' +
         statBox('💰', 'PARA', st.money, '#ffd98a') +
         statBox('👑', 'İTİBAR', st.rep, '#ffb95f') +
         statBox('🔥', 'TEHLİKE', st.heat, '#ff6a63') +
       '</div>' +
       '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">' +
-        '<button class="btn bp" style="padding:15px 30px;font-size:16px;background:linear-gradient(135deg,#a78bfa,#8b5cf6);border:none" onclick="rpsimStart()">🔄 Tekrar Oyna</button>' +
-        '<button class="btn bg" style="padding:15px 30px;font-size:16px" onclick="rpsimShare()">📤 Paylaş</button>' +
+        '<button class="btn bp" style="padding:16px 32px;font-size:16px;background:linear-gradient(135deg,#a78bfa,#8b5cf6);border:none" onclick="rpsimStart()">🔄 Tekrar Oyna</button>' +
+        '<button class="btn bg" style="padding:16px 32px;font-size:16px" onclick="rpsimShare()">📤 Paylaş</button>' +
       '</div>' +
     '</div>';
 }
