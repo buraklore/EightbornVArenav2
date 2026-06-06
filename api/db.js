@@ -294,6 +294,7 @@ module.exports = {
   getRankCriteria: getRankCriteria, upsertRankCriterion: upsertRankCriterion, deleteRankCriterion: deleteRankCriterion,
   scoreAndRecordRanking: scoreAndRecordRanking,
   getRankConfig: getRankConfig, setRankConfig: setRankConfig,
+  getRpsimConfig: getRpsimConfig, setRpsimConfig: setRpsimConfig,
   // Karakter Borsası
   ensureWallet: ensureWallet, getStockMarket: getStockMarket, getStockPortfolio: getStockPortfolio,
   tradeStock: tradeStock, noteStockSelections: noteStockSelections, getStockLeaderboard: getStockLeaderboard,
@@ -489,6 +490,21 @@ async function setRankConfig(poolIds, roundSize) {
   await setConfig('rank_pool_ids', JSON.stringify(uniq));
   await setConfig('rank_round_size', String(size));
   return { success: true, pool_ids: uniq, round_size: size };
+}
+
+// ── RP Simülasyonu: etkileşilecek karakter havuzu (admin) ──
+async function getRpsimConfig() {
+  var raw = await getConfig('rpsim_char_ids');
+  var ids = [];
+  if (raw) { try { var p = JSON.parse(raw); if (Array.isArray(p)) ids = p.map(String); } catch (e) {} }
+  return { char_ids: ids };
+}
+async function setRpsimConfig(charIds) {
+  var ids = Array.isArray(charIds) ? charIds.map(String).filter(Boolean) : [];
+  var seen = {}, uniq = [];
+  ids.forEach(function(x){ if (!seen[x]) { seen[x] = 1; uniq.push(x); } });
+  await setConfig('rpsim_char_ids', JSON.stringify(uniq));
+  return { success: true, char_ids: uniq };
 }
 
 // ═══════════════════════════════════════════════════════════
