@@ -31,6 +31,38 @@ window.RPSIM = {
         { t:'Önce şehri tanı, kimseye güvenme', r:5, set:['temkinli'], out:'Gözlerini açık tuttun. Bu şehirde bilgi paradan değerli.' }
       ]
     },
+    { id:'kiralik_oda', start:true, role:'Cimri', title:'Kiralık Oda',
+      text:'Şehirdeki ilk gecen. {char} sana harap bir oda gösteriyor: "İki ay peşin, yoksa kapı orada." Cebinde ancak yarısı var.',
+      choices:[
+        { t:'Kalanına borç sözü ver', h:5, set:['borclu_kira'], out:'Adam homurdandı ama anahtarı verdi. Borç artık boynunda.' },
+        { t:'Pazarlık et, gözünün içine bak', ch:{ p:0.55, ok:{m:-60,r:8,set:['ikna_kabiliyeti'],out:'Dilini iyi kullandın, tek aya indirdi. İlk küçük zaferin.'}, no:{m:-120,r:-4,out:'Adam taş gibiydi: "Param pazarlık tanımaz." Yarısını zar zor denkleştirdin.'} } },
+        { t:'Boş ver, parkta sabahla', r:5, h:-3, set:['temkinli'], out:'Bankta üşüdün ama paran cebinde kaldı. Şehre temkinli giriyorsun.' }
+      ]
+    },
+    { id:'ilk_is_ilani', start:true, char:true, title:'İş İlanları Panosu',
+      text:'Sabahın köründe iş ilanları panosunun önündesin. {char} yanına sokulup fısıldıyor: "Pano boş ver, ben sana iş bulurum... gerçek iş."',
+      choices:[
+        { t:'Panodaki temiz işe başvur', r:8, m:40, set:['calisan'], out:'Bir kafede işe girdin. Az para, temiz vicdan, doğru başlangıç.' },
+        { t:'Onu dinle, "gerçek iş" neymiş bak', h:10, set:['merakli'], out:'Adam sırıttı: "Aferin, gözün açık. Yakında konuşuruz." Tehlikeye ilk adım.' },
+        { t:'İkisine de güvenme, kendi yolunu çiz', r:5, set:['bagimsiz'], out:'Kimsenin adamı olmadan başladın. Zor ama tamamen senin.' }
+      ]
+    },
+    { id:'ilk_gece_test', start:true, role:'Asi', title:'Sokağın Sınavı',
+      text:'Daha valizini açmadan sokağın delikanlısı {char} önünü kesti: "Burası benim sokağım. Geçiş için ne verirsin?"',
+      choices:[
+        { t:'Gözünü kırpmadan üstüne yürü', ch:{ p:0.5, ok:{r:10,h:8,set:['gozu_kara'],out:'Bir adım geri attı: "Tamam tamam, dost olalım." Sokakta nam saldın.'}, no:{r:-6,h:8,out:'İş itişmeye döndü, biraz hırpalandın. Ama korkmadığını gördüler.'} } },
+        { t:'Şakaya vur, gülümseyip geç', r:6, set:['karizma_kivilcimi'], out:'Lafı tatlıya bağladın. "Komikmişsin" dedi, yol verdi.' },
+        { t:'Birkaç kuruş ver, olay çıkarma', m:-30, set:['temkinli'], out:'Ufak parayla sıyrıldın. Bazen huzur ucuza gelir.' }
+      ]
+    },
+    { id:'eski_tanidik', start:true, role:'Sadık', title:'Tanıdık Bir Yüz',
+      text:'Otogarda hiç beklemediğin biri: {char}, memleketten bir tanıdık. "Sen de mi buralara düştün? Gel, sana etrafı göstereyim."',
+      choices:[
+        { t:'Peşine takıl, ona güven', r:6, set:['dostu_var'], out:'Kapıları sana açtı. Bu şehirde yalnız değilsin artık.' },
+        { t:'Teşekkür et ama mesafeli dur', r:4, set:['temkinli'], out:'Selamı aldın, yolunu ayırdın. Eski tanıdık her zaman dost olmaz.' },
+        { t:'Hemen ondan borç iste', m:60, r:-5, set:['borclu'], out:'Eline biraz para tutuşturdu ama yüzü asıldı. İlk izlenim böyle olmaz.' }
+      ]
+    },
 
     // ── SUÇ / KOLAY PARA ──
     { id:'sahte_evrak', role:'Manipülatif', title:'Liman Teklifi',
@@ -318,6 +350,168 @@ window.RPSIM = {
       choices:[
         { t:'Halka liderlik et', r:18, set:['halk_lideri'], out:'Sözlerin meydanı tutuşturdu. Sen artık bir simgesin.' },
         { t:'Alçakgönüllü kal', r:8, out:'Sahneyi reddettin. Mütevazılığın da bir güç.' }
+      ]
+    },
+
+    // ── GÜNLÜK HAYAT / SOKAK (yeni; çoğu eşiksiz, erken oyunda çıkar) ──
+    { id:'kayip_cuzdan', char:true, title:'Kayıp Cüzdan',
+      text:'Yolda tıka basa dolu bir cüzdan buldun: kimlik ve bir tomar para. {char} uzaktan seni süzüyor.',
+      choices:[
+        { t:'Sahibini bul, olduğu gibi teslim et', r:15, m:30, set:['durust'], out:'Adam minnettar kaldı, küçük bir bahşiş verdi. İyiliğin dilden dile dolaştı.' },
+        { t:'Parayı al, cüzdanı çöpe at', m:220, r:-12, h:5, out:'Cebin doldu ama içine bir sıkıntı çöktü. {char} her şeyi gördü.' },
+        { t:'Parayı al ama kimliği postala', m:180, r:-3, out:'Hem para cebinde hem vicdanın yarı rahat. Gri bölgede yaşamayı öğreniyorsun.' }
+      ]
+    },
+    { id:'yankesici', role:'Asi', title:'Otobüste El',
+      text:'Tıklım tıklım otobüste bir el cebine daldı! {char} telefonunu kapıp koşmaya başladı.',
+      choices:[
+        { t:'Peşinden koş!', ch:{ p:0.5, ok:{r:10,set:['hizli_ayak'],out:'İki sokak sonra yakaladın, telefonu geri aldın. Nefes nefese ama gururlusun.'}, no:{h:10,r:-5,out:'Köşeyi dönerken kaybettin. Hem telefon gitti hem nefesin.'} } },
+        { t:'Bağır, kalabalığı harekete geçir', r:8, ch:{ p:0.55, ok:{out:'Birkaç kişi yankesiciyi kıstırdı, telefonun geri geldi. Halk kahramanı oldun.'}, no:{r:-3,out:'Kimse kılını kıpırdatmadı. Şehir böyle işte.'} } },
+        { t:'Boş ver, eski telefondu zaten', m:-50, out:'Üzülmedin bile. Yenisini alırsın, baş ağrısı istemezsin.' }
+      ]
+    },
+    { id:'viral_video', char:true, title:'Kamera Sende',
+      text:'Sokakta öyle bir an yaşandı ki {char} telefonu sana çevirdi: "Bu video patlar, poz ver!"',
+      choices:[
+        { t:'Kameraya kral gibi poz ver', r:12, set:['taniniyor'], out:'Video bir gecede yayıldı, sokakta tanınmaya başladın.' },
+        { t:'Telefonu kap, "çekme dedim!"', h:10, r:-5, out:'Ortalık gerildi. Kimi "kibirli" dedi, kimi "haklı".' },
+        { t:'Gülüp uzaklaş', out:'Şöhret peşinde değilsin, sessizce yoluna gittin.' }
+      ]
+    },
+    { id:'komsu_kavgasi', role:'Sinirli', title:'Gece Yarısı Gürültü',
+      text:'Gece yarısı duvar küt küt: {char} müziği sonuna kadar açmış. Kapısını çaldın.',
+      choices:[
+        { t:'Sakince rica et', r:8, set:['uzlasmaci'], out:'Beklemediği kadar kibardın. Sesi kıstı: "Kusura bakma komşu."' },
+        { t:'Sert çık, ayar ver', h:12, ch:{ p:0.5, ok:{r:5,out:'Gözünü budaktan sakınmadın, adam sindi. Bir daha çıt çıkmadı.'}, no:{r:-8,h:8,out:'Laf lafı açtı, az kalsın yumruklaşıyordunuz. Tüm bina ayaktaydı.'} } },
+        { t:'Yönetimi/polisi ara', r:-3, set:['polis_dostu'], out:'Şikayet ettin, ses kesildi. Ama komşun artık sana ters bakıyor.' }
+      ]
+    },
+    { id:'sokak_yarisi', role:'Araba Delisi', title:'Gece Yarışı',
+      text:'{char} motorunun gazını sıkıp meydan okudu: "Şehrin sonuna kadar yarış. Kaybeden 500 öder."',
+      choices:[
+        { t:'Gaza bas, yarış!', ch:{ p:0.5, ok:{m:500,r:10,h:10,set:['asfalt_kovboyu'],out:'Son virajı sıyırıp önce geçtin! Hem cebin hem adın büyüdü.'}, no:{m:-500,h:15,out:'Lastiğin kaydı, ikinci geldin. Hem para hem gurur gitti.'} } },
+        { t:'Yarışma ama bahse oyna', ch:{ p:0.5, ok:{m:200,out:'Başkasına oynadın, isabet! Riski başkası aldı, parayı sen topladın.'}, no:{m:-150,out:'Yanlış ata oynadın, cebin sızladı.'} } },
+        { t:'Aklını kullan, reddet', r:-4, out:'Arkandan "korkak" diye seslendiler. Ama sağ salim evdesin.' }
+      ]
+    },
+    { id:'acik_mikrofon', char:true, title:'Açık Mikrofon Gecesi',
+      text:'Mahalle kahvesinde açık mikrofon gecesi. {char} seni sahneye doğru itekliyor: "Hadi, bir şeyler yap!"',
+      choices:[
+        { t:'Sahneye çık, kalbini ortaya koy', ch:{ p:0.55, ok:{r:15,set:['sahne_yildizi'],out:'Salon ayağa kalktı! O gece herkes adını öğrendi.'}, no:{r:-8,out:'Sesin titredi, espriler tutmadı. Yine de denedin.'} } },
+        { t:'Arkadaşını sahneye yolla', r:6, out:'Onu öne sürdün, alkışı paylaştınız. İyi bir dost hareketi.' },
+        { t:'Köşede izlemeyi yeğle', out:'Sahne senlik değil. Çayını yudumlayıp keyfine baktın.' }
+      ]
+    },
+    { id:'falci', char:true, title:'Köşedeki Falcı',
+      text:'Loş bir köşede {char} elini uzatıyor: "Otur, falına bakayım. Geleceğin avucunda yazıyor."',
+      choices:[
+        { t:'Para ver, baktır', m:-60, set:['kismetli'], out:'"Önünde büyük bir kapı açılacak" dedi. İnandın mı bilinmez ama içine umut doldu.' },
+        { t:'Gülüp geç, "boş işler"', r:3, out:'Falcı arkandan söylendi. Sen aklına güveniyorsun.' },
+        { t:'Geleceğini sor, sonra kendin yaz', r:6, out:'"Geleceğimi ben kurarım" dedin. Falcı bile gülümsedi.' }
+      ]
+    },
+    { id:'kira_zammi', role:'Cimri', title:'Kira Zammı',
+      text:'Ev sahibin {char} kapıda: "Piyasa böyle, kira bu aydan zamlı." Cebine yeni bir darbe.',
+      choices:[
+        { t:'Sesini çıkarma, öde', m:-250, out:'Homurdanarak ödedin. Şehir pahalı, sen de yorgunsun.' },
+        { t:'Pazarlık masasına otur', ch:{ p:0.5, ok:{m:-80,r:5,out:'Tatlı dille zammı yarıya indirdin. Diline sağlık.'}, no:{m:-250,r:-3,out:'Adam inat etti, tam zammı ödedin. Bir de surat astı.'} } },
+        { t:'Taşın, daha ucuz yer bul', m:-100, h:-5, set:['gezgin'], out:'Eşyaları topladın, daha sakin bir köşeye yerleştin. Yük hafifledi.' }
+      ]
+    },
+    { id:'kripto_tuyo', role:'Hesapçı', title:'İçeriden Tüyo',
+      text:'{char} telefonunu gösterdi: "Şu coin uçuşa geçecek, içeriden bilgi. Ne koyarsan üçe katlar."',
+      choices:[
+        { t:'Var gücünle yatır', ch:{ p:0.4, ok:{m:600,set:['sansli_yatirimci'],out:'Grafik tavana vurdu! Cebin bir gecede şişti, inanılmaz.'}, no:{m:-400,out:'Coin çakıldı. "İçeriden bilgi" dediği şey duman çıktı.'} } },
+        { t:'Azıcık dene, kalanı sakla', ch:{ p:0.5, ok:{m:200,out:'Küçük oynadın, küçük kazandın. Ama kazanç kazançtır.'}, no:{m:-120,out:'Az kaybettin. Temkin seni büyük zarardan kurtardı.'} } },
+        { t:'"Bedava akıl pahalıya patlar", reddet', r:6, out:'{char} ısrar etti, sen direndin. Sonra coin battı, haklı çıktın.' }
+      ]
+    },
+    { id:'sahte_saat', role:'Paracı', title:'Valizdeki Saatler',
+      text:'{char} valizini açtı, içi ışıl ışıl "marka" saatlerle dolu: "Al sat, kâr katlanır. Kimse anlamaz."',
+      choices:[
+        { t:'Bir parti al, sokakta sat', ch:{ p:0.55, ok:{m:350,h:10,set:['seyyar_satici'],out:'Saatler kapış kapış gitti, cebin doldu. Kimse fark etmedi.'}, no:{m:-150,h:15,out:'Bir müşteri zabıtaymış. Malları kaptırdın, zar zor sıvıştın.'} } },
+        { t:'Tek al, kendine tak', m:-90, set:['gosterisli'], out:'Bileğinde sahte de olsa parlıyor. Görüntü de bir sermayedir.' },
+        { t:'"Sahtecilik bana göre değil"', r:5, out:'Teklifi geri çevirdin. Temiz para yavaş gelir ama rahat uyutur.' }
+      ]
+    },
+    { id:'dilenci_cocuk', char:true, title:'Köşedeki Çocuk',
+      text:'Köşede üşüyen bir çocuk eline bakıyor. {char} "boş ver, numaradır" diye dürtüyor seni.',
+      choices:[
+        { t:'Cebindekini paylaş', m:-40, r:15, set:['merhametli'], out:'Çocuğun gözleri parladı. Belki numaraydı belki değil ama vicdanın huzurlu.' },
+        { t:'Para verme, sıcak yemek al', m:-25, r:10, out:'Eline poşeti tutuşturdun: "Para değil, karnın doysun."' },
+        { t:'Yürü, görmezden gel', r:-8, out:'Adımını hızlandırdın. Ama o bakış aklından çıkmadı.' }
+      ]
+    },
+    { id:'sokak_kopegi', title:'Topal Köpek',
+      text:'Topal bir sokak köpeği peşine takıldı; kuyruğunu sallayıp gözlerini sana dikti.',
+      choices:[
+        { t:'Sahiplen, yanına al', m:-50, r:8, set:['can_dostu'], out:'Artık bir yol arkadaşın var. Bu şehirde koşulsuz sevgi nadirdir.' },
+        { t:'Mama alıp bırak', m:-20, r:6, out:'Karnını doyurdun, başını okşadın. O da gözleriyle teşekkür etti.' },
+        { t:'Kov, başından savsana', r:-5, out:'Ayağını yere vurdun, köpek mahzun uzaklaştı. İçin biraz cız etti.' }
+      ]
+    },
+    { id:'kuyrukta_kaynak', role:'Bencil', title:'Sıra Kaynatan',
+      text:'Saatlerdir sıradasın; tam sıra sana gelmişken {char} hiç sıkılmadan önüne geçti.',
+      choices:[
+        { t:'Sessizce yut, olay çıkarma', out:'İçini çektin, sıranı korumaya çalıştın. Bazen susmak yorucudur.' },
+        { t:'Kibarca ama net uyar', r:8, ch:{ p:0.6, ok:{out:'"Haklısın, pardon" deyip geri çekildi. Mantıkla kazandın.'}, no:{r:-3,h:5,out:'Surat astı, lafı uzattı, sıra yine karıştı.'} } },
+        { t:'Sesini yükselt, hesap sor', h:10, r:-5, out:'Ortalık karıştı, herkes döndü baktı. Haklıydın ama görüntü kötüydü.' }
+      ]
+    },
+    { id:'tahsildar', role:'Sinirli', title:'Kapıdaki Tahsildar',
+      text:'Kapın yumruklandı. {char}: "Filancanın borcu sana yazılmış diyorlar. Ya ödersin ya da..."',
+      choices:[
+        { t:'Yanlışlığı sakince anlat', r:6, ch:{ p:0.55, ok:{out:'Belgeyi gösterdin, yanıldığını anladı: "Kusura bakma." Mesele kapandı.'}, no:{h:10,out:'Dinlemedi bile: "Bahane istemem." Kapına bir tekme atıp gitti.'} } },
+        { t:'Bir kısmını öde, başından savsana', m:-150, h:-5, out:'Cebinden çıktı ama bir daha gelmediler. Huzuru satın aldın.' },
+        { t:'Kapıyı yüzüne kapat', h:15, r:-3, set:['inatci'], out:'"Ben kimseye borçlu değilim!" dedin. Ama bunun peşini bırakmazlar.' }
+      ]
+    },
+    { id:'gizli_polis', role:'Şüpheci', title:'Sessiz Teklif', req:{minH:15},
+      text:'Issız bir kafede {char} karşına oturdu, rozetini usulca gösterdi: "Bize bilgi ver, dosyan temizlensin."',
+      choices:[
+        { t:'Anlaşmayı kabul et', h:-20, r:-5, set:['muhbir','polis_dostu'], out:'Dosyan hafifledi ama artık iki ateş arasındasın. Sokak muhbir sevmez.' },
+        { t:'"Ben kimseyi satmam", reddet', r:10, set:['sokak_adami'], out:'Ayağa kalktın, çıktın. Sokakta sözün artık daha çok geçiyor.' },
+        { t:'Oyala, çift taraflı oyna', m:150, h:10, set:['cift_tarafli'], out:'Hem ondan para sızdırdın hem kimseyi tam ele vermedin. Tehlikeli bir dans.' }
+      ]
+    },
+    { id:'hayir_galasi', role:'Karizmatik', title:'Hayır Gecesi', req:{minM:300},
+      text:'Şehrin sosyetesinden {char} seni şık bir hayır gecesine çağırdı: "Doğru insanlar orada olacak."',
+      choices:[
+        { t:'Cömert bir bağış yap, parla', m:-300, r:18, set:['hayirsever'], out:'Adın sahneden anons edildi. Bir gecede saygın biri oldun.' },
+        { t:'Sadece ağ kur, el sıkış', r:10, set:['baglantili'], out:'Cebini açmadan doğru elleri sıktın. Tanıdık bu şehirde altından değerli.' },
+        { t:'Bedava büfeye dadan, sıvış', h:5, r:-6, out:'Karnını doyurdun, garsonun ters bakışıyla kaçtın. Komik ama ucuz kaçtı.' }
+      ]
+    },
+    { id:'bahis_iddia', role:'Maceracı', title:'İddiaya Var mısın?',
+      text:'{char} sırıtarak bir kâğıt uzattı: "İddiaya var mısın? Şu çılgın şeyi yaparsan para senin."',
+      choices:[
+        { t:'Kabul et, biraz çıldır', ch:{ p:0.55, ok:{m:200,r:8,set:['gozu_pek'],out:'Yaptın ve kazandın! Herkes kahkahayla seni omuzladı.'}, no:{r:-5,h:5,out:'Rezil oldun, iddiayı kaybettin. Ama efsane bir hikâyen oldu.'} } },
+        { t:'Parayı ortaya koy, kafa kafaya', ch:{ p:0.5, ok:{m:250,out:'Soğukkanlılığın kazandırdı, masadaki parayı topladın.'}, no:{m:-200,out:'Son anda tereddüt ettin, kaybettin. Cesaret yarım kalmaz.'} } },
+        { t:'"Çocukluk etme", reddet', r:-3, out:'Olgun davrandın. Kimi "sıkıcı" dedi ama paran cebinde.' }
+      ]
+    },
+    { id:'eski_sevgili', role:'Kıskanç', title:'Beklenmedik Karşılaşma',
+      text:'Bir kafede {char} karşına dikildi, gözleri öfkeli: "Demek beni unutup buralarda keyif yapıyorsun?"',
+      choices:[
+        { t:'Sakin ol, konuşarak çöz', r:8, set:['olgun'], out:'Sesini yükseltmedin, dinledin. Gerginlik yavaşça dağıldı.' },
+        { t:'Net ol, "yollarımız ayrıldı"', r:5, set:['net_sinir'], out:'Kibar ama kesin konuştun. Sınır koymak da bir olgunluk.' },
+        { t:'Lafa laf, eski defterleri aç', h:10, r:-6, out:'Tartışma büyüdü, herkes size baktı. İkiniz de yorgun düştünüz.' }
+      ]
+    },
+    { id:'sadik_dost_borc', role:'Sadık', title:'Dostun Eli',
+      text:'{char} mahcup bir yüzle yanına geldi: "Başım dertte, biraz borç verebilir misin? Söz, öderim."',
+      choices:[
+        { t:'Gözünü kırpmadan ver', m:-200, r:10, set:['dostu_var','comert'], out:'Parayı uzattın. {char} sarıldı: "Bunu unutmam." Gerçek dostluk böyle başlar.' },
+        { t:'Elinden geleni ver', m:-80, r:6, set:['dostu_var'], out:'Az ama gönülden verdin. "Yeter de artar" dedi minnetle.' },
+        { t:'Üzgünüm, kendi derdim başımdan aşkın', r:-8, set:['yalniz_kurt'], out:'Geri çevirdin. {char} anlayışla başını salladı ama gözlerinde kırgınlık vardı.' }
+      ]
+    },
+    { id:'influencer_isbirligi', role:'Hovarda', title:'Parlak Teklif', req:{minR:20},
+      text:'Pırıltılı bir influencer olan {char} sana yanaştı: "Hesabın yükseliyor. Beraber bir tanıtım yapalım; para da var, şöhret de."',
+      choices:[
+        { t:'Anlaşmayı kap', m:300, h:5, set:['taniniyor'], out:'Ortak paylaşım patladı; takipçin de cebin de büyüdü.' },
+        { t:'Sıkı pazarlık et', ch:{ p:0.5, ok:{m:500,r:5,out:'Değerini bildin, ücreti katladın. Tam bir profesyonel gibi konuştun.'}, no:{r:-5,out:'Fazla diretince vazgeçti: "Başkasıyla yaparım." Fırsat kaçtı.'} } },
+        { t:'"İmajımı satmam", reddet', r:8, set:['ilkeli'], out:'Parlak teklifi elinin tersiyle ittin. İlkelerinin fiyat etiketi yok.' }
       ]
     }
   ],
