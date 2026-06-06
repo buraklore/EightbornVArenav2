@@ -69,13 +69,14 @@ function streamStart() {
     '<div class="gc-new" onclick="streamSetup(\'CDIE\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.DIE||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'\u2694\ufe0f\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('CDIE','Kim Hayatta Kalacak') +'</h3><p>'+ _sd('CDIE','Chat CK\'y\u0131 belirler!') +'</p><div class="diff" style="background:rgba(255,84,77,.08);color:#ffb4ac">\u0130NTERAKT\u0130F</div></div>' +
     '<div class="gc-new" onclick="streamSetup(\'CTEAM\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.TEAM||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'\ud83d\udc65\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('CTEAM','Ekibini Kur') +'</h3><p>'+ _sd('CTEAM','Ekibi chat belirler!') +'</p><div class="diff" style="background:rgba(255,84,77,.08);color:#ffb4ac">\u0130NTERAKT\u0130F</div></div>' +
     '<div class="gc-new" onclick="streamSetup(\'CFATE\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.FATE||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'\ud83c\udfb2\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('CFATE','Kaderini Se\u00e7') +'</h3><p>'+ _sd('CFATE','Kaderi chat belirler!') +'</p><div class="diff" style="background:rgba(255,84,77,.08);color:#ffb4ac">\u0130NTERAKT\u0130F</div></div>' +
+    '<div class="gc-new" onclick="streamSetup(\'CRPSIM\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.RPSIM||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'🎮\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('CRPSIM','RP Simülasyonu') +'</h3><p>'+ _sd('CRPSIM','Şehrin kaderini chat seçer!') +'</p><div class="diff" style="background:rgba(167,139,250,.12);color:#c4b5fd">İNTERAKTİF</div></div>' +
     '</div></div>';
 }
 
 function streamSetup(mode) {
   var ag = document.getElementById('ag');
   var isStory = mode === 'STORY';
-  var modeNames = {QUOTE:'Replik Bil',FACE:'Yüzden Bil',MEMORY:'Eightborn Moruq',STORY:'Chat Kaderini Belirler',CDIE:'Kim Hayatta Kalacak',CTEAM:'Ekibini Kur',CFATE:'Kaderini Seç',DUEL:'Düello Oluştur'};
+  var modeNames = {QUOTE:'Replik Bil',FACE:'Yüzden Bil',MEMORY:'Eightborn Moruq',STORY:'Chat Kaderini Belirler',CDIE:'Kim Hayatta Kalacak',CTEAM:'Ekibini Kur',CFATE:'Kaderini Seç',CRPSIM:'🎮 RP Simülasyonu',DUEL:'Düello Oluştur'};
   if(window._pushUrl) window._pushUrl('streamer-setup');
   
   // Calculate max counts for dynamic options
@@ -115,6 +116,12 @@ function streamSetup(mode) {
     extraField = '<div class="form-group" style="margin-bottom:28px"><label class="lbl" style="font-size:20px;margin-bottom:10px">👥 Karakter Sayısı</label><select class="inp" style="font-size:22px;padding:20px;border-radius:16px" id="stream-count">'+opts+'</select></div>';
   } else if (mode === 'CFATE') {
     extraField = '<div class="form-group" style="margin-bottom:28px"><label class="lbl" style="font-size:20px;margin-bottom:10px">⚧ Cinsiyetiniz</label><select class="inp" style="font-size:22px;padding:20px;border-radius:16px" id="stream-count"><option value="M">Erkek (Karşınıza Kadın Karakterler Çıkar)</option><option value="F">Kadın (Karşınıza Erkek Karakterler Çıkar)</option></select></div>';
+  } else if (mode === 'CRPSIM') {
+    extraField = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:28px">' +
+      '<div class="form-group"><label class="lbl" style="font-size:20px;margin-bottom:10px">🎬 Şehirdeki Ad</label><input class="inp" style="font-size:22px;padding:20px;border-radius:16px" id="rp-stream-name" placeholder="Örn: yayıncının adı" maxlength="24"></div>' +
+      '<div class="form-group"><label class="lbl" style="font-size:20px;margin-bottom:10px">🎯 Oyun Uzunluğu</label><select class="inp" style="font-size:22px;padding:20px;border-radius:16px" id="stream-count"><option value="8">Kısa — 8 tur</option><option value="12" selected>Klasik — 12 tur</option><option value="18">Uzun — 18 tur</option></select></div>' +
+      '</div>' +
+      '<p style="font-size:15px;color:var(--t3);margin-bottom:8px;text-align:center">Her turda senaryo ekrana gelir, <b style="color:#c4b5fd">chat 1 / 2 / 3 yazarak</b> karar verir. 💰 Para · 👑 İtibar · 🔥 Tehlike statlarına göre şehrin kralı mı soytarısı mı olunacağını chat belirler!</p>';
   } else if (mode === 'DUEL') {
     var charListHtml = '';
     var activeChars = chars.filter(function(c){ return c.a; });
@@ -583,6 +590,31 @@ async function streamConnect() {
     startStoryMode(platform, channelId);
     return;
   }
+  if (mode === 'CRPSIM') {
+    if (!window.RPSIM) { toast('RP Simülasyonu yüklenemedi.', false); return; }
+    var rl = parseInt((document.getElementById('stream-count')||{}).value, 10) || 12;
+    var cityName = ((document.getElementById('rp-stream-name')||{}).value || '').trim();
+    if (!cityName) cityName = 'Yayıncı';
+    if (cityName.length > 24) cityName = cityName.slice(0, 24);
+    var RD = window.RPSIM;
+    streamState = {
+      platform: platform, channelId: channelId, mode: 'CRPSIM', active: true,
+      phase: 'READY', votes: {}, voters: {}, voteTimer: null, chatMessages: [], voteSeconds: 40,
+      rp: { stats: { money: RD.start.money, rep: RD.start.rep, heat: RD.start.heat }, flags: {}, used: {}, usedChars: {}, turn: 0, totalRounds: rl, cur: null, curChar: null, end: null, playerName: cityName, _roll: null, _delta: null }
+    };
+    if (typeof _rpsimLoadConfig === 'function') _rpsimLoadConfig(); // admin karakter havuzunu da uygula
+    if (platform === 'youtube') {
+      var initRpRes = await apiPost('/stream/youtube-init', { videoId: channelId });
+      if (initRpRes.error) { toast('YouTube bağlantı hatası: ' + initRpRes.error, false); return; }
+      streamState.liveChatId = initRpRes.liveChatId;
+      startChatPolling();
+    } else {
+      startKickChat(channelId);
+    }
+    if(window._pushUrl) window._pushUrl('streamer-live'); showPauseButton();
+    nextCRpsimRound();
+    return;
+  }
   if (questions.length === 0) { toast('Yeterli soru yok!', false); return; }
   
   streamState = {
@@ -755,6 +787,7 @@ function processStreamMessage(author, text) {
   if (!streamState || !streamState.active) return;
   if (streamState.paused) return; // ⏸️ Skip when paused
   if (streamState.mode === 'STORY') { processStoryChatMessage(author, text); return; }
+  if (streamState.mode === 'CRPSIM') { processChatVote(author, text); return; }
   if (streamState.mode === 'CDIE' || streamState.mode === 'CTEAM' || streamState.mode === 'CFATE' || streamState.mode === 'DUEL') { processChatVote(author, text); return; }
   if (streamState.roundWinner) return;
   
@@ -1213,6 +1246,17 @@ function processChatVote(author, text) {
       var votedFate = s.fates.find(function(f){return f.id === key}) || s.passFate;
       voteDisplay = votedFate ? votedFate.emoji + ' ' + votedFate.name : rawText;
       updateCFateVoteBar();
+    }
+  } else if (s.mode === 'CRPSIM') {
+    var nC = (s.rp && s.rp.cur && s.rp.cur.choices) ? s.rp.cur.choices.length : 0;
+    var num = parseInt(rawText, 10);
+    if (num >= 1 && num <= nC) {
+      var ck = String(num);
+      s.voters[author] = ck;
+      s.votes[ck] = (s.votes[ck] || 0) + 1;
+      isValidVote = true;
+      voteDisplay = ck;
+      updateCRpsimVoteBar();
     }
   }
   
@@ -1688,4 +1732,175 @@ function showCNotif(emoji, text, isGood) {
   n.innerHTML = '<div style="font-size:56px;margin-bottom:8px">'+emoji+'</div><div style="font-size:28px;font-weight:700;color:'+color+'">'+text+'</div>';
   document.body.appendChild(n);
   gameTimers.push(setTimeout(function(){ var el = document.getElementById('c-notif'); if (el) el.remove(); }, 2000));
+}
+
+// ═══ RP SİMÜLASYONU (CHAT) ═══
+function updateCRpsimVoteBar() {
+  var s = streamState; if (!s || !s.rp || !s.rp.cur) return;
+  var ch = s.rp.cur.choices; var cols = ['#60a5fa','#ffb95f','#3cddc7'];
+  var total = 0; for (var i = 0; i < ch.length; i++) total += (s.votes[String(i+1)] || 0);
+  var t = total || 1;
+  var bar = document.getElementById('cvote-bar');
+  if (bar) {
+    var h = '<div style="display:flex;border-radius:12px;overflow:hidden;height:44px;font-weight:700;font-size:18px">';
+    for (var i = 0; i < ch.length; i++) { var v = s.votes[String(i+1)] || 0; var p = Math.round(v/t*100); h += '<div style="background:'+cols[i%3]+';width:'+Math.max(p,4)+'%;display:flex;align-items:center;justify-content:center;color:#fff;transition:width .3s">'+(i+1)+' '+p+'%</div>'; }
+    h += '</div><div style="text-align:center;font-size:13px;color:var(--t3);margin-top:6px">Toplam: '+total+' oy</div>';
+    bar.innerHTML = h;
+  }
+  var stats = document.getElementById('cvote-stats');
+  if (stats) {
+    var sh = '';
+    for (var i = 0; i < ch.length; i++) { var v = s.votes[String(i+1)] || 0; var p = Math.round(v/t*100);
+      sh += '<div style="padding:8px 10px;border-radius:8px;background:'+cols[i%3]+'12;border:1px solid '+cols[i%3]+'30;margin-bottom:6px"><div style="display:flex;justify-content:space-between;gap:8px;font-size:13px;font-weight:700;color:'+cols[i%3]+'"><span>'+(i+1)+') '+esc(ch[i].t)+'</span><span>'+p+'%</span></div><div style="height:5px;background:var(--bg3);border-radius:3px;margin-top:5px"><div style="height:100%;background:'+cols[i%3]+';border-radius:3px;width:'+p+'%;transition:width .3s"></div></div><div style="font-size:11px;color:var(--t3);margin-top:3px">'+v+' oy</div></div>';
+    }
+    stats.innerHTML = sh;
+  }
+}
+
+function streamerForceRpsim(idx) {
+  if (!streamState || !streamState.active || streamState.phase !== 'VOTING') return;
+  if (streamState.voteTimer) { clearInterval(streamState.voteTimer); streamState.voteTimer = null; }
+  streamState.phase = 'RESULT';
+  streamState.votes[String(idx+1)] = (streamState.votes[String(idx+1)] || 0) + 99999;
+  resolveCRpsimVote();
+}
+
+function nextCRpsimRound() {
+  var s = streamState; if (!s || !s.active) return;
+  var rp = s.rp; rpsimState = rp;
+  rp.turn++;
+  if (rp.stats.heat >= 100) { renderCRpsimEnd(true); return; }
+  if (rp.turn > rp.totalRounds) { renderCRpsimEnd(false); return; }
+  var D = window.RPSIM;
+  var pool = D.scenarios.filter(function(sc){
+    if (sc.once !== false && rp.used[sc.id]) return false;
+    if (sc.start && rp.turn !== 1) return false;
+    if (!sc.start && rp.turn === 1) return false;
+    return _rpReqOk(sc.req);
+  });
+  if (!pool.length) { renderCRpsimEnd(false); return; }
+  var total = 0; pool.forEach(function(sc){ total += (sc.w || 1); });
+  var rnd = Math.random() * total, pick = pool[0];
+  for (var i = 0; i < pool.length; i++) { rnd -= (pool[i].w || 1); if (rnd <= 0) { pick = pool[i]; break; } }
+  rp.cur = pick; rp.used[pick.id] = 1;
+  rp.curChar = (pick.role || pick.char) ? _rpPickChar(pick.role) : null;
+  rp._roll = null; rp._delta = null;
+  s.chatMessages = [];
+  renderCRpsimRound();
+  startCVoteTimer(s.voteSeconds || 40, function(){ resolveCRpsimVote(); });
+}
+
+function renderCRpsimRound() {
+  var s = streamState; if (!s || !s.active) return;
+  var rp = s.rp; rpsimState = rp;
+  if (typeof _rpEnsureStyle === 'function') _rpEnsureStyle();
+  var sc = rp.cur; var ag = document.getElementById('ag');
+  var cols = ['#60a5fa','#ffb95f','#3cddc7'];
+  var charBlock = '';
+  if (rp.curChar) {
+    charBlock = '<div style="display:flex;flex-direction:column;align-items:center;margin:0 auto 14px"><div style="width:160px;border-radius:14px;overflow:hidden;margin:0 auto 8px;border:2px solid rgba(167,139,250,0.4)">'+cp(rp.curChar,160)+'</div><div style="font-size:16px;color:#e4e1ee;font-weight:700">'+esc((rp.curChar.n||'')+' '+(rp.curChar.s||''))+'</div>'+(rp.curChar.tip?'<div style="font-size:12px;color:#a78bfa;letter-spacing:.5px;text-transform:uppercase">'+esc(rp.curChar.tip)+'</div>':'')+'</div>';
+  }
+  var choices = sc.choices.map(function(ch, i){
+    var col = cols[i%3];
+    return '<div onclick="streamerForceRpsim('+i+')" style="display:flex;align-items:center;gap:14px;background:'+col+'12;border:2px solid '+col+'33;border-radius:14px;padding:16px 18px;margin-bottom:10px;cursor:pointer;text-align:left;transition:all .2s" onmouseover="this.style.borderColor=\''+col+'\';this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.borderColor=\''+col+'33\';this.style.transform=\'\'">'+
+      '<span style="flex-shrink:0;width:34px;height:34px;border-radius:50%;background:'+col+';color:#13131b;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:17px">'+(i+1)+'</span>'+
+      '<span style="flex:1;font-size:17px;color:#e8e6ef;font-weight:600;line-height:1.4">'+_rpText(ch.t)+'</span>'+
+    '</div>';
+  }).join('');
+  ag.innerHTML =
+    '<div style="display:flex;gap:20px;padding:18px">'+
+      '<div style="flex:1;min-width:0">'+
+        '<h2 class="fd" style="font-size:26px;text-align:center;margin-bottom:4px">🎮 RP Simülasyonu — Chat</h2>'+
+        '<p style="text-align:center;color:var(--t2);font-size:15px;margin-bottom:4px">👤 '+esc(rp.playerName)+' · TUR '+rp.turn+' / '+rp.totalRounds+'</p>'+
+        '<p style="text-align:center;color:#c4b5fd;font-size:17px;font-weight:700;margin-bottom:14px">Karar chat\'in! <b>1, 2 veya 3</b> yaz</p>'+
+        '<div style="max-width:760px;margin:0 auto 16px">'+_rpStatBar()+'</div>'+
+        charBlock+
+        '<div style="text-align:center;margin-bottom:8px"><h3 class="fd" style="font-size:clamp(24px,3.2vw,34px);color:#e4e1ee">'+esc(sc.title)+'</h3></div>'+
+        '<div style="background:linear-gradient(135deg,rgba(167,139,250,0.07),rgba(255,185,95,0.03));border:1px solid rgba(167,139,250,0.14);border-radius:16px;padding:20px 24px;margin:0 auto 18px;max-width:680px"><p style="font-size:17px;color:#e8e6ef;line-height:1.7;text-align:center;margin:0">'+_rpText(sc.text)+'</p></div>'+
+        '<div style="max-width:680px;margin:0 auto">'+choices+'</div>'+
+        '<div id="cvote-bar" style="max-width:700px;margin:14px auto 8px"></div>'+
+        '<div style="text-align:center;font-size:40px;font-weight:800;color:var(--pk)" id="cvote-timer">'+(s.voteSeconds||40)+'s</div>'+
+      '</div>'+
+      '<div style="width:300px;flex-shrink:0">'+
+        '<div class="cg" style="margin-bottom:12px;padding:16px"><h4 style="font-size:14px;color:var(--m);margin-bottom:10px">📊 Oy Dağılımı</h4><div id="cvote-stats"></div></div>'+
+        '<div class="cg" style="padding:16px"><h4 style="font-size:14px;color:var(--pk);margin-bottom:8px">💬 Chat</h4><div id="chat-msgs" style="height:250px;overflow-y:auto;font-size:13px"></div></div>'+
+      '</div>'+
+    '</div>';
+  updateCRpsimVoteBar();
+}
+
+function resolveCRpsimVote() {
+  var s = streamState; if (!s || !s.active) return;
+  var rp = s.rp; rpsimState = rp;
+  var ch = rp.cur.choices;
+  var maxV = -1, win = 0;
+  for (var i = 0; i < ch.length; i++) { var v = s.votes[String(i+1)] || 0; if (v > maxV) { maxV = v; win = i; } }
+  if (maxV <= 0) win = Math.floor(Math.random() * ch.length);
+  var choice = ch[win];
+  var before = { money: rp.stats.money, rep: rp.stats.rep, heat: rp.stats.heat };
+  var outcome = choice.out || '';
+  if (choice.ch) {
+    var roll = Math.random() < choice.ch.p;
+    var br = roll ? choice.ch.ok : choice.ch.no;
+    _rpApply(br);
+    if (br && br.out) outcome = br.out;
+    rp._roll = roll;
+  } else { _rpApply(choice); rp._roll = null; }
+  rp._delta = { m: rp.stats.money - before.money, r: rp.stats.rep - before.rep, h: rp.stats.heat - before.heat };
+  renderCRpsimResult(win, outcome);
+  gameTimers.push(setTimeout(function(){ if (streamState && streamState.active) { showStreamTransition(function(){ nextCRpsimRound(); }); } }, 3800));
+}
+
+function renderCRpsimResult(winIdx, text) {
+  var s = streamState; if (!s) return; var rp = s.rp; rpsimState = rp;
+  if (typeof _rpEnsureStyle === 'function') _rpEnsureStyle();
+  var ag = document.getElementById('ag');
+  var roll = rp._roll;
+  var headEmoji = roll === true ? '🎉' : (roll === false ? '💥' : '🎬');
+  var headText = roll === true ? 'ŞANS YANINDA!' : (roll === false ? 'TERS GİTTİ!' : 'KARAR VERİLDİ');
+  var col = roll === true ? '#3cddc7' : (roll === false ? '#ff6a63' : '#a78bfa');
+  var chosen = rp.cur.choices[winIdx];
+  var busted = rp.stats.heat >= 100;
+  ag.innerHTML =
+    '<div style="flex:1;display:flex;align-items:center;justify-content:center;padding:20px">'+
+      '<div style="max-width:760px;width:100%">'+
+        '<div style="max-width:720px;margin:0 auto 18px">'+_rpStatBar()+'</div>'+
+        '<div class="rp-pop" style="background:#1b1b24;border:1px solid '+col+'55;border-radius:20px;padding:30px 26px;text-align:center;box-shadow:0 10px 40px '+col+'14">'+
+          '<div style="font-size:14px;color:var(--t3);margin-bottom:10px">Chat\'in kararı: <b style="color:'+col+'">'+(winIdx+1)+') '+esc(chosen.t)+'</b></div>'+
+          '<div style="font-size:48px;line-height:1;margin-bottom:6px">'+headEmoji+'</div>'+
+          '<div style="font-size:13px;font-weight:800;letter-spacing:1.5px;color:'+col+';margin-bottom:14px">'+headText+'</div>'+
+          '<p style="font-size:18px;color:#e8e6ef;line-height:1.7;margin:0">'+_rpText(text||'')+'</p>'+
+          (typeof _rpDeltaRow === 'function' ? _rpDeltaRow(rp._delta) : '')+
+        '</div>'+
+        (busted ? '<p style="text-align:center;color:#ff6a63;font-size:15px;margin-top:16px;font-weight:700">🚔 Tehlike tavan yaptı — hikâye bitiyor...</p>' : '<p style="text-align:center;color:var(--t3);font-size:14px;margin-top:14px">Sıradaki olay birazdan...</p>')+
+      '</div>'+
+    '</div>';
+}
+
+function renderCRpsimEnd(busted) {
+  var s = streamState; if (!s) return; var rp = s.rp; rpsimState = rp;
+  var D = window.RPSIM; var end = null;
+  if (busted) { for (var b = 0; b < D.endings.length; b++) { if (D.endings[b].cond && D.endings[b].cond.busted) { end = D.endings[b]; break; } } }
+  if (!end) { for (var i = 0; i < D.endings.length; i++) { if (_rpEndOk(D.endings[i].cond)) { end = D.endings[i]; break; } } }
+  if (!end) end = D.endings[D.endings.length - 1];
+  var st = rp.stats, nm = rp.playerName || 'Yayıncı';
+  if (typeof _rpEnsureStyle === 'function') _rpEnsureStyle();
+  var ag = document.getElementById('ag');
+  function box(emoji, label, val, c){ return '<div style="flex:1;min-width:120px;background:#1b1b24;border:1px solid rgba(91,64,61,0.2);border-radius:14px;padding:16px;text-align:center"><div style="font-size:26px">'+emoji+'</div><div class="fd" style="font-size:26px;color:'+c+';margin-top:4px">'+val+'</div><div style="font-size:12px;color:#6a6878;letter-spacing:.5px">'+label+'</div></div>'; }
+  ag.innerHTML =
+    '<div style="flex:1;display:flex;align-items:center;justify-content:center;padding:20px">'+
+      '<div class="cg rp-fadeup" style="text-align:center;padding:44px 36px;max-width:760px;width:100%">'+
+        '<div style="font-size:13px;letter-spacing:2px;color:#9a969e;margin-bottom:8px">'+esc(nm.toUpperCase())+' · CHAT\'İN BELİRLEDİĞİ SON</div>'+
+        '<div class="rp-pop" style="font-size:92px;line-height:1;margin:10px 0 6px;filter:drop-shadow(0 0 30px '+end.color+'66)">'+end.emoji+'</div>'+
+        '<h2 class="fd rp-pop" style="font-size:clamp(36px,6vw,58px);letter-spacing:1px;color:'+end.color+';margin-bottom:6px">'+esc(end.title)+'</h2>'+
+        '<div style="width:80px;height:4px;background:'+end.color+';margin:0 auto 18px;border-radius:2px;opacity:.7"></div>'+
+        '<p style="font-size:17px;color:#cfcdd6;line-height:1.8;max-width:560px;margin:0 auto 26px">'+esc(end.text)+'</p>'+
+        '<div style="display:flex;gap:10px;margin-bottom:26px;flex-wrap:wrap">'+box('💰','PARA',st.money,'#ffd98a')+box('👑','İTİBAR',st.rep,'#ffb95f')+box('🔥','TEHLİKE',st.heat,'#ff6a63')+'</div>'+
+        '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">'+
+          '<button class="btn bp" style="font-size:18px;padding:14px 34px" onclick="streamStart()">🔄 Yeni Oyun</button>'+
+          '<button class="btn" style="font-size:18px;padding:14px 34px;background:var(--bg3);border:1px solid var(--b1);color:var(--t1)" onclick="streamStop()">🏠 Ana Sayfa</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  streamCleanup();
 }
