@@ -531,6 +531,14 @@ app.post('/api/admin/rank/config', auth, adm, async function(req, res) {
     res.json(result);
   } catch (e) { console.error('admin/rank/config:', e.message); res.status(500).json({ error: 'Kaydedilemedi.' }); }
 });
+app.get('/api/rpsim/config', async function(req, res) {
+  try { await ensureDb(); res.json(await db.getRpsimConfig()); }
+  catch (e) { res.status(500).json({ error: 'Yuklenemedi.' }); }
+});
+app.post('/api/admin/rpsim/config', auth, adm, async function(req, res) {
+  try { await ensureDb(); res.json(await db.setRpsimConfig(req.body.char_ids)); }
+  catch (e) { console.error('admin/rpsim/config:', e.message); res.status(500).json({ error: 'Kaydedilemedi.' }); }
+});
 // Bir turun sıralamasını kaydeder ve topluluk uyuşma oranını döner (giriş gerektirmez — veri herkesten toplanır)
 app.post('/api/rank/score', async function(req, res) {
   try {
