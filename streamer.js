@@ -216,13 +216,22 @@ function streamSetup(mode) {
       '<input type="hidden" id="stream-mode" value="' + mode + '">' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:28px">' +
         '<div class="form-group"><label class="lbl" style="font-size:20px;margin-bottom:10px">🌐 Platform</label>' +
-        '<select class="inp" style="font-size:22px;padding:20px;border-radius:16px" id="stream-platform"><option value="youtube">▶️ YouTube</option><option value="kick">🟢 Kick</option></select></div>' +
+        '<select class="inp" style="font-size:22px;padding:20px;border-radius:16px" id="stream-platform" onchange="duelAutoFillUrl()"><option value="youtube">▶️ YouTube</option><option value="kick">🟢 Kick</option></select></div>' +
         '<div class="form-group"><label class="lbl" style="font-size:20px;margin-bottom:10px">🔗 Yayın Linki veya Kanal Adı</label>' +
         '<input class="inp" style="font-size:22px;padding:20px;border-radius:16px" id="stream-url" placeholder="https://youtube.com/watch?v=... veya kanal adı"></div>' +
       '</div>' +
       extraField +
       '<button class="btn bp" style="width:100%;font-size:26px;padding:22px;border-radius:16px;margin-top:12px;background:linear-gradient(135deg,#ff544d,#ff544d);box-shadow:0 8px 32px #ff544d40" onclick="streamConnect()">🚀 Oyunu Başlat</button>' +
+      '<div style="margin-top:20px;padding-top:18px;border-top:1px solid var(--b1)">' +
+        '<div style="font-size:14px;font-weight:600;color:var(--t2);margin-bottom:10px">🔗 Yayın Linklerini Kaydet <span style="font-weight:400;color:var(--t3)">— bir kez kaydet, tüm yayıncı oyunlarında otomatik dolsun</span></div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+          '<input class="inp" style="flex:1;min-width:180px;font-size:14px;padding:12px;border-radius:10px" id="save-yt-url" placeholder="▶️ YouTube linki">' +
+          '<input class="inp" style="flex:1;min-width:180px;font-size:14px;padding:12px;border-radius:10px" id="save-kick-url" placeholder="🟢 Kick linki">' +
+          '<button type="button" style="padding:12px 22px;border-radius:10px;border:1px solid #3cddc740;background:#3cddc710;color:#3cddc7;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .2s" onclick="duelSaveLinks()" onmouseover="this.style.borderColor=\'#3cddc7\'" onmouseout="this.style.borderColor=\'#3cddc740\'">💾 Kaydet</button>' +
+        '</div>' +
+      '</div>' +
       '</div></div>';
+    duelLoadLinks();
   }
 }
 
