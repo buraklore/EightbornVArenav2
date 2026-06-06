@@ -1807,7 +1807,7 @@ function renderCRpsimRound() {
   var cols = ['#60a5fa','#ffb95f','#3cddc7'];
   var charBlock = '';
   if (rp.curChar) {
-    charBlock = '<div style="display:flex;flex-direction:column;align-items:center;margin:0 auto 14px"><div style="width:160px;border-radius:14px;overflow:hidden;margin:0 auto 8px;border:2px solid rgba(167,139,250,0.4)">'+cp(rp.curChar,160)+'</div><div style="font-size:16px;color:#e4e1ee;font-weight:700">'+esc((rp.curChar.n||'')+' '+(rp.curChar.s||''))+'</div>'+(rp.curChar.tip?'<div style="font-size:12px;color:#a78bfa;letter-spacing:.5px;text-transform:uppercase">'+esc(rp.curChar.tip)+'</div>':'')+'</div>';
+    charBlock = '<div style="display:flex;flex-direction:column;align-items:center;margin:0 auto 14px"><div style="width:160px;border-radius:14px;overflow:hidden;margin:0 auto 8px;border:2px solid rgba(167,139,250,0.4)">'+cp(rp.curChar,160)+'</div><div style="font-size:16px;color:#e4e1ee;font-weight:700">'+esc((rp.curChar.n||'')+' '+(rp.curChar.s||''))+'</div></div>';
   }
   var choices = sc.choices.map(function(ch, i){
     var col = cols[i%3];
@@ -1857,7 +1857,28 @@ function resolveCRpsimVote() {
   } else { _rpApply(choice); rp._roll = null; }
   rp._delta = { m: rp.stats.money - before.money, r: rp.stats.rep - before.rep, h: rp.stats.heat - before.heat };
   renderCRpsimResult(win, outcome);
-  gameTimers.push(setTimeout(function(){ if (streamState && streamState.active) { showStreamTransition(function(){ nextCRpsimRound(); }); } }, 3800));
+  _crpsimStartResultCountdown(6);
+}
+
+function _crpsimStartResultCountdown(sec) {
+  var s = streamState; if (!s) return;
+  if (s._advTimer) { clearInterval(s._advTimer); s._advTimer = null; }
+  var remaining = sec;
+  var elc = document.getElementById('crp-next-count'); if (elc) elc.textContent = remaining;
+  s._advTimer = setInterval(function(){
+    if (!streamState || !streamState.active) { clearInterval(s._advTimer); s._advTimer = null; return; }
+    if (streamState.paused) return; // ⏸️ duraklatınca bekle
+    remaining--;
+    var e = document.getElementById('crp-next-count'); if (e) e.textContent = Math.max(remaining, 0);
+    if (remaining <= 0) { clearInterval(s._advTimer); s._advTimer = null; nextCRpsimRound(); }
+  }, 1000);
+  gameTimers.push(s._advTimer);
+}
+
+function crpsimAdvance() {
+  var s = streamState; if (!s || !s.active) return;
+  if (s._advTimer) { clearInterval(s._advTimer); s._advTimer = null; }
+  nextCRpsimRound();
 }
 
 function renderCRpsimResult(winIdx, text) {
@@ -1881,7 +1902,11 @@ function renderCRpsimResult(winIdx, text) {
           '<p style="font-size:18px;color:#e8e6ef;line-height:1.7;margin:0">'+_rpText(text||'')+'</p>'+
           (typeof _rpDeltaRow === 'function' ? _rpDeltaRow(rp._delta) : '')+
         '</div>'+
-        (busted ? '<p style="text-align:center;color:#ff6a63;font-size:15px;margin-top:16px;font-weight:700">🚔 Tehlike tavan yaptı — hikâye bitiyor...</p>' : '<p style="text-align:center;color:var(--t3);font-size:14px;margin-top:14px">Sıradaki olay birazdan...</p>')+
+        (busted ? '<p style="text-align:center;color:#ff6a63;font-size:15px;margin-top:16px;font-weight:700">🚔 Tehlike tavan yaptı — hikâye bitiyor...</p>' : '')+
+        '<div style="display:flex;align-items:center;justify-content:center;gap:18px;margin-top:24px;flex-wrap:wrap">'+
+          '<button class="btn bp" style="font-size:18px;padding:14px 38px;background:linear-gradient(135deg,#a78bfa,#8b5cf6);border:none" onclick="crpsimAdvance()">'+(busted ? 'Sonu Gör ▶' : 'Devam ▶')+'</button>'+
+          '<span style="font-size:15px;color:var(--t3)">Otomatik: <b id="crp-next-count" style="color:#c4b5fd">6</b>s</span>'+
+        '</div>'+
       '</div>'+
     '</div>';
 }
