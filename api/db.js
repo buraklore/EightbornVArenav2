@@ -309,7 +309,8 @@ module.exports = {
   upsertDetectiveCase: upsertDetectiveCase, deleteDetectiveCase: deleteDetectiveCase,
   upsertDetectiveSuspect: upsertDetectiveSuspect, deleteDetectiveSuspect: deleteDetectiveSuspect,
   upsertDetectiveEvidence: upsertDetectiveEvidence, deleteDetectiveEvidence: deleteDetectiveEvidence,
-  getDetectiveRevealForUser: getDetectiveRevealForUser, getDetectiveNextCase: getDetectiveNextCase
+  getDetectiveRevealForUser: getDetectiveRevealForUser, getDetectiveNextCase: getDetectiveNextCase,
+  getDetectiveCharPool: getDetectiveCharPool, setDetectiveCharPool: setDetectiveCharPool, regenerateDetectiveCases: regenerateDetectiveCases
 };
 
 // ═══ SAVED DUELS ═══
@@ -1461,19 +1462,54 @@ async function _seedCaseChar(tpl, pool) {
   }
 }
 
-async function seedDetectiveChars() {
-  var ver = await getConfig('detective_seed_v');
-  if (ver === 'chars30') return;
-  var poolR = await query("SELECT id, name, surname, img FROM characters WHERE active=true");
-  var pool = poolR.rows;
-  if (pool.length < 3) { console.warn('Dedektif: yeterli aktif karakter yok, seed atlandı.'); return; }
+async function getDetectiveCharPoolIds() {
+  var v = await getConfig('detective_char_pool');
+  if (!v) return [];
+  try { var a = JSON.parse(v); return Array.isArray(a) ? a.map(function (x) { return parseInt(x); }).filter(function (x) { return !isNaN(x); }) : []; }
+  catch (e) { return []; }
+}
+async function setDetectiveCharPool(ids) {
+  var clean = (Array.isArray(ids) ? ids : []).map(function (x) { return parseInt(x); }).filter(function (x) { return !isNaN(x); });
+  // tekrarları temizle
+  var seen = {}, uniq = []; clean.forEach(function (id) { if (!seen[id]) { seen[id] = true; uniq.push(id); } });
+  await setConfig('detective_char_pool', JSON.stringify(uniq));
+  return uniq;
+}
+async function getDetectiveCharPool() {
+  var ids = await getDetectiveCharPoolIds();
+  return { ids: ids };
+}
+// Havuza göre karakter listesini çöz (havuz boşsa tüm aktif karakterler)
+async function _resolveDetectivePool() {
+  var allR = await query("SELECT id, name, surname, img FROM characters WHERE active=true");
+  var pool = allR.rows;
+  var ids = await getDetectiveCharPoolIds();
+  if (ids.length) { var set = {}; ids.forEach(function (id) { set[id] = true; }); pool = pool.filter(function (c) { return set[c.id]; }); }
+  return pool;
+}
+async function _runDetectiveSeed() {
+  var pool = await _resolveDetectivePool();
+  var MIN = 10; // en zor vaka 8 şüpheli + 2 tanık = 10 farklı karakter ister
+  if (pool.length < MIN) return { ok: false, reason: 'pool_small', poolSize: pool.length, min: MIN };
   await query("DELETE FROM detective_cases");
   await query("DELETE FROM detective_guesses");
   for (var ci = 0; ci < DET_CASES.length; ci++) {
     try { await _seedCaseChar(DET_CASES[ci], pool); } catch (e) { console.error('seed case ' + ci + ':', e.message); }
   }
-  await setConfig('detective_seed_v', 'chars30');
-  console.log('Dedektif: ' + DET_CASES.length + ' vaka seed edildi.');
+  return { ok: true, count: DET_CASES.length, poolSize: pool.length };
+}
+async function seedDetectiveChars() {
+  var ver = await getConfig('detective_seed_v');
+  if (ver === 'chars30') return;
+  var r = await _runDetectiveSeed();
+  if (r.ok) { await setConfig('detective_seed_v', 'chars30'); console.log('Dedektif: ' + r.count + ' vaka seed edildi (havuz: ' + r.poolSize + ' karakter).'); }
+  else console.warn('Dedektif: havuzda yeterli karakter yok (' + r.poolSize + '/' + r.min + '), seed atlandı.');
+}
+// Admin tetikler: vakaları mevcut havuzla baştan oluşturur (ilerleme sıfırlanır)
+async function regenerateDetectiveCases() {
+  var r = await _runDetectiveSeed();
+  if (r.ok) await setConfig('detective_seed_v', 'chars30');
+  return r;
 }
 
 async function getDetectiveNextCase(userId, difficulty) {
