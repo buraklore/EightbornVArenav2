@@ -634,7 +634,7 @@ async function streamConnect() {
     streamState = {
       platform: platform, channelId: channelId, mode: 'CDETECTIVE', active: true,
       phase: 'VOTING', votes: {}, voters: {}, voteTimer: null, chatMessages: [],
-      det: { case: detData.case, difficulty: detDiff }
+      det: { case: detData.case, difficulty: detDiff, attempts: 0, wrongIds: [] }
     };
     if (platform === 'youtube') {
       var initDetRes = await apiPost('/stream/youtube-init', { videoId: channelId });
@@ -2015,25 +2015,32 @@ function renderCDetCase() {
   var diffMap = { easy: ['🟢 KOLAY','#3cdd8c'], medium: ['🟡 ORTA','#ffb95f'], hard: ['🔴 ZOR','#ff6a63'] };
   var dm = diffMap[c.difficulty] || diffMap.easy;
   var sus = c.suspects || [];
+  var wrongSet = {}; (s.det.wrongIds || []).forEach(function(id){ wrongSet[id] = true; });
   var suspectsHtml = sus.map(function(su, i) {
     var col = _cdetCols[i % 8];
-    return '<div style="background:'+col+'10;border:2px solid '+col+'33;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px">'+
-      '<div style="display:flex;gap:12px;align-items:center">'+
-        '<span style="flex-shrink:0;width:38px;height:38px;border-radius:10px;background:'+col+';color:#13131b;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:20px">'+_cdetLetter(i)+'</span>'+
+    var elim = !!wrongSet[su.id];
+    var topRow = '<div style="display:flex;gap:12px;align-items:center">'+
+        '<span style="flex-shrink:0;width:38px;height:38px;border-radius:10px;background:'+(elim ? '#5a4a3a' : col)+';color:#13131b;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:20px">'+_cdetLetter(i)+'</span>'+
         _cdetImg(su.img, 58)+
-        '<div style="min-width:0"><div class="fd" style="font-size:17px;color:#f0e6cf;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(su.name)+'</div><div style="font-size:12px;color:'+col+'">'+esc(su.profession || '')+'</div></div>'+
+        '<div style="min-width:0"><div class="fd" style="font-size:17px;color:#f0e6cf;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(su.name)+'</div><div style="font-size:12px;color:'+(elim ? '#8a8378' : col)+'">'+esc(su.profession || '')+'</div></div>'+
       '</div>'+
-      '<p style="font-size:13px;color:#bdb6a6;line-height:1.55;margin:0;flex:1">'+esc(su.background || '')+'</p>'+
-      '<button onclick="streamerCDetAccuse('+su.id+')" style="width:100%;padding:9px;border-radius:9px;border:1px solid '+col+'55;background:'+col+'18;color:'+col+';font-weight:700;font-size:14px;cursor:pointer;transition:all .2s" onmouseover="this.style.background=\''+col+'\';this.style.color=\'#13131b\'" onmouseout="this.style.background=\''+col+'18\';this.style.color=\''+col+'\'">⚖️ '+_cdetLetter(i)+' Suçlu</button>'+
-    '</div>';
+      '<p style="font-size:13px;color:#bdb6a6;line-height:1.55;margin:0;flex:1">'+esc(su.background || '')+'</p>';
+    var foot = elim
+      ? '<div style="text-align:center;padding:9px;border-radius:9px;background:#ff6a6314;border:1px solid #ff6a6340;color:#ff6a63;font-weight:700;font-size:13px">❌ Şüpheli değil</div>'
+      : '<button onclick="cdetConfirmAccuse('+su.id+')" style="width:100%;padding:9px;border-radius:9px;border:1px solid '+col+'55;background:'+col+'18;color:'+col+';font-weight:700;font-size:14px;cursor:pointer;transition:all .2s" onmouseover="this.style.background=\''+col+'\';this.style.color=\'#13131b\'" onmouseout="this.style.background=\''+col+'18\';this.style.color=\''+col+'\'">⚖️ '+_cdetLetter(i)+' Suçlu</button>';
+    return '<div style="background:'+(elim ? '#15130e' : col+'10')+';border:2px solid '+(elim ? '#2c2418' : col+'33')+';border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px'+(elim ? ';opacity:.55' : '')+'">'+topRow+foot+'</div>';
   }).join('');
+  var attN = s.det.attempts || 0;
+  var attMsg = attN === 0 ? '🎯 2 tahmin hakkın var' : '⚠️ 1 hakkın kaldı — son seçimini dikkatli yap!';
+  var attCol = attN === 0 ? '#caa46a' : '#ffb95f';
 
   ag.innerHTML =
     '<div style="display:flex;gap:20px;padding:18px">'+
       '<div style="flex:1;min-width:0">'+
         '<h2 class="fd" style="font-size:28px;text-align:center;margin-bottom:6px">🕵️ Dedektif Dosyası — Chat</h2>'+
         '<div style="text-align:center;margin-bottom:10px"><span style="font-size:13px;font-weight:800;letter-spacing:1px;padding:4px 12px;border-radius:8px;background:'+dm[1]+'20;color:'+dm[1]+';border:1px solid '+dm[1]+'40">'+dm[0]+'</span></div>'+
-        '<p style="text-align:center;color:#caa46a;font-size:16px;font-weight:700;margin-bottom:14px">Chat şüpheli harfini yazsın! <b>A, B, C…</b> · ⏱️ Süre yok, düşünün!</p>'+
+        '<p style="text-align:center;color:#caa46a;font-size:16px;font-weight:700;margin-bottom:10px">Chat şüpheli harfini yazsın! <b>A, B, C…</b> · ⏱️ Süre yok, düşünün!</p>'+
+        '<div style="text-align:center;margin-bottom:14px"><span style="font-size:14px;font-weight:800;color:'+attCol+';background:'+attCol+'15;border:1px solid '+attCol+'40;padding:5px 16px;border-radius:9px">'+attMsg+'</span></div>'+
         '<div style="background:linear-gradient(135deg,#221c14,#191712);border:1px solid #3a3024;border-radius:16px;padding:18px 22px;margin:0 auto 14px;max-width:760px;position:relative;overflow:hidden">'+
           '<div style="position:absolute;top:-10px;right:-10px;font-size:110px;opacity:.05">🕵️</div>'+
           '<div style="margin-bottom:6px"><span style="font-size:12px;color:#ff8a80;letter-spacing:1px;font-weight:700">OLAY: '+esc((c.event_type || '').toUpperCase())+'</span></div>'+
@@ -2055,7 +2062,8 @@ function renderCDetCase() {
 }
 
 // Kanıtlar pop-up (modal) — yayıncı isteğine göre kanıtlar ayrı pencerede
-function _cdetCloseEv() { var m = document.getElementById('cdet-ev-modal'); if (m) m.remove(); }
+function _cdetRm(id) { var m = document.getElementById(id); if (m) m.remove(); }
+function _cdetCloseEv() { _cdetRm('cdet-ev-modal'); }
 function cdetShowEvidence() {
   var s = streamState; if (!s || !s.det) return;
   var c = s.det.case;
@@ -2081,20 +2089,82 @@ function cdetShowEvidence() {
   document.body.appendChild(ov);
 }
 
-function streamerCDetAccuse(suspectId) {
+// 1) Güzel onay modalı (tarayıcı confirm yerine)
+function cdetConfirmAccuse(suspectId) {
   var s = streamState; if (!s || !s.active || !s.det) return;
   if (s.phase === 'RESULT') return;
-  var sus = null; (s.det.case.suspects || []).forEach(function(x){ if (x.id === suspectId) sus = x; });
+  if ((s.det.wrongIds || []).indexOf(suspectId) >= 0) return; // elenmiş şüpheli
+  var sus = null, idx = -1; (s.det.case.suspects || []).forEach(function(x, i){ if (x.id === suspectId) { sus = x; idx = i; } });
   if (!sus) return;
-  if (!confirm(sus.name + ' adlı kişiyi suçluyorsun. Karar kesindir — gerçek suçlu açıklanacak. Emin misin?')) return;
-  _cdetCloseEv();
-  s.phase = 'RESULT';
-  if (s.voteTimer) { clearInterval(s.voteTimer); s.voteTimer = null; }
-  apiPost('/detective/stream-guess', { case_id: s.det.case.id, suspect_id: suspectId }).then(function(r) {
-    if (!r || r.error) { toast((r && r.error) || 'Hata oluştu.', false); s.phase = 'VOTING'; return; }
-    s.det.result = r; s.det.accusedId = suspectId;
-    renderCDetResult();
-  }).catch(function(){ toast('Bağlantı hatası.', false); s.phase = 'VOTING'; });
+  var attemptNo = (s.det.attempts || 0) + 1;
+  var last = attemptNo >= 2;
+  var col = _cdetCols[idx % 8];
+  _cdetRm('cdet-confirm-modal');
+  var ov = document.createElement('div');
+  ov.id = 'cdet-confirm-modal';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.82);display:flex;align-items:center;justify-content:center;padding:24px';
+  ov.onclick = function(ev) { if (ev.target === ov) _cdetRm('cdet-confirm-modal'); };
+  ov.innerHTML = '<div style="background:#16130d;border:1px solid '+col+'66;border-radius:18px;max-width:430px;width:100%;padding:26px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.6)">'+
+    '<div style="font-size:12px;letter-spacing:2px;color:#ff8a80;font-weight:800;margin-bottom:16px">⚖️ SUÇLAMA</div>'+
+    '<div style="display:flex;flex-direction:column;align-items:center;gap:9px;margin-bottom:16px">'+
+      '<div style="position:relative;display:inline-block">'+_cdetImg(sus.img, 86)+'<span style="position:absolute;top:-7px;left:-7px;width:30px;height:30px;border-radius:9px;background:'+col+';color:#13131b;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:16px">'+_cdetLetter(idx)+'</span></div>'+
+      '<div class="fd" style="font-size:23px;color:#f0e6cf">'+esc(sus.name)+'</div>'+
+      '<div style="font-size:13px;color:'+col+'">'+esc(sus.profession || '')+'</div>'+
+    '</div>'+
+    '<p style="font-size:15px;color:#cfc8b8;line-height:1.5;margin-bottom:8px">Bu kişiyi <b style="color:#f0e6cf">suçlu</b> olarak seçmek istediğine emin misin?</p>'+
+    '<div style="font-size:13px;font-weight:700;color:'+(last ? '#ff6a63' : '#ffb95f')+';background:'+(last ? '#ff6a63' : '#ffb95f')+'15;border:1px solid '+(last ? '#ff6a63' : '#ffb95f')+'33;border-radius:9px;padding:8px 12px;margin-bottom:20px">'+(last ? '⚠️ Son hakkın! Yanlışsa vaka kapanır.' : '🎯 '+attemptNo+'. tahmin · yanlışsa 1 hakkın daha olur') +'</div>'+
+    '<div style="display:flex;gap:10px">'+
+      '<button onclick="_cdetRm(\'cdet-confirm-modal\')" style="flex:1;padding:13px;border-radius:11px;border:1px solid var(--b1);background:var(--bg3);color:var(--t1);font-size:15px;font-weight:700;cursor:pointer">Vazgeç</button>'+
+      '<button onclick="cdetDoAccuse('+suspectId+')" style="flex:1;padding:13px;border-radius:11px;border:none;background:linear-gradient(135deg,'+col+','+col+'bb);color:#13131b;font-size:15px;font-weight:800;cursor:pointer">⚖️ Evet, Suçla</button>'+
+    '</div>'+
+  '</div>';
+  document.body.appendChild(ov);
+}
+
+// 2) Suçlamayı uygula (2 hak: ilk yanlışta uyarı, ikincide/doğruda sonuç)
+function cdetDoAccuse(suspectId) {
+  var s = streamState; if (!s || !s.active || !s.det) return;
+  if (s.phase === 'RESULT') return;
+  _cdetRm('cdet-confirm-modal'); _cdetCloseEv();
+  var attemptNo = (s.det.attempts || 0) + 1;
+  apiPost('/detective/stream-guess', { case_id: s.det.case.id, suspect_id: suspectId, attempt: attemptNo }).then(function(r) {
+    if (!r || r.error) { toast((r && r.error) || 'Hata oluştu.', false); return; }
+    s.det.attempts = attemptNo;
+    if (r.correct) {
+      s.det.result = r; s.det.accusedId = suspectId; s.phase = 'RESULT';
+      if (s.voteTimer) { clearInterval(s.voteTimer); s.voteTimer = null; }
+      renderCDetResult();
+      return;
+    }
+    if (!s.det.wrongIds) s.det.wrongIds = [];
+    if (s.det.wrongIds.indexOf(suspectId) < 0) s.det.wrongIds.push(suspectId);
+    if (r.final || attemptNo >= 2) {
+      s.det.result = r; s.det.accusedId = suspectId; s.phase = 'RESULT';
+      if (s.voteTimer) { clearInterval(s.voteTimer); s.voteTimer = null; }
+      renderCDetResult();
+    } else {
+      cdetShowWrongWarning(suspectId);
+    }
+  }).catch(function(){ toast('Bağlantı hatası.', false); });
+}
+
+// 3) İlk yanlışta "1 hakkın kaldı" uyarısı
+function cdetShowWrongWarning(suspectId) {
+  var s = streamState; if (!s || !s.det) return;
+  var sus = null; (s.det.case.suspects || []).forEach(function(x){ if (x.id === suspectId) sus = x; });
+  _cdetRm('cdet-warn-modal');
+  var ov = document.createElement('div');
+  ov.id = 'cdet-warn-modal';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.82);display:flex;align-items:center;justify-content:center;padding:24px';
+  ov.onclick = function(ev) { if (ev.target === ov) { _cdetRm('cdet-warn-modal'); renderCDetCase(); } };
+  ov.innerHTML = '<div style="background:#1a1410;border:1px solid #ff6a6366;border-radius:18px;max-width:420px;width:100%;padding:30px 26px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.6)">'+
+    '<div style="font-size:58px;line-height:1;margin-bottom:6px">❌</div>'+
+    '<h3 class="fd" style="font-size:30px;color:#ff6a63;margin-bottom:8px">Yanlış!</h3>'+
+    '<p style="font-size:16px;color:#e8d9b5;line-height:1.5;margin-bottom:4px"><b>'+(sus ? esc(sus.name) : 'Bu kişi')+'</b> suçlu değil.</p>'+
+    '<div style="display:inline-block;background:#ffb95f18;border:1px solid #ffb95f40;color:#ffb95f;font-weight:800;font-size:18px;padding:9px 20px;border-radius:11px;margin:12px 0 22px">⚠️ 1 hakkın kaldı!</div>'+
+    '<button onclick="_cdetRm(\'cdet-warn-modal\');renderCDetCase();" style="width:100%;padding:14px;border-radius:11px;border:none;background:linear-gradient(135deg,#caa46a,#a07d3e);color:#1a1612;font-size:16px;font-weight:800;cursor:pointer">🔍 Tekrar İncele</button>'+
+  '</div>';
+  document.body.appendChild(ov);
 }
 
 function renderCDetResult() {
@@ -2104,7 +2174,11 @@ function renderCDetResult() {
   var accused = null, accIdx = -1; sus.forEach(function(x, i){ if (x.id === s.det.accusedId) { accused = x; accIdx = i; } });
   var correct = !!r.correct;
   var col = correct ? '#3cdd8c' : '#ff6a63';
-  var head = correct ? '✅ DOĞRU! Suçlu Yakalandı' : '❌ Yanlış Suçlama';
+  var head = correct ? '✅ DOĞRU! Suçlu Yakalandı' : '❌ Yanlış — Vaka Kapandı';
+  var attUsed = s.det.attempts || 1;
+  var attBadge = correct
+    ? '<span style="display:inline-block;background:#3cdd8c18;border:1px solid #3cdd8c40;color:#3cdd8c;font-weight:700;font-size:13px;padding:5px 14px;border-radius:9px;margin-top:8px">🎯 '+attUsed+'. denemede bildin</span>'
+    : '<span style="display:inline-block;background:#ff6a6318;border:1px solid #ff6a6340;color:#ff6a63;font-weight:700;font-size:13px;padding:5px 14px;border-radius:9px;margin-top:8px">2 hakkın da bitti</span>';
   // chat'in tercihi
   var total = 0, topL = null, topV = -1;
   for (var i = 0; i < sus.length; i++) { var L = _cdetLetter(i); var v = s.votes[L] || 0; total += v; if (v > topV) { topV = v; topL = L; } }
@@ -2124,6 +2198,7 @@ function renderCDetResult() {
           '<div style="font-size:60px;line-height:1">'+(correct ? '🕵️' : '📁')+'</div>'+
           '<h2 class="fd" style="font-size:clamp(28px,5vw,42px);color:'+col+';letter-spacing:1px">'+head+'</h2>'+
           '<p style="font-size:14px;color:var(--t3);margin-top:4px">Senin seçimin: <b style="color:#e8d9b5">'+(accused ? (_cdetLetter(accIdx) + ') ' + esc(accused.name)) : '—')+'</b> · Chat: <b style="color:#caa46a">'+chatPick+'</b></p>'+
+          '<div>'+attBadge+'</div>'+
         '</div>'+
         (r.culprit ? '<div style="background:linear-gradient(135deg,#221c14,#191712);border:1px solid '+col+'55;border-radius:16px;padding:20px;text-align:center;margin-bottom:16px">'+
           '<div style="font-size:12px;letter-spacing:2px;color:#ff8a80;margin-bottom:10px;font-weight:700">■ GERÇEK SUÇLU ■</div>'+
@@ -2152,7 +2227,7 @@ function cdetNewCase() {
   ag.innerHTML = '<div style="text-align:center;padding:60px;color:var(--t2)">Yeni vaka hazırlanıyor...</div>';
   apiGet('/detective/by-difficulty?difficulty=' + encodeURIComponent(diff)).then(function(data) {
     if (!data || data.error || !data.case) { toast((data && data.error) || 'Vaka bulunamadı.', false); return; }
-    s.det = { case: data.case, difficulty: diff };
+    s.det = { case: data.case, difficulty: diff, attempts: 0, wrongIds: [] };
     s.votes = {}; s.voters = {}; s.chatMessages = []; s.phase = 'VOTING';
     renderCDetCase();
   }).catch(function(){ toast('Vaka açılamadı.', false); });
