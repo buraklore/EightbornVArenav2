@@ -680,7 +680,7 @@ app.post('/api/detective/stream-guess', auth, async function(req, res) {
     await ensureDb();
     var caseId = parseInt(req.body.case_id), suspectId = parseInt(req.body.suspect_id);
     if (!caseId || !suspectId) return res.status(400).json({ error: 'Eksik bilgi.' });
-    var r = await db.getDetectiveStreamReveal(caseId, suspectId);
+    var r = await db.getDetectiveStreamReveal(caseId, suspectId, parseInt(req.body.attempt) || 1);
     if (r.error) return res.status(400).json(r);
     res.json(r);
   } catch (e) { console.error('detective/stream-guess:', e.message); res.status(500).json({ error: 'Islenemedi.' }); }
