@@ -125,6 +125,7 @@ function streamSetup(mode) {
   } else if (mode === 'CDETECTIVE') {
     extraField = '<div class="form-group" style="margin-bottom:20px"><label class="lbl" style="font-size:20px;margin-bottom:10px">🔍 Zorluk Seviyesi</label><select class="inp" style="font-size:22px;padding:20px;border-radius:16px" id="det-stream-diff"><option value="easy">🟢 Kolay — 3 şüpheli</option><option value="medium" selected>🟡 Orta — 5 şüpheli</option><option value="hard">🔴 Zor — 8 şüpheli</option></select></div>' +
       '<p style="font-size:15px;color:var(--t3);margin-bottom:8px;text-align:center">Rastgele bir vaka açılır. Chat kanıtları inceleyip <b style="color:#caa46a">şüpheli harfini (A / B / C…)</b> yazarak oy verir. Süre yok — düşünmek serbest! Oylar geldikçe <b style="color:#caa46a">suçluyu sen seçersin</b>, sonra gerçek suçlu açıklanır.</p>';
+  } else if (mode === 'DUEL') {
     var charListHtml = '';
     var activeChars = chars.filter(function(c){ return c.a; });
     activeChars.forEach(function(c, i) {
