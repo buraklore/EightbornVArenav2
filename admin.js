@@ -1283,28 +1283,31 @@ function _rpsSave(){
 }
 
 // ═══ KARAKTER BORSASI YÖNETİMİ ═══
-var _admStk = { tab: 'prices', prices: [], wallets: [], pq: '', wq: '' };
+var _admStk = { tab: 'prices', prices: [], wallets: [], holdings: [], pq: '', wq: '', hq: '', hgroup: 'char' };
 
 function aStock(e) {
-  _admStk = { tab: 'prices', prices: [], wallets: [], pq: '', wq: '' };
+  _admStk = { tab: 'prices', prices: [], wallets: [], holdings: [], pq: '', wq: '', hq: '', hgroup: 'char' };
   e.innerHTML =
     '<h3 class="fd" style="font-weight:600;font-size:15px;margin-bottom:6px">📈 Karakter Borsası Yönetimi</h3>' +
-    '<p style="font-size:12px;color:var(--t3);margin-bottom:16px">Karakter hisse fiyatlarını ve kullanıcıların Coin bakiyelerini düzenle. (Sanal oyun — gerçek para değildir.)</p>' +
+    '<p style="font-size:12px;color:var(--t3);margin-bottom:16px">Karakter hisse fiyatlarını, kullanıcıların Coin bakiyelerini düzenle ve kim hangi hisseyi tutuyor gör. (Sanal oyun — gerçek para değildir.)</p>' +
     '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">' +
       '<button id="astk-tp" class="btn bsm bp" onclick="_admStkTab(\'prices\')">🎯 Karakter Fiyatları</button>' +
       '<button id="astk-tw" class="btn bsm bg" onclick="_admStkTab(\'wallets\')">👤 Kullanıcı Bakiyeleri</button>' +
+      '<button id="astk-th" class="btn bsm bg" onclick="_admStkTab(\'holdings\')">💼 Hisse Sahiplikleri</button>' +
     '</div>' +
     '<div id="astk-body"><div style="text-align:center;padding:30px;color:var(--t3)">Yükleniyor...</div></div>';
   apiGet('/stock/market').then(function(r){ _admStk.prices = (r && r.market) ? r.market : []; if (_admStk.tab === 'prices') _admStkRender(); }).catch(function(){});
   apiGet('/admin/stock/wallets').then(function(r){ _admStk.wallets = (r && r.wallets) ? r.wallets : []; if (_admStk.tab === 'wallets') _admStkRender(); }).catch(function(){});
+  apiGet('/admin/stock/holdings').then(function(r){ _admStk.holdings = (r && r.holdings) ? r.holdings : []; if (_admStk.tab === 'holdings') _admStkRender(); }).catch(function(){});
   _admStkRender();
 }
 
 function _admStkTab(t) {
   _admStk.tab = t;
-  var tp = document.getElementById('astk-tp'), tw = document.getElementById('astk-tw');
+  var tp = document.getElementById('astk-tp'), tw = document.getElementById('astk-tw'), th = document.getElementById('astk-th');
   if (tp) tp.className = 'btn bsm ' + (t === 'prices' ? 'bp' : 'bg');
   if (tw) tw.className = 'btn bsm ' + (t === 'wallets' ? 'bp' : 'bg');
+  if (th) th.className = 'btn bsm ' + (t === 'holdings' ? 'bp' : 'bg');
   _admStkRender();
 }
 
@@ -1315,10 +1318,19 @@ function _admStkRender() {
     b.innerHTML = '<input class="inp" placeholder="🔍 Karakter ara..." value="' + esc(_admStk.pq) + '" oninput="_admStk.pq=this.value;_admStkListPrices()" style="margin-bottom:12px;padding:10px 14px;width:100%">' +
       '<div id="astk-list"><div style="text-align:center;padding:24px;color:var(--t3)">Yükleniyor...</div></div>';
     _admStkListPrices();
-  } else {
+  } else if (_admStk.tab === 'wallets') {
     b.innerHTML = '<input class="inp" placeholder="🔍 Kullanıcı ara..." value="' + esc(_admStk.wq) + '" oninput="_admStk.wq=this.value;_admStkListWallets()" style="margin-bottom:12px;padding:10px 14px;width:100%">' +
       '<div id="astk-list"><div style="text-align:center;padding:24px;color:var(--t3)">Yükleniyor...</div></div>';
     _admStkListWallets();
+  } else {
+    b.innerHTML =
+      '<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">' +
+        '<button id="ahg-c" class="btn bsm ' + (_admStk.hgroup === 'char' ? 'bp' : 'bg') + '" onclick="_admStk.hgroup=\'char\';_admStkRender()">🎭 Karaktere göre</button>' +
+        '<button id="ahg-u" class="btn bsm ' + (_admStk.hgroup === 'user' ? 'bp' : 'bg') + '" onclick="_admStk.hgroup=\'user\';_admStkRender()">👤 Kullanıcıya göre</button>' +
+      '</div>' +
+      '<input class="inp" placeholder="🔍 Kullanıcı veya karakter ara..." value="' + esc(_admStk.hq) + '" oninput="_admStk.hq=this.value;_admStkListHoldings()" style="margin-bottom:12px;padding:10px 14px;width:100%">' +
+      '<div id="astk-list"><div style="text-align:center;padding:24px;color:var(--t3)">Yükleniyor...</div></div>';
+    _admStkListHoldings();
   }
 }
 
@@ -1384,6 +1396,63 @@ function skuSave(userId) {
       if (w) { var diff = r.cash - w.cash; w.cash = r.cash; w.total = Math.round((w.total + diff) * 100) / 100; w.has_wallet = true; }
     } else { toast((r && r.error) || 'Kaydedilemedi.'); }
   }).catch(function(){ toast('Kaydedilemedi.'); });
+}
+
+function _admStkListHoldings() {
+  var el = document.getElementById('astk-list');
+  if (!el) return;
+  if (!_admStk.holdings.length) { el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--t3)">Henüz kimse hisse almamış.</div>'; return; }
+  var q = (_admStk.hq || '').trim().toLowerCase();
+  var rows = _admStk.holdings.filter(function(r){
+    if (!q) return true;
+    var cn = ((r.name || '') + ' ' + (r.surname || '')).toLowerCase();
+    return (r.username || '').toLowerCase().indexOf(q) !== -1 || cn.indexOf(q) !== -1;
+  });
+  if (!rows.length) { el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--t3)">Sonuç yok.</div>'; return; }
+  function charName(r){ var nm = ((r.name || '') + ' ' + (r.surname || '')).trim(); return nm || ('#' + r.char_id); }
+  function fmt(n){ return (Math.round((+n || 0) * 100) / 100).toLocaleString('tr-TR'); }
+  function line(left, sh, avg, val) {
+    return '<div style="display:flex;align-items:center;gap:10px;padding:7px 14px;border-top:1px solid #2a2a3a20">' +
+      left +
+      '<div style="font-size:12px;color:var(--t2);flex-shrink:0">' + fmt(sh) + ' hisse</div>' +
+      '<div style="font-size:11px;color:var(--t3);flex-shrink:0;width:135px;text-align:right">ort. ' + fmt(avg) + ' · ' + fmt(val) + ' Coin</div>' +
+    '</div>';
+  }
+  var html = '';
+  if (_admStk.hgroup === 'char') {
+    var byChar = {};
+    rows.forEach(function(r){ var k = r.char_id; if (!byChar[k]) byChar[k] = { key: k, name: charName(r), price: r.price, img: r.img, gender: r.gender, rows: [] }; byChar[k].rows.push(r); });
+    html = Object.keys(byChar).sort(function(a, b){ return byChar[a].name.localeCompare(byChar[b].name, 'tr'); }).map(function(k){
+      var c = byChar[k];
+      var tot = c.rows.reduce(function(s, r){ return s + r.shares; }, 0);
+      var inner = c.rows.map(function(r){
+        return line('<div style="flex:1;min-width:0;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(r.username) + '</div>', r.shares, r.avg_cost, r.value);
+      }).join('');
+      return '<div class="card" style="padding:0;overflow:hidden;margin-bottom:10px">' +
+        '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:#caa46a0d">' +
+          '<div style="width:40px;height:40px;border-radius:9px;overflow:hidden;flex-shrink:0">' + cp({ n: c.name, s: '', g: c.gender || 'M', img: c.img || '', id: c.key }, 40) + '</div>' +
+          '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(c.name) + '</div><div style="font-size:11px;color:var(--t3)">' + c.rows.length + ' sahip · ' + fmt(tot) + ' hisse · fiyat ' + fmt(c.price) + ' Coin</div></div>' +
+        '</div>' + inner +
+      '</div>';
+    }).join('');
+  } else {
+    var byUser = {};
+    rows.forEach(function(r){ var k = r.user_id; if (!byUser[k]) byUser[k] = { key: k, username: r.username, rows: [] }; byUser[k].rows.push(r); });
+    html = Object.keys(byUser).sort(function(a, b){ return byUser[a].username.localeCompare(byUser[b].username, 'tr'); }).map(function(k){
+      var u = byUser[k];
+      var val = u.rows.reduce(function(s, r){ return s + r.value; }, 0);
+      var inner = u.rows.map(function(r){
+        return line('<div style="width:30px;height:30px;border-radius:7px;overflow:hidden;flex-shrink:0">' + cp({ n: r.name || '', s: '', g: r.gender || 'M', img: r.img || '', id: r.char_id }, 30) + '</div>' +
+          '<div style="flex:1;min-width:0;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(charName(r)) + '</div>', r.shares, r.avg_cost, r.value);
+      }).join('');
+      return '<div class="card" style="padding:0;overflow:hidden;margin-bottom:10px">' +
+        '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:#7c5cff0d">' +
+          '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(u.username) + '</div><div style="font-size:11px;color:var(--t3)">' + u.rows.length + ' karakter · portföy ' + fmt(val) + ' Coin</div></div>' +
+        '</div>' + inner +
+      '</div>';
+    }).join('');
+  }
+  el.innerHTML = html;
 }
 
 // ═══════════════════════════════════════════════════
