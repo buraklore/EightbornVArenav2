@@ -73,6 +73,8 @@ async function init() {
   await query("CREATE TABLE IF NOT EXISTS stock_holdings (user_id INTEGER NOT NULL REFERENCES users(id), char_id VARCHAR(20) NOT NULL, shares INTEGER DEFAULT 0, avg_cost NUMERIC(12,2) DEFAULT 0, PRIMARY KEY (user_id, char_id))");
   await query("CREATE TABLE IF NOT EXISTS stock_tx (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id), char_id VARCHAR(20), side VARCHAR(4), shares INTEGER, price NUMERIC(12,2), created_at TIMESTAMP DEFAULT NOW())");
 
+  await detectiveInit();
+
   var r = await query("SELECT id FROM users WHERE role = 'ADMIN'");
   if (r.rows.length === 0) {
     // #4 Security: Güçlü varsayılan şifre — env yoksa random üret
@@ -299,7 +301,15 @@ module.exports = {
   ensureWallet: ensureWallet, getStockMarket: getStockMarket, getStockPortfolio: getStockPortfolio,
   tradeStock: tradeStock, noteStockSelections: noteStockSelections, getStockLeaderboard: getStockLeaderboard,
   ensureStockCycle: ensureStockCycle, getStockCycleInfo: getStockCycleInfo, getStockPlayState: getStockPlayState,
-  adminSetStockPrice: adminSetStockPrice, adminSetUserCash: adminSetUserCash, getAdminStockWallets: getAdminStockWallets
+  adminSetStockPrice: adminSetStockPrice, adminSetUserCash: adminSetUserCash, getAdminStockWallets: getAdminStockWallets,
+  // Dedektif Dosyası
+  getDetectiveCases: getDetectiveCases, getDetectiveCase: getDetectiveCase, getDetectiveProgress: getDetectiveProgress,
+  recordDetectiveGuess: recordDetectiveGuess, getDetectiveStats: getDetectiveStats,
+  adminGetDetectiveCases: adminGetDetectiveCases, adminGetDetectiveCase: adminGetDetectiveCase,
+  upsertDetectiveCase: upsertDetectiveCase, deleteDetectiveCase: deleteDetectiveCase,
+  upsertDetectiveSuspect: upsertDetectiveSuspect, deleteDetectiveSuspect: deleteDetectiveSuspect,
+  upsertDetectiveEvidence: upsertDetectiveEvidence, deleteDetectiveEvidence: deleteDetectiveEvidence,
+  getDetectiveRevealForUser: getDetectiveRevealForUser
 };
 
 // ═══ SAVED DUELS ═══
@@ -819,4 +829,201 @@ async function getAdminStockWallets() {
     var cash = parseFloat(row.cash || 0), hv = parseFloat(row.holdings_value || 0);
     return { user_id: row.user_id, username: row.username, cash: _round2(cash), total: _round2(cash + hv), has_wallet: !!row.has_wallet };
   });
+}
+
+// ═══════════════════════════════════════════════════
+// DEDEKTİF DOSYASI
+// ═══════════════════════════════════════════════════
+async function detectiveInit() {
+  await query("CREATE TABLE IF NOT EXISTS detective_cases (id SERIAL PRIMARY KEY, title VARCHAR(120) NOT NULL, event_type VARCHAR(50) DEFAULT '', summary TEXT DEFAULT '', status_text VARCHAR(200) DEFAULT '', difficulty VARCHAR(10) DEFAULT 'easy', culprit_id INTEGER, solution TEXT DEFAULT '', active BOOLEAN DEFAULT true, created_at TIMESTAMP DEFAULT NOW())");
+  await query("CREATE TABLE IF NOT EXISTS detective_suspects (id SERIAL PRIMARY KEY, case_id INTEGER REFERENCES detective_cases(id) ON DELETE CASCADE, name VARCHAR(60) NOT NULL, profession VARCHAR(80) DEFAULT '', background TEXT DEFAULT '', img TEXT DEFAULT '', ord INTEGER DEFAULT 0)");
+  await query("CREATE TABLE IF NOT EXISTS detective_evidence (id SERIAL PRIMARY KEY, case_id INTEGER REFERENCES detective_cases(id) ON DELETE CASCADE, category VARCHAR(20) DEFAULT 'other', title VARCHAR(120) DEFAULT '', content TEXT DEFAULT '', important BOOLEAN DEFAULT false, misleading BOOLEAN DEFAULT false, ord INTEGER DEFAULT 0)");
+  await query("CREATE TABLE IF NOT EXISTS detective_guesses (id SERIAL PRIMARY KEY, case_id INTEGER NOT NULL, user_id INTEGER NOT NULL, suspect_id INTEGER, attempt_no INTEGER DEFAULT 1, correct BOOLEAN DEFAULT false, delta INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT NOW())");
+  await query("CREATE INDEX IF NOT EXISTS idx_det_guess_uc ON detective_guesses (user_id, case_id)");
+  try { await seedDetective(); } catch (e) { console.error('seedDetective:', e.message); }
+}
+
+async function _seedCase(c, suspects, evidence, culpritIndex) {
+  var cr = await query("INSERT INTO detective_cases (title,event_type,summary,status_text,difficulty,solution,active) VALUES ($1,$2,$3,$4,$5,$6,true) RETURNING id",
+    [c.title, c.event_type, c.summary, c.status_text, c.difficulty, c.solution]);
+  var caseId = cr.rows[0].id, ids = [];
+  for (var i = 0; i < suspects.length; i++) {
+    var s = suspects[i];
+    var sr = await query("INSERT INTO detective_suspects (case_id,name,profession,background,img,ord) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id",
+      [caseId, s.name, s.profession, s.background, s.img || '', i]);
+    ids.push(sr.rows[0].id);
+  }
+  await query("UPDATE detective_cases SET culprit_id=$1 WHERE id=$2", [ids[culpritIndex], caseId]);
+  for (var j = 0; j < evidence.length; j++) {
+    var e = evidence[j];
+    await query("INSERT INTO detective_evidence (case_id,category,title,content,important,misleading,ord) VALUES ($1,$2,$3,$4,$5,$6,$7)",
+      [caseId, e.category, e.title, e.content, !!e.important, !!e.misleading, j]);
+  }
+  return caseId;
+}
+
+async function seedDetective() {
+  var c = await query("SELECT COUNT(*) AS n FROM detective_cases");
+  if (parseInt(c.rows[0].n) > 0) return;
+
+  // VAKA 1 — Araç Hırsızlığı (Kolay: 3 şüpheli, 4 kanıt)
+  await _seedCase(
+    { title: 'Gece Yarısı Galerisi', event_type: 'Araç Hırsızlığı', difficulty: 'easy',
+      summary: 'Gece saat 02:15te şehrin merkezindeki lüks bir galeriden bir spor araba çalindi. Alarm devre disi birakilmis, kapida zorlama izi yok. Iceriden bilgisi olan biri sus gibi gorunuyor.',
+      status_text: 'Fail henuz bulunamadi. Uc kisi sorgulaniyor.',
+      solution: 'Hirsiz Volkan Demir. Alarmin sifresini sadece eski calisanlar biliyordu ve GPS verisi onun aracini olay saatinde galeri arkasinda gosteriyor. Telefon kaydi da olay aninda sustugunu, yani orada mesgul oldugunu dogruluyor. Selin gece vardiyasinda baskasiyla goruntulu konusuyordu; Eren ise sehir disindaydi.' },
+    [
+      { name: 'Eren Yildiz', profession: 'Galeri sahibi', background: 'Araci sigortali. Borclari var ama olay gecesi baska sehirdeki bir dugundeydi.' },
+      { name: 'Selin Ak', profession: 'Gece guvenligi', background: 'Kameralari o yonetiyor. Olay sirasinda kayitlar kisa sure kapanmis.' },
+      { name: 'Volkan Demir', profession: 'Eski galeri calisani', background: 'Alti ay once kovuldu. Maddi sikintida ve galeriye yakin bir mahallede yasiyor.' }
+    ],
+    [
+      { category: 'camera', title: 'Kamera Kaydi', content: 'Saat 02:10da kameralar 4 dakika boyunca kapaniyor. Yeniden acildiginda araba çoktan gitmis. Kapatma, sistem sifresini bilen biri tarafindan yapilmis.', important: true },
+      { category: 'gps', title: 'GPS Verisi', content: 'Volkan Demirin araci olay gecesi 01:50 - 02:40 arasi galerinin arka sokaginda kayitli. Selin ve Erenin araclari evlerinde.', important: true },
+      { category: 'phone', title: 'Telefon Kayitlari', content: 'Selin 02:00 - 02:30 arasi annesiyle goruntulu gorusmede. Volkanin telefonu olay aninda hic kullanilmamis (cebe atilmis). Eren baska sehirde baz veriyor.', important: true },
+      { category: 'witness', title: 'Tanik Ifadesi', content: 'Bir komsu, galerinin onunde gece geç saatte kirmizi bir ceket gordugunu soyluyor. Ancak mahallede kirmizi cekete sahip onlarca kisi var; bu detay yanlis yonlendirebilir.', misleading: true }
+    ], 2);
+
+  // VAKA 2 — Cinayet (Orta: 5 şüpheli, 6 kanıt)
+  await _seedCase(
+    { title: 'Konaktaki Son Aksam', event_type: 'Cinayet', difficulty: 'medium',
+      summary: 'Zengin is adami Kemal Tan, kendi konaginda verdigi yemekli davetin ardindan calisma odasinda olu bulundu. Olum saati gece 23:40 civari. Odanin penceresi iceriden kilitli, kapi ise sadece bir kez acilmis.',
+      status_text: 'Supheli olum. Bes davetli ifade veriyor.',
+      solution: 'Katil ortagi Tarik Eren. Adli bulgular sarap kadehinde sadece onun parmak izini gosteriyor ve GPS, herkes salondayken onun 23:35te calisma odasi katina ciktigini kaydetmis. Telefon kaydi cinayetten hemen once Kemal ile sert bir tartisma yaptiklarini dogruluyor. Esi Aysenin gozyaslari ve yegenin mirastan pay beklentisi dikkat dagitan detaylar; ikisinin de fiziksel kaniti yok.' },
+    [
+      { name: 'Ayse Tan', profession: 'Esi', background: 'Evlilikleri sorunluydu. Cinayet duyulunca bayildi. Mirasin buyuk kismi ona kaliyor.' },
+      { name: 'Tarik Eren', profession: 'Is ortagi', background: 'Sirkette buyuk bir borc anlasmazligi yasiyorlardi. O aksam Kemal ile bas basa konustu.' },
+      { name: 'Deniz Tan', profession: 'Yegeni', background: 'Kumar borclari var, amcasindan surekli para isterdi. Mirastan pay bekliyor.' },
+      { name: 'Murat Sahin', profession: 'Asci', background: 'Yemegi o hazirladi. Mutfaktan tum gece cikmadigini soyluyor.' },
+      { name: 'Elif Kaya', profession: 'Ozel sekreter', background: 'Kemalin tum islerini bilirdi. O gece notlari toparlamak icin gec saate kadar kaldi.' }
+    ],
+    [
+      { category: 'forensic', title: 'Parmak Izi', content: 'Olen kisinin yanindaki sarap kadehinde sadece Tarik Erenin parmak izi var. Kadeh, olum saatinde doldurulmus.', important: true },
+      { category: 'gps', title: 'GPS / Bina Hareketi', content: 'Bina ici giris kayitlarina gore saat 23:35te calisma odasi katina cikan tek kisi Tarik. Digerleri salonda gorunuyor.', important: true },
+      { category: 'phone', title: 'Telefon Kaydi', content: 'Kemal ile Tarik arasinda 23:20de 6 dakikalik gergin bir gorusme var. Sesli mesajda yuksek tonda tartisma duyuluyor.', important: true },
+      { category: 'witness', title: 'Tanik: Asci', content: 'Murat, Aysenin tum aksam salonda misafirlerle oldugunu dogruluyor. Ayse hic ust kata cikmamis.', important: true },
+      { category: 'witness', title: 'Tanik: Garson', content: 'Bir garson, Deniz Tanin amcasiyla yuksek sesle tartistigini gordugunu soyluyor. Ancak bu tartisma aksamin basinda, herkesin onunde olmus; cinayetle baglantisi yok.', misleading: true },
+      { category: 'forensic', title: 'Adli Bulgu: Esarp', content: 'Olay odasinda Ayseye ait bir esarp bulundu. Fakat esarp gunler oncesine ait ve odanin her yerinde ev sahiplerinin esyalari var; tek basina kanit degil.', misleading: true }
+    ], 1);
+}
+
+async function getDetectiveCases() {
+  var r = await query("SELECT c.id, c.title, c.event_type, c.summary, c.status_text, c.difficulty, (SELECT COUNT(*) FROM detective_suspects s WHERE s.case_id=c.id) AS suspects, (SELECT COUNT(*) FROM detective_evidence e WHERE e.case_id=c.id) AS evidence FROM detective_cases c WHERE c.active=true ORDER BY c.id");
+  return r.rows;
+}
+async function getDetectiveCase(id) {
+  var cr = await query("SELECT id, title, event_type, summary, status_text, difficulty FROM detective_cases WHERE id=$1 AND active=true", [id]);
+  if (!cr.rows[0]) return null;
+  var c = cr.rows[0];
+  c.suspects = (await query("SELECT id, name, profession, background, img FROM detective_suspects WHERE case_id=$1 ORDER BY ord, id", [id])).rows;
+  c.evidence = (await query("SELECT id, category, title, content FROM detective_evidence WHERE case_id=$1 ORDER BY ord, id", [id])).rows;
+  return c;
+}
+async function getDetectiveProgress(userId, caseId) {
+  var r = await query("SELECT suspect_id, attempt_no, correct, delta FROM detective_guesses WHERE user_id=$1 AND case_id=$2 ORDER BY attempt_no", [userId, caseId]);
+  var solved = r.rows.some(function(x){ return x.correct; });
+  return { attempts: r.rows.length, solved: solved, done: solved || r.rows.length >= 3, tried: r.rows.map(function(x){ return x.suspect_id; }) };
+}
+async function getDetectiveCommunity(caseId, suspectId) {
+  var r = await query("SELECT suspect_id, COUNT(*) AS n FROM (SELECT DISTINCT ON (user_id) user_id, suspect_id FROM detective_guesses WHERE case_id=$1 ORDER BY user_id, attempt_no) t GROUP BY suspect_id", [caseId]);
+  var total = 0, match = 0;
+  r.rows.forEach(function(x){ var n = parseInt(x.n); total += n; if (String(x.suspect_id) === String(suspectId)) match += n; });
+  return { total: total, percent: total > 0 ? Math.round(match / total * 100) : 0 };
+}
+async function _detectiveReveal(caseId, cas, chosenSuspectId) {
+  var culprit = null;
+  if (cas.culprit_id) { var cr = await query("SELECT id,name,profession,img FROM detective_suspects WHERE id=$1", [cas.culprit_id]); culprit = cr.rows[0] || null; }
+  var ev = (await query("SELECT id, category, title, content, important, misleading FROM detective_evidence WHERE case_id=$1 ORDER BY ord, id", [caseId])).rows;
+  return {
+    reveal: true, culprit: culprit, solution: cas.solution,
+    key_evidence: ev.filter(function(e){ return e.important; }),
+    misleading_evidence: ev.filter(function(e){ return e.misleading; }),
+    community: await getDetectiveCommunity(caseId, chosenSuspectId || cas.culprit_id)
+  };
+}
+async function recordDetectiveGuess(userId, caseId, suspectId) {
+  var cr = await query("SELECT id, culprit_id, solution FROM detective_cases WHERE id=$1 AND active=true", [caseId]);
+  if (!cr.rows[0]) return { error: 'Vaka bulunamadi.' };
+  var cas = cr.rows[0];
+  var sv = await query("SELECT id FROM detective_suspects WHERE id=$1 AND case_id=$2", [suspectId, caseId]);
+  if (!sv.rows[0]) return { error: 'Gecersiz supheli.' };
+  var prev = await query("SELECT attempt_no, correct, suspect_id FROM detective_guesses WHERE user_id=$1 AND case_id=$2 ORDER BY attempt_no", [userId, caseId]);
+  var attempts = prev.rows.length;
+  var alreadySolved = prev.rows.some(function(x){ return x.correct; });
+  if (alreadySolved || attempts >= 3) {
+    var lastSus = prev.rows.length ? prev.rows[prev.rows.length - 1].suspect_id : suspectId;
+    var rev0 = await _detectiveReveal(caseId, cas, lastSus);
+    rev0.completed = true; rev0.already = true; rev0.attempt_no = attempts; rev0.case_points = 0;
+    rev0.correct = alreadySolved;
+    return rev0;
+  }
+  var attemptNo = attempts + 1;
+  var correct = String(suspectId) === String(cas.culprit_id);
+  var delta = correct ? (attemptNo === 1 ? 100 : attemptNo === 2 ? 60 : 30) : -10;
+  await query("INSERT INTO detective_guesses (case_id,user_id,suspect_id,attempt_no,correct,delta) VALUES ($1,$2,$3,$4,$5,$6)", [caseId, userId, suspectId, attemptNo, correct, delta]);
+  if (correct || attemptNo >= 3) {
+    var sumr = await query("SELECT COALESCE(SUM(delta),0) AS s FROM detective_guesses WHERE user_id=$1 AND case_id=$2", [userId, caseId]);
+    var net = Math.max(0, Math.min(100, parseInt(sumr.rows[0].s)));
+    try { await saveScore(userId, 'DETECTIVE', net, 100); } catch (e) {}
+    var rev = await _detectiveReveal(caseId, cas, suspectId);
+    rev.completed = true; rev.correct = correct; rev.attempt_no = attemptNo; rev.delta = delta; rev.case_points = net;
+    return rev;
+  }
+  return { completed: false, correct: false, attempt_no: attemptNo, delta: delta, remaining: 3 - attemptNo };
+}
+async function getDetectiveStats(userId) {
+  var r = await query("SELECT case_id, MAX(CASE WHEN correct THEN 1 ELSE 0 END) AS solved, MIN(CASE WHEN correct THEN attempt_no ELSE 99 END) AS fca FROM detective_guesses WHERE user_id=$1 GROUP BY case_id", [userId]);
+  var solved = 0, perfect = 0;
+  r.rows.forEach(function(x){ if (parseInt(x.solved) === 1) { solved++; if (parseInt(x.fca) === 1) perfect++; } });
+  return { solved: solved, perfect: perfect };
+}
+
+// — Admin —
+async function adminGetDetectiveCases() {
+  var r = await query("SELECT c.id, c.title, c.event_type, c.difficulty, c.active, c.culprit_id, (SELECT COUNT(*) FROM detective_suspects s WHERE s.case_id=c.id) AS suspects, (SELECT COUNT(*) FROM detective_evidence e WHERE e.case_id=c.id) AS evidence FROM detective_cases c ORDER BY c.id DESC");
+  return r.rows;
+}
+async function adminGetDetectiveCase(id) {
+  var cr = await query("SELECT * FROM detective_cases WHERE id=$1", [id]);
+  if (!cr.rows[0]) return null;
+  var c = cr.rows[0];
+  c.suspects = (await query("SELECT * FROM detective_suspects WHERE case_id=$1 ORDER BY ord,id", [id])).rows;
+  c.evidence = (await query("SELECT * FROM detective_evidence WHERE case_id=$1 ORDER BY ord,id", [id])).rows;
+  return c;
+}
+async function upsertDetectiveCase(d) {
+  if (d.id) {
+    await query("UPDATE detective_cases SET title=$1,event_type=$2,summary=$3,status_text=$4,difficulty=$5,solution=$6,active=$7,culprit_id=$8 WHERE id=$9",
+      [d.title, d.event_type || '', d.summary || '', d.status_text || '', d.difficulty || 'easy', d.solution || '', d.active !== false, d.culprit_id || null, d.id]);
+    return { id: d.id };
+  }
+  var r = await query("INSERT INTO detective_cases (title,event_type,summary,status_text,difficulty,solution,active) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id",
+    [d.title, d.event_type || '', d.summary || '', d.status_text || '', d.difficulty || 'easy', d.solution || '', d.active !== false]);
+  return { id: r.rows[0].id };
+}
+async function deleteDetectiveCase(id) { await query("DELETE FROM detective_cases WHERE id=$1", [id]); }
+async function upsertDetectiveSuspect(d) {
+  if (d.id) { await query("UPDATE detective_suspects SET name=$1,profession=$2,background=$3,img=$4,ord=$5 WHERE id=$6", [d.name, d.profession || '', d.background || '', d.img || '', d.ord || 0, d.id]); return { id: d.id }; }
+  var r = await query("INSERT INTO detective_suspects (case_id,name,profession,background,img,ord) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id", [d.case_id, d.name, d.profession || '', d.background || '', d.img || '', d.ord || 0]);
+  return { id: r.rows[0].id };
+}
+async function deleteDetectiveSuspect(id) {
+  await query("UPDATE detective_cases SET culprit_id=NULL WHERE culprit_id=$1", [id]);
+  await query("DELETE FROM detective_suspects WHERE id=$1", [id]);
+}
+async function upsertDetectiveEvidence(d) {
+  if (d.id) { await query("UPDATE detective_evidence SET category=$1,title=$2,content=$3,important=$4,misleading=$5,ord=$6 WHERE id=$7", [d.category || 'other', d.title || '', d.content || '', !!d.important, !!d.misleading, d.ord || 0, d.id]); return { id: d.id }; }
+  var r = await query("INSERT INTO detective_evidence (case_id,category,title,content,important,misleading,ord) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id", [d.case_id, d.category || 'other', d.title || '', d.content || '', !!d.important, !!d.misleading, d.ord || 0]);
+  return { id: r.rows[0].id };
+}
+async function deleteDetectiveEvidence(id) { await query("DELETE FROM detective_evidence WHERE id=$1", [id]); }
+
+async function getDetectiveRevealForUser(userId, caseId) {
+  var cr = await query("SELECT id, culprit_id, solution FROM detective_cases WHERE id=$1", [caseId]);
+  if (!cr.rows[0]) return null;
+  var g = await query("SELECT suspect_id FROM detective_guesses WHERE user_id=$1 AND case_id=$2 ORDER BY attempt_no DESC LIMIT 1", [userId, caseId]);
+  var chosen = g.rows[0] ? g.rows[0].suspect_id : cr.rows[0].culprit_id;
+  var rev = await _detectiveReveal(caseId, cr.rows[0], chosen);
+  rev.your_pick = chosen;
+  return rev;
 }
