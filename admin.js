@@ -1449,9 +1449,12 @@ function _detRenderEditor(){
       '<button class="btn bg bsm" onclick="aDetEditSus('+s.id+')">\u270f\ufe0f</button>'+
       '<button class="btn bg bsm" style="color:var(--pk)" onclick="aDetDelSus('+s.id+')">\ud83d\uddd1\ufe0f</button></div></div>';
   }).join('')||'<div style="color:var(--t3);font-size:12px;margin-bottom:6px">Henuz supheli yok (3-8 arasi ekleyin).</div>';
-  html+='<div class="card" style="padding:16px;margin-bottom:16px"><h4 style="font-weight:700;margin-bottom:8px">\ud83d\udc65 Supheliler ('+c.suspects.length+')</h4>'+susRows+
+  var _detCharOpts=(typeof chars!=='undefined'?chars:[]).filter(function(x){return x.a!==false && x.dbId;}).sort(function(a,b){return (a.n+' '+(a.s||'')).localeCompare(b.n+' '+(b.s||''),'tr');}).map(function(x){return '<option value="'+x.dbId+'">'+esc(x.n+' '+(x.s||''))+'</option>';}).join('');
+  html+='<div class="card" style="padding:16px;margin-bottom:16px"><h4 style="font-weight:700;margin-bottom:8px">\ud83d\udc65 Supheliler ('+c.suspects.length+') <span style="font-size:11px;color:var(--t3);font-weight:400">\u2014 karakterlerden secilir</span></h4>'+susRows+
     '<div style="border-top:1px solid var(--b1);margin-top:10px;padding-top:10px"><input type="hidden" id="det-sus-id" value="">'+
-    _detFld('Ad','det-sus-name','')+_detFld('Meslek','det-sus-prof','')+_detTa('Kisa Gecmis','det-sus-bg','')+_detFld('Fotograf URL (istege bagli)','det-sus-img','')+
+    '<label style="font-size:13px;color:var(--t2);display:block;margin:8px 0 4px">Karakter (foto ve isim karakterden gelir)</label>'+
+    (_detCharOpts?'<select id="det-sus-char" style="width:100%;padding:10px;border-radius:8px;background:var(--bg3);border:1px solid var(--b1);color:var(--t1);margin-bottom:4px">'+_detCharOpts+'</select>':'<div style="color:#ff8a80;font-size:12px;margin-bottom:6px">Once Karakterler sekmesinden aktif karakter ekleyin.</div>')+
+    _detFld('Meslek / Roldeki konumu','det-sus-prof','')+_detTa('Kisa Gecmis (bu vakadaki rolu)','det-sus-bg','')+
     '<button class="btn bp bsm" onclick="aDetSaveSus()">+ Supheli Ekle / Guncelle</button></div></div>';
 
   // KANITLAR
@@ -1472,11 +1475,11 @@ function _detRenderEditor(){
 }
 
 // — şüpheli işlemleri —
-function aDetEditSus(id){ var s=null;_detC.suspects.forEach(function(x){if(x.id===id)s=x;});if(!s)return; _dset('det-sus-id',id);_dset('det-sus-name',s.name);_dset('det-sus-prof',s.profession||'');_dset('det-sus-bg',s.background||'');_dset('det-sus-img',s.img||''); toast('Duzenleniyor: alanlari degistirip Kaydet.'); }
+function aDetEditSus(id){ var s=null;_detC.suspects.forEach(function(x){if(x.id===id)s=x;});if(!s)return; _dset('det-sus-id',id); if(s.char_id&&document.getElementById('det-sus-char'))_dset('det-sus-char',String(s.char_id)); _dset('det-sus-prof',s.profession||'');_dset('det-sus-bg',s.background||''); toast('Duzenleniyor: karakteri/alanlari degistirip Kaydet.'); }
 function aDetSaveSus(){
-  var name=_dv('det-sus-name'); if(!name){toast('Ad gerekli.',false);return;}
+  var charId=_dv('det-sus-char'); if(!charId){toast('Karakter secin.',false);return;}
   var sid=_dv('det-sus-id');
-  var body={case_id:_detC.id,name:name,profession:_dv('det-sus-prof'),background:_dv('det-sus-bg'),img:_dv('det-sus-img')};
+  var body={case_id:_detC.id,char_id:parseInt(charId),profession:_dv('det-sus-prof'),background:_dv('det-sus-bg')};
   if(sid)body.id=parseInt(sid);
   _detPersistCase(function(){ body.case_id=_detC.id; apiPost('/admin/detective/suspect',body).then(function(r){ if(!r||r.error){toast((r&&r.error)||'Hata',false);return;} toast('Kaydedildi.'); aDetEdit(_detC.id); }); });
 }
