@@ -565,7 +565,7 @@ async function streamConnect() {
       if (!channelId) { toast('Geçerli bir link gir!', false); return; }
     } else if (mode === 'CFATE') {
       var opposite = countVal === 'M' ? 'F' : 'M';
-      pool = shuf(chars.filter(function(c){return c.a && c.g === opposite})).slice(0,8);
+      pool = shuf(chars.filter(function(c){return c.a && c.g === opposite})).slice(0,12);
     } else {
       pool = shuf(chars.filter(function(c){return c.a})).slice(0, parseInt(countVal));
     }
@@ -1055,13 +1055,11 @@ function renderStreamRound() {
       '<p style="font-size:18px;color:var(--t3);margin-bottom:16px">Bu karakter kim? Do\u011fru \u015f\u0131kk\u0131 chat\u2019e yaz\u0131n! <b style="color:var(--v)">(A, B, C veya D)</b></p>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:800px;margin:0 auto">' +
       q.options.map(function(name, i) {
-        var ch = q.optionChars[i];
         var isCorrectOpt = i === q.correctIndex && s.roundWinner;
         var borderCol = isCorrectOpt ? '#3cddc7' : 'var(--b1)';
         var bgCol = isCorrectOpt ? 'rgba(60,221,199,0.08)' : 'var(--bg3)';
-        return '<div style="padding:14px;border-radius:12px;background:'+bgCol+';border:2px solid '+borderCol+';font-size:16px;display:flex;align-items:center;gap:10px;transition:all .3s;'+(clickable?'cursor:pointer':'')+ '" '+(clickable?'onclick="streamerSkipQuiz()" onmouseover="this.style.borderColor=\'#ff544d\'" onmouseout="this.style.borderColor=\'var(--b1)\'"':'')+'>'+
+        return '<div style="padding:16px 18px;border-radius:12px;background:'+bgCol+';border:2px solid '+borderCol+';font-size:16px;display:flex;align-items:center;gap:12px;transition:all .3s;'+(clickable?'cursor:pointer':'')+ '" '+(clickable?'onclick="streamerSkipQuiz()" onmouseover="this.style.borderColor=\'#ff544d\'" onmouseout="this.style.borderColor=\'var(--b1)\'"':'')+'>'+
           '<div style="width:40px;height:40px;border-radius:10px;background:'+letterColors[i]+'20;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;color:'+letterColors[i]+';flex-shrink:0">' + letters[i] + '</div>' +
-          '<div style="width:36px;height:36px;border-radius:8px;overflow:hidden;flex-shrink:0">' + cp(ch, 36) + '</div>' +
           '<span style="font-weight:600">' + esc(name) + '</span>' +
           (isCorrectOpt ? ' <span style="color:var(--m);font-size:14px;margin-left:auto">\u2705</span>' : '') +
           '</div>';
@@ -1613,7 +1611,15 @@ function renderCTeamResult() {
 function nextCFateRound() {
   var s = streamState;
   if (!s || !s.active) return;
-  if (s.alive.length === 0) { renderCFateResult(); return; }
+  if (s.fates.length === 0) { renderCFateResult(); return; } // tüm kaderler atandı → bitti
+  if (s.alive.length === 0) {
+    // karakter bitti ama atanacak kader var → kaderi atanmamış karakterlerle havuzu yenile
+    var _assigned = {};
+    s.usedFates.forEach(function(f){ (f.chars || []).forEach(function(c){ _assigned[String(c.dbId||c.id||c.n)] = 1; }); });
+    var _rest = s.pool.filter(function(c){ return !_assigned[String(c.dbId||c.id||c.n)]; });
+    s.alive = (typeof shuf === 'function') ? shuf(_rest) : _rest;
+    if (s.alive.length === 0) { renderCFateResult(); return; } // gerçekten karakter kalmadı
+  }
   s.currentChar = s.alive.shift();
   s.chatMessages = [];
   var c = s.currentChar;
@@ -1622,7 +1628,7 @@ function nextCFateRound() {
     '<div style="display:flex;gap:20px;padding:20px">'+
     '<div style="flex:1;text-align:center">'+
       '<h2 class="fd" style="font-size:28px;margin-bottom:6px">🎭 Kaderini Seç — Chat</h2>'+
-      '<p style="color:var(--t2);font-size:16px;margin-bottom:6px">'+(s.pool.length - s.alive.length)+'/'+s.pool.length+' kader belirlendi</p>'+
+      '<p style="color:var(--t2);font-size:16px;margin-bottom:6px">'+ s.usedFates.length +'/'+ (s.usedFates.length + s.fates.length) +' kader belirlendi</p>'+
       '<p style="color:var(--pk);font-size:16px;font-weight:700;margin-bottom:16px">1-8 arası yaz veya kader adını yaz!</p>'+
       '<div class="cg sci" style="max-width:500px;margin:0 auto;padding:24px">'+
         '<div style="max-width:400px;border-radius:14px;overflow:hidden;margin:0 auto 12px">'+cp(c,400)+'</div>'+
