@@ -708,6 +708,22 @@ app.delete('/api/admin/detective/evidence', auth, adm, async function(req, res) 
   try { await ensureDb(); await db.deleteDetectiveEvidence(parseInt(req.query.id)); res.json({ success: true }); }
   catch (e) { res.status(500).json({ error: 'Silinemedi.' }); }
 });
+app.get('/api/admin/detective/char-pool', auth, adm, async function(req, res) {
+  try { await ensureDb(); res.json(await db.getDetectiveCharPool()); }
+  catch (e) { res.status(500).json({ error: 'Yuklenemedi.' }); }
+});
+app.post('/api/admin/detective/char-pool', auth, adm, async function(req, res) {
+  try { await ensureDb(); var ids = await db.setDetectiveCharPool(req.body.ids || []); res.json({ success: true, ids: ids }); }
+  catch (e) { console.error('admin/detective/char-pool:', e.message); res.status(500).json({ error: 'Kaydedilemedi.' }); }
+});
+app.post('/api/admin/detective/regenerate', auth, adm, async function(req, res) {
+  try {
+    await ensureDb();
+    var r = await db.regenerateDetectiveCases();
+    if (!r.ok) return res.status(400).json({ error: 'Havuzda en az ' + (r.min || 10) + ' aktif karakter olmalı (zor vakalar 8 şüpheli + 2 tanık içerir). Şu an: ' + r.poolSize + '. İpucu: hiç seçmezseniz tüm aktif karakterler kullanılır.' });
+    res.json({ success: true, count: r.count, poolSize: r.poolSize });
+  } catch (e) { console.error('admin/detective/regenerate:', e.message); res.status(500).json({ error: 'Olusturulamadi.' }); }
+});
 
 // #12 Security: module.exports dosya sonunda — tüm route'lar kayıtlı
 module.exports = app;
