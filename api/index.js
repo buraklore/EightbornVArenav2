@@ -610,6 +610,10 @@ app.get('/api/admin/stock/wallets', auth, adm, async function(req, res) {
   try { await ensureDb(); res.json({ wallets: await db.getAdminStockWallets() }); }
   catch (e) { console.error('admin/stock/wallets:', e.message); res.status(500).json({ error: 'Yuklenemedi.' }); }
 });
+app.get('/api/admin/stock/holdings', auth, adm, async function(req, res) {
+  try { await ensureDb(); res.json({ holdings: await db.getAdminStockHoldings() }); }
+  catch (e) { console.error('admin/stock/holdings:', e.message); res.status(500).json({ error: 'Yuklenemedi.' }); }
+});
 app.post('/api/admin/stock/set-price', auth, adm, async function(req, res) {
   try {
     await ensureDb();
