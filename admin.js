@@ -1,6 +1,6 @@
 // ═══ ADMIN (simplified for focus on tournament) ═══
-const AT=[{k:'games',l:'Oyunlar',i:'🎮'},{k:'ranking',l:'Sıralama',i:'🏆'},{k:'users',l:'Kullanıcılar',i:'👤'},{k:'gameedit',l:'Oyun Düzenle',i:'✏️'},{k:'questions',l:'Sorular',i:'❓'},{k:'rankcrit',l:'Sıralama Kriterleri',i:'🎯'},{k:'rankpool',l:'Sıralama Havuzu',i:'🎲'},{k:'rpsim',l:'RP Simülasyonu',i:'🎭'},{k:'stock',l:'Karakter Borsası',i:'📈'},{k:'whoChars',l:'WHO Sonuçları',i:'🪞'},{k:'ads',l:'Reklamlar',i:'📢'},{k:'msgs',l:'Mesajlar',i:'📨'},{k:'hero',l:'Hero Görseli',i:'🖼️'},{k:'discord',l:'Discord',i:'🎮'},{k:'footerpages',l:'Footer Sayfaları',i:'📄'},{k:'chars',l:'Karakterler',i:'⚔️'},{k:'seo',l:'SEO',i:'🔍'}];
-function rAdm(){document.getElementById('adm-nav').innerHTML=AT.map(t=>'<button class="nl'+(aTab===t.k?' a':'')+'" style="justify-content:flex-start;width:100%;font-size:15px;padding:12px 16px" onclick="aTab=\''+t.k+'\';rAdm()">'+t.i+' '+t.l+'</button>').join('');const e=document.getElementById('adm-c');({chars:aChars,questions:aQuestions,games:aGames,ranking:aRanking,users:aUsers,ads:aAds,msgs:aMsgs,gameedit:aGameEdit,hero:aHero,discord:aDiscord,footerpages:aFooterPages,seo:aSeo,whoChars:aWhoChars,rankcrit:aRankCrit,rankpool:aRankPool,rpsim:aRpsimPool,stock:aStock})[aTab](e)}
+const AT=[{k:'games',l:'Oyunlar',i:'🎮'},{k:'ranking',l:'Sıralama',i:'🏆'},{k:'users',l:'Kullanıcılar',i:'👤'},{k:'gameedit',l:'Oyun Düzenle',i:'✏️'},{k:'questions',l:'Sorular',i:'❓'},{k:'rankcrit',l:'Sıralama Kriterleri',i:'🎯'},{k:'rankpool',l:'Sıralama Havuzu',i:'🎲'},{k:'rpsim',l:'RP Simülasyonu',i:'🎭'},{k:'stock',l:'Karakter Borsası',i:'📈'},{k:'detective',l:'Dedektif Vakaları',i:'🕵️'},{k:'whoChars',l:'WHO Sonuçları',i:'🪞'},{k:'ads',l:'Reklamlar',i:'📢'},{k:'msgs',l:'Mesajlar',i:'📨'},{k:'hero',l:'Hero Görseli',i:'🖼️'},{k:'discord',l:'Discord',i:'🎮'},{k:'footerpages',l:'Footer Sayfaları',i:'📄'},{k:'chars',l:'Karakterler',i:'⚔️'},{k:'seo',l:'SEO',i:'🔍'}];
+function rAdm(){document.getElementById('adm-nav').innerHTML=AT.map(t=>'<button class="nl'+(aTab===t.k?' a':'')+'" style="justify-content:flex-start;width:100%;font-size:15px;padding:12px 16px" onclick="aTab=\''+t.k+'\';rAdm()">'+t.i+' '+t.l+'</button>').join('');const e=document.getElementById('adm-c');({chars:aChars,questions:aQuestions,games:aGames,ranking:aRanking,users:aUsers,ads:aAds,msgs:aMsgs,gameedit:aGameEdit,hero:aHero,discord:aDiscord,footerpages:aFooterPages,seo:aSeo,whoChars:aWhoChars,rankcrit:aRankCrit,rankpool:aRankPool,rpsim:aRpsimPool,stock:aStock,detective:aDetective})[aTab](e)}
 
 function aChars(e){
   if(!window._dataReady){
@@ -1385,3 +1385,111 @@ function skuSave(userId) {
     } else { toast((r && r.error) || 'Kaydedilemedi.'); }
   }).catch(function(){ toast('Kaydedilemedi.'); });
 }
+
+// ═══════════════════════════════════════════════════
+// 🕵️ DEDEKTİF DOSYASI — ADMIN
+// ═══════════════════════════════════════════════════
+var _detC = null;
+function _dv(id){ var el=document.getElementById(id); return el?el.value.trim():''; }
+function _dset(id,v){ var el=document.getElementById(id); if(el)el.value=v; }
+function _detFld(label,id,val){ return '<label style="font-size:13px;color:var(--t2);display:block;margin:8px 0 4px">'+label+'</label><input id="'+id+'" value="'+esc(val||'')+'" style="width:100%;padding:10px;border-radius:8px;background:var(--bg3);border:1px solid var(--b1);color:var(--t1);margin-bottom:4px">'; }
+function _detTa(label,id,val){ return '<label style="font-size:13px;color:var(--t2);display:block;margin:8px 0 4px">'+label+'</label><textarea id="'+id+'" style="width:100%;min-height:80px;padding:10px;border-radius:8px;background:var(--bg3);border:1px solid var(--b1);color:var(--t1);margin-bottom:4px;resize:vertical">'+esc(val||'')+'</textarea>'; }
+
+function aDetective(e){
+  e.innerHTML='<div style="padding:20px;color:var(--t2)">Yukleniyor...</div>';
+  apiGet('/admin/detective/cases').then(function(r){
+    var cases=(r&&r.cases)||[];
+    var diffMap={easy:'Kolay',medium:'Orta',hard:'Zor'};
+    var rows=cases.map(function(c){
+      var warn=(!c.culprit_id||c.suspects<3)?' <span style="color:#ff8a80;font-size:11px">(eksik: suclu/supheli)</span>':'';
+      return '<div class="card" style="margin-bottom:8px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:10px">'+
+        '<div><div style="font-weight:600">#'+c.id+' \u00b7 '+esc(c.title)+(c.active?'':' <span style="color:var(--t3)">(pasif)</span>')+'</div>'+
+        '<div style="font-size:12px;color:var(--t3)">'+esc(c.event_type||'')+' \u00b7 '+(diffMap[c.difficulty]||c.difficulty)+' \u00b7 '+c.suspects+' supheli \u00b7 '+c.evidence+' kanit'+warn+'</div></div>'+
+        '<div style="display:flex;gap:6px"><button class="btn bg bsm" onclick="aDetEdit('+c.id+')">\u270f\ufe0f Duzenle</button>'+
+        '<button class="btn bg bsm" style="color:var(--pk)" onclick="aDetDelCase('+c.id+')">\ud83d\uddd1\ufe0f</button></div></div>';
+    }).join('')||'<div style="color:var(--t3);padding:14px">Henuz vaka yok. Yeni vaka ekleyin.</div>';
+    e.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h3 style="font-size:20px;font-weight:700">\ud83d\udd75\ufe0f Dedektif Vakalari</h3><button class="btn bp" onclick="aDetNew()">+ Yeni Vaka</button></div>'+rows;
+  }).catch(function(){ e.innerHTML='<div style="color:#ffb4ac;padding:14px">Yuklenemedi.</div>'; });
+}
+function aDetNew(){ _detC={id:null,title:'',event_type:'',summary:'',status_text:'',difficulty:'easy',solution:'',active:true,culprit_id:null,suspects:[],evidence:[]}; _detRenderEditor(); }
+function aDetEdit(id){ apiGet('/admin/detective/case?id='+id).then(function(r){ if(!r||!r.case){toast('Bulunamadi.',false);return;} _detC=r.case; _detRenderEditor(); }); }
+function aDetDelCase(id){ if(!confirm('Bu vaka ve tum supheli/kanitlari silinsin mi?'))return; apiDelete('/admin/detective/case?id='+id).then(function(){toast('Silindi.');aDetective(document.getElementById('adm-c'));}); }
+
+function _detPersistCase(cb){
+  var c=_detC;
+  if(!document.getElementById('det-title')){ if(cb)cb(); return; }
+  var body={id:c.id||undefined,title:_dv('det-title'),event_type:_dv('det-type'),difficulty:_dv('det-diff'),summary:_dv('det-summary'),status_text:_dv('det-status'),solution:_dv('det-solution'),active:document.getElementById('det-active').checked,culprit_id:c.culprit_id||null};
+  if(!body.title){toast('Baslik gerekli.',false);return;}
+  apiPost('/admin/detective/case',body).then(function(r){ if(!r||r.error){toast((r&&r.error)||'Hata',false);return;} c.id=r.id; if(cb)cb(); });
+}
+function aDetSaveCase(){ _detPersistCase(function(){ toast('Kaydedildi.'); aDetEdit(_detC.id); }); }
+
+function _detRenderEditor(){
+  var c=_detC, e=document.getElementById('adm-c'), isNew=!c.id;
+  var diffOpts=[['easy','Kolay (3 supheli / 4 kanit)'],['medium','Orta (5 / 8)'],['hard','Zor (8 / 12+)']].map(function(o){return '<option value="'+o[0]+'"'+(c.difficulty===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('');
+  var html='<button class="btn bg bsm" style="margin-bottom:12px" onclick="aDetective(document.getElementById(\'adm-c\'))">\u2190 Vakalar</button>';
+  html+='<div class="card" style="padding:18px;margin-bottom:16px"><h3 style="font-size:18px;font-weight:700;margin-bottom:6px">'+(isNew?'Yeni Vaka':'Vaka #'+c.id)+'</h3>'+
+    _detFld('Baslik','det-title',c.title)+
+    _detFld('Olay Turu (Arac Hirsizligi, Cinayet, Soygun...)','det-type',c.event_type)+
+    '<label style="font-size:13px;color:var(--t2);display:block;margin:8px 0 4px">Zorluk Seviyesi</label><select id="det-diff" style="width:100%;padding:10px;border-radius:8px;background:var(--bg3);border:1px solid var(--b1);color:var(--t1);margin-bottom:4px">'+diffOpts+'</select>'+
+    _detTa('Olay Ozeti (oyuncuya gosterilen dosya metni)','det-summary',c.summary)+
+    _detFld('Durum (Fail henuz bulunamadi...)','det-status',c.status_text)+
+    _detTa('Cozum Aciklamasi (sonuc ekraninda gosterilir)','det-solution',c.solution)+
+    '<label style="font-size:13px;display:flex;align-items:center;gap:6px;margin:8px 0"><input type="checkbox" id="det-active"'+(c.active!==false?' checked':'')+'> Aktif (oyuncular gorebilsin)</label>'+
+    '<button class="btn bp" onclick="aDetSaveCase()">\ud83d\udcbe Vakayi Kaydet</button></div>';
+  if(isNew){ html+='<div style="color:var(--t3);font-size:13px;padding:10px;border:1px dashed var(--b1);border-radius:10px">Supheli ve kanit eklemek icin once vakayi kaydedin.</div>'; e.innerHTML=html; return; }
+
+  // ŞÜPHELİLER
+  var susRows=c.suspects.map(function(s){
+    var cul=String(c.culprit_id)===String(s.id);
+    return '<div class="card" style="padding:10px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px;'+(cul?'border:1px solid #3cdd8c':'')+'">'+
+      '<div style="display:flex;align-items:center;gap:8px">'+(s.img?'<img src="'+esc(s.img)+'" style="width:36px;height:36px;border-radius:8px;object-fit:cover">':'<span style="font-size:22px">\ud83d\udc64</span>')+
+      '<div><div style="font-weight:600">'+esc(s.name)+(cul?' <span style="color:#3cdd8c;font-size:11px">\u2605 SUCLU</span>':'')+'</div><div style="font-size:11px;color:var(--t3)">'+esc(s.profession||'')+'</div></div></div>'+
+      '<div style="display:flex;gap:4px">'+(cul?'':'<button class="btn bg bsm" style="color:#3cdd8c" onclick="aDetSetCulprit('+s.id+')">Suclu yap</button>')+
+      '<button class="btn bg bsm" onclick="aDetEditSus('+s.id+')">\u270f\ufe0f</button>'+
+      '<button class="btn bg bsm" style="color:var(--pk)" onclick="aDetDelSus('+s.id+')">\ud83d\uddd1\ufe0f</button></div></div>';
+  }).join('')||'<div style="color:var(--t3);font-size:12px;margin-bottom:6px">Henuz supheli yok (3-8 arasi ekleyin).</div>';
+  html+='<div class="card" style="padding:16px;margin-bottom:16px"><h4 style="font-weight:700;margin-bottom:8px">\ud83d\udc65 Supheliler ('+c.suspects.length+')</h4>'+susRows+
+    '<div style="border-top:1px solid var(--b1);margin-top:10px;padding-top:10px"><input type="hidden" id="det-sus-id" value="">'+
+    _detFld('Ad','det-sus-name','')+_detFld('Meslek','det-sus-prof','')+_detTa('Kisa Gecmis','det-sus-bg','')+_detFld('Fotograf URL (istege bagli)','det-sus-img','')+
+    '<button class="btn bp bsm" onclick="aDetSaveSus()">+ Supheli Ekle / Guncelle</button></div></div>';
+
+  // KANITLAR
+  var catLbl={camera:'\ud83d\udcf9 Kamera',phone:'\ud83d\udcf1 Telefon',gps:'\ud83d\ude97 GPS',witness:'\ud83d\udc64 Tanik',forensic:'\ud83d\udd2c Adli',other:'\ud83d\uddc2\ufe0f Diger'};
+  var evRows=(c.evidence||[]).map(function(ev){
+    var tags=(ev.important?'<span style="color:#3cdd8c;font-size:11px">\ud83d\udd11 kilit</span> ':'')+(ev.misleading?'<span style="color:#ff8a80;font-size:11px">\ud83c\udfad yaniltici</span>':'');
+    return '<div class="card" style="padding:10px 12px;margin-bottom:6px"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="flex:1"><div style="font-weight:600;font-size:13px">'+(catLbl[ev.category]||ev.category)+(ev.title?' \u00b7 '+esc(ev.title):'')+' '+tags+'</div><div style="font-size:12px;color:var(--t3);margin-top:2px">'+esc((ev.content||'').slice(0,140))+'</div></div><div style="display:flex;gap:4px"><button class="btn bg bsm" onclick="aDetEditEv('+ev.id+')">\u270f\ufe0f</button><button class="btn bg bsm" style="color:var(--pk)" onclick="aDetDelEv('+ev.id+')">\ud83d\uddd1\ufe0f</button></div></div></div>';
+  }).join('')||'<div style="color:var(--t3);font-size:12px;margin-bottom:6px">Henuz kanit yok.</div>';
+  var catOpts=[['camera','\ud83d\udcf9 Kamera Kayitlari'],['phone','\ud83d\udcf1 Telefon Kayitlari'],['gps','\ud83d\ude97 GPS Verileri'],['witness','\ud83d\udc64 Tanik Ifadesi'],['forensic','\ud83d\udd2c Adli Bulgu'],['other','\ud83d\uddc2\ufe0f Diger']].map(function(o){return '<option value="'+o[0]+'">'+o[1]+'</option>';}).join('');
+  html+='<div class="card" style="padding:16px;margin-bottom:16px"><h4 style="font-weight:700;margin-bottom:8px">\ud83d\udd0d Kanitlar ('+(c.evidence||[]).length+')</h4>'+evRows+
+    '<div style="border-top:1px solid var(--b1);margin-top:10px;padding-top:10px"><input type="hidden" id="det-ev-id" value="">'+
+    '<label style="font-size:13px;color:var(--t2);display:block;margin:8px 0 4px">Kategori</label><select id="det-ev-cat" style="width:100%;padding:10px;border-radius:8px;background:var(--bg3);border:1px solid var(--b1);color:var(--t1);margin-bottom:4px">'+catOpts+'</select>'+
+    _detFld('Baslik (Kamera Kaydi, Parmak Izi...)','det-ev-title','')+_detTa('Icerik / Aciklama','det-ev-content','')+
+    '<div style="display:flex;gap:16px;margin:6px 0 10px"><label style="font-size:13px;display:flex;align-items:center;gap:6px"><input type="checkbox" id="det-ev-imp"> \ud83d\udd11 Kilit kanit</label><label style="font-size:13px;display:flex;align-items:center;gap:6px"><input type="checkbox" id="det-ev-mis"> \ud83c\udfad Yaniltici</label></div>'+
+    '<button class="btn bp bsm" onclick="aDetSaveEv()">+ Kanit Ekle / Guncelle</button></div></div>';
+
+  e.innerHTML=html;
+}
+
+// — şüpheli işlemleri —
+function aDetEditSus(id){ var s=null;_detC.suspects.forEach(function(x){if(x.id===id)s=x;});if(!s)return; _dset('det-sus-id',id);_dset('det-sus-name',s.name);_dset('det-sus-prof',s.profession||'');_dset('det-sus-bg',s.background||'');_dset('det-sus-img',s.img||''); toast('Duzenleniyor: alanlari degistirip Kaydet.'); }
+function aDetSaveSus(){
+  var name=_dv('det-sus-name'); if(!name){toast('Ad gerekli.',false);return;}
+  var sid=_dv('det-sus-id');
+  var body={case_id:_detC.id,name:name,profession:_dv('det-sus-prof'),background:_dv('det-sus-bg'),img:_dv('det-sus-img')};
+  if(sid)body.id=parseInt(sid);
+  _detPersistCase(function(){ body.case_id=_detC.id; apiPost('/admin/detective/suspect',body).then(function(r){ if(!r||r.error){toast((r&&r.error)||'Hata',false);return;} toast('Kaydedildi.'); aDetEdit(_detC.id); }); });
+}
+function aDetDelSus(id){ if(!confirm('Supheli silinsin mi?'))return; _detPersistCase(function(){ apiDelete('/admin/detective/suspect?id='+id).then(function(){toast('Silindi.');aDetEdit(_detC.id);}); }); }
+function aDetSetCulprit(id){ _detC.culprit_id=id; _detPersistCase(function(){ toast('Suclu belirlendi.'); aDetEdit(_detC.id); }); }
+
+// — kanıt işlemleri —
+function aDetEditEv(id){ var ev=null;(_detC.evidence||[]).forEach(function(x){if(x.id===id)ev=x;});if(!ev)return; _dset('det-ev-id',id);_dset('det-ev-cat',ev.category);_dset('det-ev-title',ev.title||'');_dset('det-ev-content',ev.content||''); document.getElementById('det-ev-imp').checked=!!ev.important; document.getElementById('det-ev-mis').checked=!!ev.misleading; toast('Duzenleniyor: alanlari degistirip Kaydet.'); }
+function aDetSaveEv(){
+  var content=_dv('det-ev-content'); if(!content){toast('Icerik gerekli.',false);return;}
+  var eid=_dv('det-ev-id');
+  var body={case_id:_detC.id,category:_dv('det-ev-cat'),title:_dv('det-ev-title'),content:content,important:document.getElementById('det-ev-imp').checked,misleading:document.getElementById('det-ev-mis').checked};
+  if(eid)body.id=parseInt(eid);
+  _detPersistCase(function(){ body.case_id=_detC.id; apiPost('/admin/detective/evidence',body).then(function(r){ if(!r||r.error){toast((r&&r.error)||'Hata',false);return;} toast('Kaydedildi.'); aDetEdit(_detC.id); }); });
+}
+function aDetDelEv(id){ if(!confirm('Kanit silinsin mi?'))return; _detPersistCase(function(){ apiDelete('/admin/detective/evidence?id='+id).then(function(){toast('Silindi.');aDetEdit(_detC.id);}); }); }
