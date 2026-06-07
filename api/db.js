@@ -309,7 +309,7 @@ module.exports = {
   upsertDetectiveCase: upsertDetectiveCase, deleteDetectiveCase: deleteDetectiveCase,
   upsertDetectiveSuspect: upsertDetectiveSuspect, deleteDetectiveSuspect: deleteDetectiveSuspect,
   upsertDetectiveEvidence: upsertDetectiveEvidence, deleteDetectiveEvidence: deleteDetectiveEvidence,
-  getDetectiveRevealForUser: getDetectiveRevealForUser
+  getDetectiveRevealForUser: getDetectiveRevealForUser, getDetectiveNextCase: getDetectiveNextCase
 };
 
 // ═══ SAVED DUELS ═══
@@ -836,11 +836,12 @@ async function getAdminStockWallets() {
 // ═══════════════════════════════════════════════════
 async function detectiveInit() {
   await query("CREATE TABLE IF NOT EXISTS detective_cases (id SERIAL PRIMARY KEY, title VARCHAR(120) NOT NULL, event_type VARCHAR(50) DEFAULT '', summary TEXT DEFAULT '', status_text VARCHAR(200) DEFAULT '', difficulty VARCHAR(10) DEFAULT 'easy', culprit_id INTEGER, solution TEXT DEFAULT '', active BOOLEAN DEFAULT true, created_at TIMESTAMP DEFAULT NOW())");
-  await query("CREATE TABLE IF NOT EXISTS detective_suspects (id SERIAL PRIMARY KEY, case_id INTEGER REFERENCES detective_cases(id) ON DELETE CASCADE, name VARCHAR(60) NOT NULL, profession VARCHAR(80) DEFAULT '', background TEXT DEFAULT '', img TEXT DEFAULT '', ord INTEGER DEFAULT 0)");
+  await query("CREATE TABLE IF NOT EXISTS detective_suspects (id SERIAL PRIMARY KEY, case_id INTEGER REFERENCES detective_cases(id) ON DELETE CASCADE, char_id INTEGER, name VARCHAR(60) NOT NULL, profession VARCHAR(80) DEFAULT '', background TEXT DEFAULT '', img TEXT DEFAULT '', ord INTEGER DEFAULT 0)");
   await query("CREATE TABLE IF NOT EXISTS detective_evidence (id SERIAL PRIMARY KEY, case_id INTEGER REFERENCES detective_cases(id) ON DELETE CASCADE, category VARCHAR(20) DEFAULT 'other', title VARCHAR(120) DEFAULT '', content TEXT DEFAULT '', important BOOLEAN DEFAULT false, misleading BOOLEAN DEFAULT false, ord INTEGER DEFAULT 0)");
   await query("CREATE TABLE IF NOT EXISTS detective_guesses (id SERIAL PRIMARY KEY, case_id INTEGER NOT NULL, user_id INTEGER NOT NULL, suspect_id INTEGER, attempt_no INTEGER DEFAULT 1, correct BOOLEAN DEFAULT false, delta INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT NOW())");
   await query("CREATE INDEX IF NOT EXISTS idx_det_guess_uc ON detective_guesses (user_id, case_id)");
-  try { await seedDetective(); } catch (e) { console.error('seedDetective:', e.message); }
+  await query("ALTER TABLE detective_suspects ADD COLUMN IF NOT EXISTS char_id INTEGER");
+  try { await seedDetectiveChars(); } catch (e) { console.error('seedDetectiveChars:', e.message); }
 }
 
 async function _seedCase(c, suspects, evidence, culpritIndex) {
@@ -1003,8 +1004,13 @@ async function upsertDetectiveCase(d) {
 }
 async function deleteDetectiveCase(id) { await query("DELETE FROM detective_cases WHERE id=$1", [id]); }
 async function upsertDetectiveSuspect(d) {
-  if (d.id) { await query("UPDATE detective_suspects SET name=$1,profession=$2,background=$3,img=$4,ord=$5 WHERE id=$6", [d.name, d.profession || '', d.background || '', d.img || '', d.ord || 0, d.id]); return { id: d.id }; }
-  var r = await query("INSERT INTO detective_suspects (case_id,name,profession,background,img,ord) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id", [d.case_id, d.name, d.profession || '', d.background || '', d.img || '', d.ord || 0]);
+  var name = d.name || '', img = d.img || '', charId = d.char_id ? parseInt(d.char_id) : null;
+  if (charId) {
+    var ch = await query("SELECT name, surname, img FROM characters WHERE id=$1", [charId]);
+    if (ch.rows[0]) { name = ((ch.rows[0].name || '') + ' ' + (ch.rows[0].surname || '')).trim(); img = ch.rows[0].img || ''; }
+  }
+  if (d.id) { await query("UPDATE detective_suspects SET char_id=$1,name=$2,profession=$3,background=$4,img=$5,ord=$6 WHERE id=$7", [charId, name, d.profession || '', d.background || '', img, d.ord || 0, d.id]); return { id: d.id }; }
+  var r = await query("INSERT INTO detective_suspects (case_id,char_id,name,profession,background,img,ord) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id", [d.case_id, charId, name, d.profession || '', d.background || '', img, d.ord || 0]);
   return { id: r.rows[0].id };
 }
 async function deleteDetectiveSuspect(id) {
@@ -1026,4 +1032,466 @@ async function getDetectiveRevealForUser(userId, caseId) {
   var rev = await _detectiveReveal(caseId, cr.rows[0], chosen);
   rev.your_pick = chosen;
   return rev;
+}
+
+// ═══════════════════════════════════════════════════
+// DEDEKTİF — 30 VAKA (şüpheliler/tanıklar gerçek karakterlerden atanır)
+// {S1..Sn} = şüpheli karakterler, {W1..W2} = tanık karakterleri
+// ═══════════════════════════════════════════════════
+var DET_CASES = [
+  // ───────── KOLAY (10): 3 şüpheli, 4 kanıt ─────────
+  { t:"Gece Yarısı Galerisi", e:"Araç Hırsızlığı", d:"easy", st:"Fail henüz bulunamadı, üç kişi sorgulanıyor.", nS:3, nW:1, c:2,
+    sum:"Gece saat 02:15te şehrin merkezindeki lüks bir galeriden spor araba çalındı. Alarm devre dışı bırakılmış, kapıda zorlama izi yok. İçeriden bilgisi olan biri şüpheli görünüyor.",
+    sol:"Suçlu {S3}. Alarm şifresini yalnızca eski çalışanlar biliyordu ve GPS verisi olay saatinde aracını galerinin arka sokağında gösteriyor. {S1} başka şehirdeki bir düğündeydi, {S2} ise olay anında görüntülü görüşmedeydi.",
+    S:[["Galeri sahibi","Aracı sigortalı; o gece başka şehirdeki bir düğündeydi."],["Gece güvenliği","Kameraları o yönetiyor; olay sırasında kayıtlar kısa süre kapanmış."],["Eski galeri çalışanı","Altı ay önce kovuldu, maddi sıkıntıda ve galeriye yakın oturuyor."]],
+    E:[["camera","Kamera Kaydı","Saat 02:10ta kameralar dört dakika kapanıyor; sistemi yalnızca şifreyi bilen biri kapatabilir.",1,0],
+       ["gps","GPS Verisi","{S3} adlı kişinin aracı 01:50 ile 02:40 arası galerinin arka sokağında kayıtlı; diğer iki kişinin aracı evlerinde.",1,0],
+       ["phone","Telefon Kaydı","{S2} olay saatinde annesiyle görüntülü görüşmede; {S1} başka şehirden baz veriyor.",1,0],
+       ["witness","Tanık {W1}","{W1}, galerinin önünde kırmızı bir ceket gördüğünü söylüyor; ama mahallede kırmızı ceket çok yaygın.",0,1]] },
+
+  { t:"Pazar Yerinde Kapkaç", e:"Kapkaç", d:"easy", st:"Çanta kalabalıkta kapıldı, fail koşarak kayboldu.", nS:3, nW:1, c:1,
+    sum:"Kalabalık semt pazarında bir kadının çantası aniden kapıldı ve hırsız koşarak kalabalığa karıştı. Görgü tanıkları failin hızlı koştuğunu söylüyor.",
+    sol:"Suçlu {S2}. Güvenlik kamerası onu çantayla koşarken net şekilde yakaladı ve olay yerindeki spor ayakkabı izi onunla uyuşuyor. {S1} tezgahının başında satış yapıyordu, {S3} ise bastonla zor yürüyor.",
+    S:[["Seyyar satıcı","Olay anında kendi tezgahının başında satış yapıyordu."],["İşsiz genç","Hızlı koşabilir; son zamanlarda ciddi para sıkıntısı çekiyor."],["Emekli komşu","Bastonla zor yürüyen yaşlı bir adam."]],
+    E:[["camera","Kamera","{S2} adlı kişi çantayı kapıp kalabalığın arasında koşarken görülüyor.",1,0],
+       ["forensic","Ayak İzi","Olay yerindeki spor ayakkabı izinin ölçüsü {S2} ile uyuşuyor.",1,0],
+       ["witness","Tanık {W1}","{W1}, kaçan kişinin genç ve çok hızlı olduğunu söylüyor.",1,0],
+       ["phone","Eski Kayıt","{S1} geçen yıl bir hırsızlık dedikodusuyla anılmıştı, ama o gün pazarda satış yapıyordu.",0,1]] },
+
+  { t:"Köşedeki Bakkal", e:"Dükkan Soygunu", d:"easy", st:"Kasadaki para gece çalındı, kapı anahtarla açılmış.", nS:3, nW:1, c:0,
+    sum:"Mahalle bakkalının kasası gece boşaltıldı. Kapıda kırma izi yok, anahtarla açılmış. Kasayı yalnızca birkaç kişi biliyordu.",
+    sol:"Suçlu {S1}. Yedek anahtar sadece ondaydı ve banka kaydına göre soygun gecesi hesabına büyük nakit yatırdı. {S2} o gece nöbette hastanedeydi, {S3} ise şehir dışındaydı.",
+    S:[["Bakkalın ortağı","Dükkanın yedek anahtarı onda; son aylarda borçları arttı."],["Komşu esnaf","Yan dükkanın sahibi; o gece hastanede nöbetteydi."],["Eski çırak","İşten ayrılmıştı; olay gecesi şehir dışındaydı."]],
+    E:[["forensic","Anahtar","Kapı zorlanmamış, yedek anahtarla açılmış; yedek anahtar {S1} adlı kişide.",1,0],
+       ["phone","Banka Kaydı","{S1} adlı kişi soygun gecesi hesabına beklenmedik bir nakit yatırdı.",1,0],
+       ["witness","Tanık {W1}","{W1}, gece dükkanın ışığının kısa süre yandığını ama anahtar sesi duyduğunu söylüyor.",1,0],
+       ["camera","Sokak Kamerası","Karşı sokaktaki kamerada {S3} benzeri biri görünüyor, ama o kişi o gece başka şehirdeydi.",0,1]] },
+
+  { t:"Sahte Çağrı", e:"Telefon Dolandırıcılığı", d:"easy", st:"Yaşlı bir kadın telefonda kandırılıp parasını kaptırdı.", nS:3, nW:1, c:1,
+    sum:"Yaşlı bir kadın, kendini banka görevlisi tanıtan birinin telefonuyla kandırıldı ve tüm parasını sahte bir hesaba aktardı. Arama bir telefon kulübesinden değil, kişisel hattan yapılmış.",
+    sol:"Suçlu {S2}. Arama kayıtları dolandırıcı numaranın ona ait olduğunu, paranın da onun eriştiği bir hesaba geçtiğini gösteriyor. {S1} arama saatinde iş yerinde kamerayla sabit; ses yüzünden akraba {S3} adlı kişiden şüphelenilse de hat ona değil {S2} adlı kişiye kayıtlı.",
+    S:[["Komşu genç","İşsiz; başkalarının adına hat açtığı biliniyor."],["Eski tahsilatçı","İkna kabiliyeti yüksek; üzerine kayıtlı çok sayıda hat var."],["Akraba","Kadının uzaktan akrabası; o hafta telefonunu kaybetmişti."]],
+    E:[["phone","Arama Kaydı","Dolandırıcı numara {S2} adına kayıtlı bir hattan arıyor.",1,0],
+       ["phone","Para Transferi","Aktarılan para {S2} adlı kişinin eriştiği bir hesaba düşmüş.",1,0],
+       ["witness","Tanık {W1}","{W1}, telefondaki sesin yaşlıca olduğunu söylüyor; bu yüzden akraba {S3} adlı kişiden şüphelenildi.",0,1],
+       ["camera","İş Yeri Kamerası","{S1} arama saatinde iş yerinde çalışırken kamerada görünüyor.",1,0]] },
+
+  { t:"Apartman Otoparkı", e:"Motosiklet Hırsızlığı", d:"easy", st:"Otoparktan pahalı bir motosiklet kayboldu.", nS:3, nW:1, c:2,
+    sum:"Kapalı otoparktan pahalı bir motosiklet çalındı. Bariyer kartı kullanılmış, yani sakinlerden biri ya da kartı olan biri içeri girmiş.",
+    sol:"Suçlu {S3}. Bariyer kaydı onun kartının olay saatinde kullanıldığını, kamera da motosikleti iterek götüren kişiyi gösteriyor. {S1} tatildeydi, {S2} ise gece vardiyasındaydı.",
+    S:[["Üst kat komşusu","O hafta şehir dışında tatildeydi."],["Kapı görevlisi","Gece vardiyasında giriş kulübesindeydi."],["Yeni taşınan kiracı","Borçları var; garaja kolay erişimi olan bir kartı bulunuyor."]],
+    E:[["camera","Otopark Kamerası","Motosikleti sessizce iterek dışarı çıkaran kişinin boyu ve montu {S3} ile uyuşuyor.",1,0],
+       ["gps","Bariyer Kaydı","Olay saatinde {S3} adlı kişinin bariyer kartı okutulmuş.",1,0],
+       ["phone","Mesaj","{S1} o gün tatil beldesinden mesaj atmış; konumu şehir dışında.",1,0],
+       ["witness","Tanık {W1}","{W1}, gece bir gürültü duyduğunu ama {S2} adlı kişiyi kulübede gördüğünü söylüyor.",0,1]] },
+
+  { t:"Kayıp Tasma", e:"Kayıp Köpek", d:"easy", st:"Pahalı cins bir köpek parktan kayboldu.", nS:3, nW:1, c:1,
+    sum:"Bir ailenin pahalı cins köpeği parkta tasması çözülerek alındı. Çevrede onu alıp götüren biri görülmüş.",
+    sol:"Suçlu {S2}. Kamera onu köpeği kucaklayıp götürürken çekti ve evinin yakınında aynı köpek görüldü. {S1} köpeği gerçekten arıyordu, {S3} ise olay saatinde işteydi.",
+    S:[["Köpek gezdiricisi","Köpeği o gün gezdiriyordu; sonra panikle aramaya başladı."],["Komşu","Hayvan alıp satıyor; borçları var."],["Park görevlisi","Olay saatinde park girişinde çalışıyordu."]],
+    E:[["camera","Park Kamerası","{S2} adlı kişi köpeği kucağına alıp hızla parktan çıkarken görülüyor.",1,0],
+       ["witness","Tanık {W1}","{W1}, aynı köpeği {S2} adlı kişinin evinin yakınında gördüğünü söylüyor.",1,0],
+       ["phone","Konum","{S3} olay saatinde iş yerinde; telefon baz kaydı bunu doğruluyor.",1,0],
+       ["gps","İlan","{S1} kayıp ilanı vermiş ve köpeği bulana ödül koymuş; gerçekten arıyor.",0,1]] },
+
+  { t:"Markette Eksik Para", e:"Hırsızlık", d:"easy", st:"Marketin kasasından her gün bir miktar para eksiliyor.", nS:3, nW:1, c:0,
+    sum:"Bir markette günlük hesaplar tutmuyor; kasadan düzenli olarak az miktar para eksiliyor. Şüphe üç çalışanın üzerinde.",
+    sol:"Suçlu {S1}. Kasa kayıtları açıkların yalnızca onun vardiyasında oluştuğunu, kamera da kasadan para aldığı anı gösteriyor. {S2} sadece depoda çalışıyor, {S3} ise o günlerde izindeydi.",
+    S:[["Kasiyer","Tek başına kasaya bakıyor; harcamaları son zamanlarda arttı."],["Depo görevlisi","Kasaya hiç dokunmaz, sadece depoda çalışır."],["Reyon görevlisi","Açıkların oluştuğu günlerde yıllık izindeydi."]],
+    E:[["camera","Kamera","{S1} adlı kişi kasadan para alıp cebine koyarken kısa bir anda görülüyor.",1,0],
+       ["phone","Kasa Kaydı","Para açıkları yalnızca {S1} adlı kişinin vardiyasında oluşuyor.",1,0],
+       ["witness","Tanık {W1}","{W1}, {S3} adlı kişinin o günlerde markette hiç olmadığını doğruluyor.",1,0],
+       ["forensic","Depo Defteri","Depoda da küçük bir sayım farkı var ama bu {S2} ile değil, eski kayıtla ilgili.",0,1]] },
+
+  { t:"Boş Duvar", e:"Vandalizm", d:"easy", st:"Yeni boyanan okul duvarı bir gecede sprey ile karalandı.", nS:3, nW:1, c:2,
+    sum:"Belediyenin yeni boyadığı okul duvarı gece sprey boyayla tahrip edildi. Boya kokusu hâlâ taze.",
+    sol:"Suçlu {S3}. Elindeki ve montundaki sprey boya izleri duvardakiyle aynı renk ve kamera onu gece duvarın önünde gösteriyor. {S1} ailesiyle evdeydi, {S2} ise başka mahallede maçtaydı.",
+    S:[["Mahalleli öğrenci","Olay gecesi ailesiyle birlikte evindeydi."],["Komşu genç","Başka mahallede bir halı saha maçındaydı."],["Sokak çizeri","Daha önce izinsiz duvar boyamaktan uyarı almıştı."]],
+    E:[["forensic","Boya İzi","{S3} adlı kişinin elinde ve montunda duvardakiyle aynı sprey boya bulundu.",1,0],
+       ["camera","Kamera","Gece duvarın önünde sprey sallayan kişinin boyu {S3} ile uyuşuyor.",1,0],
+       ["phone","Konum","{S2} olay saatinde halı saha bölgesinde baz veriyor.",1,0],
+       ["witness","Tanık {W1}","{W1}, duvarda eski bir karalama daha gördüğünü söylüyor ama o aylar öncesine ait.",0,1]] },
+
+  { t:"Otobüste Cüzdan", e:"Yankesicilik", d:"easy", st:"Kalabalık otobüste bir yolcunun cüzdanı çalındı.", nS:3, nW:1, c:1,
+    sum:"Tıklım tıklım bir otobüste yolcunun cüzdanı cebinden alındı. Hırsız bir sonraki durakta inmiş.",
+    sol:"Suçlu {S2}. Otobüs kamerası onun ele yakın durduğunu ve durakta aceleyle indiğini gösteriyor; çalınan kartlardan biri onun kullandığı bir markette denenmiş. {S1} en arkada oturuyordu, {S3} ise hiç inmedi.",
+    S:[["Ayakta yolcu","Mağdurun hemen yanında, ele çok yakın duruyordu."],["Oturan yolcu","En arkada oturuyordu; mağdura uzaktı."],["Düzenli yolcu","Sondaki durağa kadar inmeden gitti."]],
+    E:[["camera","Otobüs Kamerası","{S2} adlı kişi mağdurun cebine yakın duruyor ve cüzdanın alındığı durakta aceleyle iniyor.",1,0],
+       ["phone","Kart Denemesi","Çalınan kartlardan biri {S2} adlı kişinin sık gittiği bir markette denenmiş.",1,0],
+       ["witness","Tanık {W1}","{W1}, sondaki durakta inen telaşlı bir yolcu gördüğünü söylüyor.",1,0],
+       ["forensic","Koltuk","En arka koltukta yabancı bir parmak izi var ama bu eski bir yolcuya ait.",0,1]] },
+
+  { t:"Konser Kapısı", e:"Sahte Bilet Dolandırıcılığı", d:"easy", st:"Onlarca kişi sahte biletle konsere alınmadı.", nS:3, nW:1, c:0,
+    sum:"Kapalı gişe bir konserde onlarca kişi sahte bilet yüzünden içeri alınamadı. Biletler kapı önünde nakit satılmış.",
+    sol:"Suçlu {S1}. Sahte biletlerin QR kodları onun telefonundan üretilmiş ve kapı kamerası onu nakit toplarken çekmiş. {S2} gerçek bir bilet alıp içeri girmiş, {S3} ise o gece çalışıyordu.",
+    S:[["Bilet karaborsacısı","Kapı önünde nakit bilet satıyordu; geçmişinde benzer şikayetler var."],["Konser izleyicisi","Gerçek bir bilet alıp içeri girdi."],["Güvenlik görevlisi","O gece başka bir kapıda görevliydi."]],
+    E:[["phone","QR Kaydı","Sahte biletlerin kodları {S1} adlı kişinin telefonunda üretilmiş.",1,0],
+       ["camera","Kapı Kamerası","{S1} adlı kişi kapı önünde nakit karşılığı bilet dağıtırken görülüyor.",1,0],
+       ["witness","Tanık {W1}","{W1}, {S2} adlı kişinin geçerli biletle turnikeden geçtiğini doğruluyor.",1,0],
+       ["gps","Vardiya","{S3} olay saatinde başka bir kapıda nöbette; vardiya kaydı var.",0,1]] },
+
+  // ───────── ORTA (10): 5 şüpheli, 8 kanıt ─────────
+  { t:"Konaktaki Son Akşam", e:"Cinayet", d:"medium", st:"Şüpheli ölüm; beş davetli ifade veriyor.", nS:5, nW:1, c:1,
+    sum:"Zengin iş adamı, kendi konağında verdiği yemekli davetin ardından çalışma odasında ölü bulundu. Ölüm saati gece 23:40 civarı. Odanın penceresi içeriden kilitli, kapı yalnızca bir kez açılmış.",
+    sol:"Katil {S2}. Adli bulgular şarap kadehinde sadece onun parmak izini gösteriyor ve bina kaydı herkes salondayken onun 23:35te çalışma odası katına çıktığını kaydetmiş. Telefon kaydı cinayetten hemen önce kurbanla sert bir tartışma yaptıklarını doğruluyor. Diğerlerinin fiziksel kanıtı yok.",
+    S:[["Eşi","Evlilikleri sorunluydu; mirasın büyük kısmı ona kalıyor."],["İş ortağı","Şirkette büyük bir borç anlaşmazlığı vardı; o akşam kurbanla baş başa konuştu."],["Yeğeni","Kumar borçları var, sürekli para isterdi."],["Aşçı","Yemeği o hazırladı; tüm gece mutfaktan çıkmadığını söylüyor."],["Özel sekreter","Kurbanın işlerini bilirdi; notları toparlamak için geç saate kadar kaldı."]],
+    E:[["forensic","Parmak İzi","Kurbanın yanındaki şarap kadehinde yalnızca {S2} adlı kişinin parmak izi var.",1,0],
+       ["gps","Bina Hareketi","Giriş kayıtlarına göre 23:35te çalışma odası katına çıkan tek kişi {S2}.",1,0],
+       ["phone","Telefon Kaydı","Kurban ile {S2} arasında 23:20de gergin, altı dakikalık bir görüşme var.",1,0],
+       ["witness","Tanık {W1}","{W1}, eşin tüm akşam salonda misafirlerle olduğunu doğruluyor.",1,0],
+       ["camera","Salon Kamerası","Yeğen ve sekreter olay saatinde salonda görünüyor.",1,0],
+       ["forensic","Eşarp","Odada eşe ait bir eşarp bulundu ama günler öncesine ait ve oda ev sahiplerinin eşyalarıyla dolu.",0,1],
+       ["witness","Tanık: Garson","Bir garson, yeğenin amcasıyla yüksek sesle tartıştığını söylüyor; ama bu akşamın başında, herkesin önünde olmuş.",0,1],
+       ["forensic","Mutfak","Aşçının önlüğünde leke var ama bu yemek sosu; laboratuvar doğruladı.",0,0]] },
+
+  { t:"Vitrindeki Boşluk", e:"Kuyumcu Soygunu", d:"medium", st:"Kuyumcunun kasası gündüz vakti boşaltıldı.", nS:5, nW:1, c:3,
+    sum:"İşlek bir kuyumcu, öğle molasında soyuldu. Alarm çalmadı, kasa şifreyle açıldı. İçeriden destek alındığı düşünülüyor.",
+    sol:"Soyguncu {S4}. Alarmı geçici kapatan kod onun terminalinden girilmiş ve kaçış aracının plakası ona ait. {S1} öğle molasında bankadaydı, {S2} müşteriyle ilgileniyordu, {S5} ise hastaydı ve gelmemişti.",
+    S:[["Kuyumcu sahibi","Sigortası yüksek ama o gün bankada işlem yapıyordu."],["Tezgahtar","Soygun anında bir müşteriyle ilgileniyordu."],["Güvenlik","Alarm sistemini bilir; o gün erken çıkmıştı."],["Muhasebeci","Kasa ve alarm terminaline erişimi var; son aylarda borçlandı."],["Temizlikçi","O gün hasta olduğu için iş yerine hiç gelmemişti."]],
+    E:[["phone","Alarm Logu","Alarmı geçici devre dışı bırakan kod {S4} adlı kişinin terminalinden girilmiş.",1,0],
+       ["gps","Plaka","Kaçış aracının plakası {S4} adlı kişiye kayıtlı bir araca ait.",1,0],
+       ["camera","Banka Kamerası","{S1} soygun saatinde bankada işlem yapıyor.",1,0],
+       ["witness","Tanık {W1}","{W1}, tezgahtarın o sırada bir müşteriyle uğraştığını doğruluyor.",1,0],
+       ["phone","Devamsızlık","{S5} adlı kişi o gün hastalık nedeniyle hiç gelmemiş; mesaj kaydı var.",1,0],
+       ["forensic","Eldiven","Kasada pudralı eldiven izi var; {S4} adlı kişinin çekmecesinde aynı tür eldiven bulundu.",1,0],
+       ["camera","Sokak","Güvenliğin erken çıktığı görülüyor ama bu her zamanki mesai saatinde olmuş.",0,1],
+       ["witness","Dedikodu","Sahibin sigortayı yeni artırdığı konuşuluyor; fakat poliçe aylar önce yapılmış.",0,1]] },
+
+  { t:"Okuldan Dönmeyen Çocuk", e:"Kaçırılma", d:"medium", st:"Bir çocuk okul çıkışı kayboldu; fidye istenmedi.", nS:5, nW:1, c:2,
+    sum:"İlkokul çıkışında bir çocuk eve dönmedi. Fidye talebi gelmedi. Çocuğun tanıdığı biriyle gönüllü gittiği düşünülüyor.",
+    sol:"Suçlu {S3}. Okul kamerası çocuğun onun aracına bindiğini, GPS de aracın şehir dışına çıktığını gösteriyor. {S1} o saatte derste, {S2} markette, {S5} ise başka şehirdeydi.",
+    S:[["Sınıf öğretmeni","Çocuk kaybolduğunda hâlâ ders veriyordu."],["Komşu","O sırada markette alışverişteydi; fişi var."],["Servis şoförü","Çocuğu tanıyor; o gün servis dışı kendi aracıyla gelmişti."],["Veli","Velayet anlaşmazlığı var ama o gün şehir dışındaydı."],["Kantinci","Olay saatinde başka şehirde akraba ziyaretindeydi."]],
+    E:[["camera","Okul Kamerası","Çocuk, {S3} adlı kişinin aracına kendi isteğiyle biniyor.",1,0],
+       ["gps","Araç GPS","{S3} adlı kişinin aracı okul çıkışından sonra şehir dışına yöneliyor.",1,0],
+       ["phone","Ders Kaydı","{S1} çocuğun kaybolduğu saatte sınıfta ders veriyor.",1,0],
+       ["forensic","Market Fişi","{S2} adlı kişinin o saate ait market fişi var.",1,0],
+       ["phone","Baz Kaydı","{S5} olay saatinde başka şehirde baz veriyor.",1,0],
+       ["witness","Tanık {W1}","{W1}, çocuğun servis dışı bir araca bindiğini gördüğünü söylüyor.",1,0],
+       ["phone","Velayet","Velinin velayet davası var diye şüpheleniliyor ama o gün uçakta olduğu kanıtlı.",0,1],
+       ["camera","Kantin","Kantincinin ortalıkta olmaması dikkat çekti ama izinli olduğu belgeli.",0,1]] },
+
+  { t:"Fabrikada Arıza", e:"Şirket İçi Sabotaj", d:"medium", st:"Üretim hattı kasıtlı olarak durduruldu.", nS:5, nW:1, c:4,
+    sum:"Bir fabrikada üretim hattı gece kasıtlı sabote edildi; kontrol paneline yetkisiz erişim olmuş. Şirket büyük zarara uğradı.",
+    sol:"Sabotajcı {S5}. Sistem kaydı yetkisiz girişin onun şifresiyle yapıldığını, kamera da gece panel odasına girdiğini gösteriyor. Yakında işten çıkarılacağını öğrenmişti. Diğerlerinin o saatte sağlam mazereti var.",
+    S:[["Vardiya amiri","Gece nöbetinde ama olay anında güvenlikle birlikteydi."],["Bakım teknisyeni","Panele erişebilir; ama o gece izinliydi."],["Mühendis","Sistemi tasarladı; olay saatinde evde görüntülü toplantıdaydı."],["Depo şefi","Panel odasına erişimi yok."],["İşten çıkarılacak operatör","Yakında kovulacağını öğrenmişti; panel şifresi hâlâ aktifti."]],
+    E:[["phone","Sistem Logu","Yetkisiz giriş {S5} adlı kişinin şifresiyle yapılmış.",1,0],
+       ["camera","Panel Odası","Gece panel odasına giren kişinin boyu ve montu {S5} ile uyuşuyor.",1,0],
+       ["witness","Tanık {W1}","{W1}, vardiya amirinin olay anında güvenlik kulübesinde olduğunu doğruluyor.",1,0],
+       ["phone","İzin Kaydı","{S2} adlı kişi o gece izinli; giriş kaydı yok.",1,0],
+       ["phone","Toplantı","{S3} olay saatinde evden görüntülü toplantıda.",1,0],
+       ["gps","Erişim","{S4} adlı kişinin panel odasına yetkisi bulunmuyor.",1,0],
+       ["forensic","Alet","Panelde bir tornavida izi var; bakım teknisyenine benziyor ama o marka tüm teknisyenlerde standart.",0,1],
+       ["witness","Söylenti","Mühendisin şirketle anlaşmazlığı konuşuluyor ama bu aylar öncesine ait.",0,1]] },
+
+  { t:"Zarftaki Tehdit", e:"Şantaj", d:"medium", st:"Bir iş insanına özel fotoğraflarla şantaj yapılıyor.", nS:5, nW:1, c:0,
+    sum:"Tanınmış bir iş insanına, özel fotoğraflarını yayınlamakla tehdit eden şantaj mektupları geliyor. Mektuplar elden bırakılıyor.",
+    sol:"Şantajcı {S1}. Mektuplardaki parmak izi ve onun bilgisayarındaki fotoğraf dosyaları suçu ortaya koyuyor; ödeme istenen hesap da onunla bağlantılı. Diğer dört kişinin fotoğraflara erişimi yoktu.",
+    S:[["Eski asistan","İş insanının özel arşivine erişimi vardı; kovulduktan sonra kin besliyor."],["Şoför","Sadece aracı kullanır, arşive erişimi yok."],["Rakip iş insanı","Husumetli ama o dönem yurt dışındaydı."],["Komşu","Olayla ilgisi olduğuna dair bir bağ bulunamadı."],["Gazeteci","Haber peşinde ama fotoğraflara hiç ulaşamadı."]],
+    E:[["forensic","Parmak İzi","Şantaj zarfında {S1} adlı kişinin parmak izi bulundu.",1,0],
+       ["phone","Dosya","{S1} adlı kişinin bilgisayarında şantajda kullanılan fotoğrafların asılları çıktı.",1,0],
+       ["phone","Hesap","Ödeme istenen hesap {S1} adlı kişiyle bağlantılı.",1,0],
+       ["gps","Erişim","{S2} adlı kişinin özel arşive hiçbir erişimi yok.",1,0],
+       ["phone","Pasaport","{S3} şantaj döneminde yurt dışındaydı; giriş çıkış kaydı var.",1,0],
+       ["witness","Tanık {W1}","{W1}, zarfı bırakan kişinin {S1} adlı kişiye benzediğini söylüyor.",1,0],
+       ["forensic","Mürekkep","Mektuplardaki kalem sıradan bir marka; herkeste bulunabilir, ayırt edici değil.",0,1],
+       ["witness","Söylenti","Gazetecinin haber kovaladığı konuşuluyor ama fotoğraflara eriştiğine dair kanıt yok.",0,1]] },
+
+  { t:"Sızıntı", e:"Polis Muhbirliği", d:"medium", st:"Polis operasyonları sürekli önceden sızıyor.", nS:5, nW:1, c:2,
+    sum:"Bir ekibin operasyonları defalarca son anda boşa çıktı; bilgiler dışarı sızıyor. Sızıntının ekibin içinden olduğu kesin.",
+    sol:"Muhbir {S3}. Telefon kayıtları her operasyon öncesi şüpheli bir numarayla görüştüğünü, banka kaydı da düzenli nakit aldığını gösteriyor. Diğerlerinin görüşme ya da finans kaydında anormallik yok.",
+    S:[["Ekip lideri","Tüm bilgilere erişimi var ama hesapları temiz, görüşmeleri normal."],["Genç memur","Yeni katıldı; bazı operasyonlardan haberi bile yoktu."],["Telsiz operatörü","Her operasyonu bilir; son aylarda açıklanamayan nakit girişleri var."],["Analist","Veriye erişir ama operasyon saatlerinde hep ofisteydi."],["Saha memuru","Sadece sahada; planlama detaylarını görmez."]],
+    E:[["phone","Arama Kaydı","{S3} adlı kişi her operasyon arifesinde aynı şüpheli numarayla görüşmüş.",1,0],
+       ["phone","Banka","{S3} adlı kişinin hesabına düzenli, açıklanamayan nakit giriyor.",1,0],
+       ["gps","Erişim","{S2} adlı kişi sızan operasyonların bir kısmından haberdar bile değildi.",1,0],
+       ["camera","Ofis","{S4} operasyon saatlerinde ofiste analiz başında görünüyor.",1,0],
+       ["witness","Tanık {W1}","{W1}, telsiz operatörünün gizli görüşmeler yaptığını fark ettiğini söylüyor.",1,0],
+       ["gps","Yetki","{S5} adlı kişi planlama detaylarını görmüyor, yalnızca saha emri alıyor.",1,0],
+       ["phone","Lider","Ekip liderinin çok bilgisi var diye şüpheleniliyor ama finans ve görüşme kaydı tertemiz.",0,1],
+       ["forensic","USB","Ofiste sahipsiz bir USB bulundu ama içi boş ve kime ait olduğu belirsiz.",0,1]] },
+
+  { t:"Göldeki Sessizlik", e:"Kayıp Kişi", d:"medium", st:"Tekne gezisine çıkan biri geri dönmedi.", nS:5, nW:1, c:3,
+    sum:"Beş arkadaş göl kenarında kamp yaptı; sabah biri ortada yoktu. Boğulma süsü verilmiş olabilir; kişinin son görülme yeri iskele.",
+    sol:"Sorumlu {S4}. Kurbanla aralarında büyük bir para alacağı vardı; GPS onun gece iskeleye gittiğini, ayakkabı izi de orada onunkiyle uyuşuyor. Diğerleri çadırlarındaydı ve bunu doğrulayan kayıtlar var.",
+    S:[["Kamp arkadaşı","Gece çadırında uyuyordu; yanındaki bunu doğruluyor."],["Tekne sahibi","Tekne kayıtlı ama o gece kasabada eczanedeydi."],["Eski sevgili","Ayrılmışlardı ama gece boyunca ateş başında diğerleriyleydi."],["Borçlu arkadaş","Kurbana büyük borcu vardı; gece tek başına dışarı çıktı."],["Komşu kampçı","Yan çadırdaydı; olayla bağı bulunamadı."]],
+    E:[["gps","Telefon Konumu","{S4} adlı kişinin telefonu gece yarısı iskele bölgesine gidiyor.",1,0],
+       ["forensic","Ayak İzi","İskeledeki çamurlu ayak izi {S4} adlı kişinin botuyla uyuşuyor.",1,0],
+       ["phone","Borç","{S4} adlı kişinin kurbana büyük bir borcu olduğu mesajlardan anlaşılıyor.",1,0],
+       ["witness","Tanık {W1}","{W1}, gece iskeleye doğru yürüyen tek bir kişi gördüğünü söylüyor.",1,0],
+       ["camera","Kasaba","{S2} gece kasabadaki eczanenin kamerasında görünüyor.",1,0],
+       ["witness","Ateş Başı","{S1} ve {S3} adlı kişiler gece boyunca ateş başında birlikteydi.",1,0],
+       ["forensic","Can Yeleği","Suda bir can yeleği bulundu ama bu eski ve kime ait olduğu belirsiz.",0,1],
+       ["phone","Eski Sevgili","Ayrılık yüzünden eski sevgiliden şüphelenildi ama o gece grupla birlikteydi.",0,1]] },
+
+  { t:"Hesaptaki Açık", e:"Banka Dolandırıcılığı", d:"medium", st:"Müşteri hesaplarından küçük tutarlar sızdırılıyor.", nS:5, nW:1, c:1,
+    sum:"Bir bankada çok sayıda müşteri hesabından küçük tutarlar fark edilmeden çekilmiş. İşlem içeriden, yetkili bir terminalden yapılmış.",
+    sol:"Dolandırıcı {S2}. Sistem kaydı sahte işlemlerin onun kullanıcı oturumundan açıldığını, paranın da onun açtığı sahte hesaba aktığını gösteriyor. Diğerlerinin oturum kaydı ya da erişimi olayla uyuşmuyor.",
+    S:[["Şube müdürü","Yetkisi geniş ama işlem saatlerinde toplantıdaydı."],["Gişe görevlisi","Sahte işlemler onun oturumundan yapılmış; yeni araba aldı."],["Çağrı merkezi","Sadece telefonla destek verir, işlem yetkisi yok."],["BT görevlisi","Sisteme erişir ama o hafta başka şubedeydi."],["Stajyer","İşlem yapma yetkisi bulunmuyor."]],
+    E:[["phone","Sistem Logu","Sahte işlemler {S2} adlı kişinin oturumundan açılmış.",1,0],
+       ["phone","Hesap","Sızdırılan para {S2} adlı kişinin açtığı sahte bir hesaba gitmiş.",1,0],
+       ["camera","Toplantı","{S1} işlem saatlerinde yönetim toplantısında görünüyor.",1,0],
+       ["gps","Erişim","{S3} adlı kişinin hiçbir işlem yetkisi yok.",1,0],
+       ["phone","Lokasyon","{S4} o hafta başka şubede çalışıyordu; giriş kaydı orada.",1,0],
+       ["witness","Tanık {W1}","{W1}, gişe görevlisinin son zamanlarda gösterişli harcamalar yaptığını söylüyor.",1,0],
+       ["forensic","Klavye","Terminalde birden çok parmak izi var ama ortak kullanılan bir cihaz olduğu için ayırt edici değil.",0,1],
+       ["phone","Stajyer","Stajyerin geç saatlere kaldığı görüldü ama yetkisi olmadığı için işlem yapamaz.",0,1]] },
+
+  { t:"Limandaki Konteyner", e:"Araç Kaçakçılığı", d:"medium", st:"Çalıntı araçlar konteynerle yurt dışına çıkarılıyor.", nS:5, nW:1, c:4,
+    sum:"Limanda bir konteynerde çalıntı araçlar bulundu. Konteynerin belgeleri sahte; içeriden bir görevlinin onayıyla geçmiş.",
+    sol:"Sorumlu {S5}. Gümrük kaydı sahte onayın onun koduyla verildiğini, kamera da gece konteyner sahasında olduğunu gösteriyor; hesabına büyük nakit geçmiş. Diğerlerinin mazereti ya da yetki dışılığı kanıtlı.",
+    S:[["Liman işçisi","Konteyneri taşıdı ama belge onaylama yetkisi yok."],["Vinç operatörü","Sadece yükleme yapar; sahaya gece girmedi."],["Nakliyeci","Aracı sürer; o gece başka limanda kaydı var."],["Komisyoncu","Evrak hazırlar ama gümrük onayını veremez."],["Gümrük memuru","Sahte onayı verebilecek tek yetkili; hesabına büyük nakit girdi."]],
+    E:[["phone","Gümrük Logu","Sahte onay {S5} adlı kişinin koduyla sisteme girilmiş.",1,0],
+       ["camera","Saha Kamerası","{S5} adlı kişi gece konteyner sahasında görülüyor.",1,0],
+       ["phone","Banka","{S5} adlı kişinin hesabına olaydan sonra büyük nakit girmiş.",1,0],
+       ["gps","Yetki","{S1} adlı kişinin belge onaylama yetkisi bulunmuyor.",1,0],
+       ["gps","Konum","{S3} o gece başka bir limanda; giriş kaydı var.",1,0],
+       ["witness","Tanık {W1}","{W1}, gece sahada üniformalı bir görevli gördüğünü söylüyor.",1,0],
+       ["forensic","Mühür","Konteynerde sahte mühür var; komisyoncuya atfedildi ama mühür kalıbı onda bulunamadı.",0,1],
+       ["camera","Vinç","Vinç operatörünün geç saatte görülmesi şüphe çekti ama mesai kaydı normaldi.",0,1]] },
+
+  { t:"Akşam Yemeğinde Zehir", e:"Zehirleme", d:"medium", st:"Bir konuk yemekte zehirlendi, ucuz atlattı.", nS:5, nW:1, c:2,
+    sum:"Bir akşam yemeğinde konuklardan biri zehirlendi ama hayatta kaldı. Zehir yalnızca onun tabağına konmuş; mutfağa erişen biri şüpheli.",
+    sol:"Suçlu {S3}. Kurbanın tabağını o hazırlayıp servis etti; mutfakta bulunan zehir kalıntısı onun çantasındakiyle aynı ve aralarında bilinen bir husumet var. Diğerlerinin mutfağa erişimi ya da fırsatı yoktu.",
+    S:[["Ev sahibi","Yemeği ısmarladı ama tabaklara hiç dokunmadı."],["Garson","Tabakları taşıdı ama hangi tabağın kime gittiğini bilmiyordu."],["Kurbanın rakibi","Kurbanın tabağını hazırlayıp servis etti; aralarında husumet var."],["Komşu","Mutfağa hiç girmedi, salonda oturdu."],["Aşçı yardımcısı","Sadece bulaşıkla ilgilendi, yemeğe karışmadı."]],
+    E:[["forensic","Zehir Kalıntısı","Mutfakta bulunan zehir, {S3} adlı kişinin çantasındaki maddeyle aynı.",1,0],
+       ["witness","Tanık {W1}","{W1}, kurbanın tabağını {S3} adlı kişinin hazırlayıp götürdüğünü gördüğünü söylüyor.",1,0],
+       ["phone","Husumet","{S3} ile kurban arasında geçmişe dayanan bir husumet mesajlardan belli.",1,0],
+       ["camera","Salon","{S4} adlı kişi tüm akşam salonda; mutfağa hiç girmedi.",1,0],
+       ["gps","Erişim","{S1} adlı kişi yemeğe ısmarladı ama tabaklarla teması olmadı.",1,0],
+       ["witness","Servis","Garson tabakları taşıdı ama dağıtımı şefe bıraktığını söylüyor.",1,0],
+       ["forensic","Şarap","Şarapta da acı bir tat arandı ama analiz temiz çıktı; şarap zehirli değil.",0,1],
+       ["phone","Aşçı Yardımcısı","Yardımcının mutfakta olması şüphe çekti ama yalnızca bulaşıkla ilgilendiği kamerada görülüyor.",0,1]] },
+
+  // ───────── ZOR (10): 8 şüpheli, 12 kanıt ─────────
+  { t:"Üç Kurban", e:"Seri Cinayet", d:"hard", st:"Aynı yöntemle üç cinayet; katil aramızda.", nS:8, nW:2, c:5,
+    sum:"Bir mahallede üç kişi aynı yöntemle öldürüldü. Her olay yerinde aynı tür düğüm ve aynı marka eldiven izi var. Katil kurbanların hepsini tanıyan biri.",
+    sol:"Katil {S6}. Üç kurbanın da ortak bağlantısı yalnızca onunla kesişiyor; olay saatlerinin hiçbirinde mazereti yok, evinde olay yerindekiyle aynı ip ve eldiven bulundu, GPS onu üç gece de olay yerlerine yakın gösteriyor. Diğer yedi kişinin en az bir cinayette sağlam mazereti var.",
+    S:[["Komşu emlakçı","İlk cinayet gecesi başka şehirde toplantıdaydı."],["Kurbanların doktoru","Üçünü de tanırdı ama her gece nöbet kaydı hastanede."],["Market sahibi","İkinci cinayet saatinde dükkanı kamerada açıktı."],["Kuryeci","Rotaları kayıtlı; cinayet saatlerinde uzak semtlerdeydi."],["Eski mahalle bekçisi","Düğüm bilgisi var ama üçüncü gece hastanedeydi."],["İşsiz tamirci","Üç kurbanla da husumeti vardı; hiçbir gece mazereti yok, ip ve eldiveni evinde bulundu."],["Öğretmen","Cinayet gecelerinde sınav okuyordu; dijital kayıt var."],["Apartman yöneticisi","Üçüncü kurbanı tanımıyordu bile."]],
+    E:[["forensic","Düğüm","Üç olay yerinde de aynı özel düğüm var; {S6} adlı kişinin evinde aynı düğümle bağlı ip bulundu.",1,0],
+       ["forensic","Eldiven","Olay yerlerindeki eldiven izi {S6} adlı kişinin evindeki eldivenlerle aynı marka ve beden.",1,0],
+       ["gps","Konum","{S6} adlı kişi üç cinayet gecesinde de olay yerlerine çok yakın baz veriyor.",1,0],
+       ["phone","Bağlantı","Üç kurbanın ortak husumeti tek bir kişide kesişiyor: {S6}.",1,0],
+       ["phone","Toplantı","{S1} ilk cinayet gecesi başka şehirde otelde kayıtlı.",1,0],
+       ["phone","Nöbet","{S2} üç gece de hastane nöbet listesinde.",1,0],
+       ["camera","Dükkan","{S3} ikinci cinayet saatinde dükkanında kamerada görünüyor.",1,0],
+       ["gps","Rota","{S4} cinayet saatlerinde uzak semtlerde teslimat yapıyor.",1,0],
+       ["witness","Tanık {W1}","{W1}, üç gece de olay yerlerinin yakınında benzer bir adam gördüğünü söylüyor.",1,0],
+       ["witness","Tanık {W2}","{W2}, eski bekçinin üçüncü gece hastanede yattığını doğruluyor.",1,0],
+       ["forensic","İp Markası","Bekçinin düğüm bildiği için şüphelenildi ama o tür ip her nalburda satılıyor.",0,1],
+       ["phone","Doktor","Doktorun üç kurbanı tanıması şüphe çekti ama nöbet kayıtları onu temize çıkarıyor.",0,1]] },
+
+  { t:"Kasadaki Hayalet", e:"Büyük Banka Soygunu", d:"hard", st:"Kasa dairesi profesyonelce boşaltıldı.", nS:8, nW:2, c:2,
+    sum:"Bir bankanın kasa dairesi hafta sonu boşaltıldı. Alarm dışarıdan değil, içeriden devre dışı bırakılmış; planın ayrıntısını yalnızca birkaç kişi biliyordu.",
+    sol:"Soyguncu {S3}. Kasa giriş kaydı hafta sonu yalnızca onun kartının kullanıldığını, güvenlik yazılımını kapatan komutun da onun bilgisayarından girildiğini gösteriyor; hesabına şüpheli para girişi var. Diğerlerinin kart, konum ya da yetki kaydı olayla uyuşmuyor.",
+    S:[["Banka müdürü","Kasa şifresini bilir ama hafta sonu yurt dışındaydı, pasaport kaydı var."],["Güvenlik şefi","Alarmı bilir; o hafta sonu hastanedeydi."],["Sistem yöneticisi","Güvenlik yazılımına tam erişimi var; hafta sonu kartı kasada okutuldu, hesabına nakit girdi."],["Veznedar","Kasaya girer ama hafta sonu erişim yetkisi kapalıydı."],["Temizlik görevlisi","Kasa katına çıkamaz."],["Eski çalışan","Kovulmuştu; ama kartı çoktan iptal edilmişti."],["Kurye","Sadece zemin kata gelir."],["Stajyer","Kasa sistemine hiç erişimi yok."]],
+    E:[["gps","Kart Kaydı","Hafta sonu kasa dairesine yalnızca {S3} adlı kişinin kartı okutulmuş.",1,0],
+       ["phone","Komut Logu","Güvenlik yazılımını kapatan komut {S3} adlı kişinin bilgisayarından girilmiş.",1,0],
+       ["phone","Banka Hesabı","{S3} adlı kişinin hesabına soygundan sonra büyük, açıklanamayan nakit girmiş.",1,0],
+       ["phone","Pasaport","{S1} hafta sonu yurt dışındaydı; giriş çıkış kaydı var.",1,0],
+       ["phone","Hastane","{S2} o hafta sonu hastanede yatıyordu.",1,0],
+       ["gps","Yetki","{S4} adlı kişinin hafta sonu kasa erişim yetkisi kapalıydı.",1,0],
+       ["gps","Erişim","{S5} adlı kişi kasa katına çıkamıyor.",1,0],
+       ["phone","İptal Kart","{S6} adlı kişinin kartı kovulduğunda iptal edilmiş; kullanılamaz.",1,0],
+       ["witness","Tanık {W1}","{W1}, hafta sonu binaya giren tek kişinin sistem yöneticisi olduğunu söylüyor.",1,0],
+       ["witness","Tanık {W2}","{W2}, eski çalışanın o gün başka şehirde olduğunu doğruluyor.",1,0],
+       ["forensic","Maske","Kasada bir maske bulundu ama üzerinde kullanışlı bir iz yok.",0,1],
+       ["phone","Müdür Şüphesi","Müdür şifreyi bildiği için şüphelenildi ama yurt dışı kaydı kesin.",0,1]] },
+
+  { t:"Sahnedeki Suikast", e:"Suikast", d:"hard", st:"Bir konuşmacı sahnede vuruldu; fail kalabalıkta.", nS:8, nW:2, c:6,
+    sum:"Kalabalık bir etkinlikte konuşmacı sahnede silahla vuruldu. Atışın arka koridordan yapıldığı, failin görevli kartıyla içeri girdiği anlaşıldı.",
+    sol:"Suikastçı {S7}. Sahte görevli kartı onun adına basılmış, atış açısı arka koridordaki konumuyla uyuşuyor ve elinde barut artığı bulundu; kurbanla siyasi husumeti vardı. Diğerlerinin konumu, kartı ya da el testi olayla uyuşmuyor.",
+    S:[["Etkinlik organizatörü","Sahne önünde, herkesin gözü önündeydi."],["Kameraman","Çekim alanında sabit kamerada görünüyor."],["Güvenlik amiri","Atış anında ana kapıda telsizdeydi."],["Konuk gazeteci","Ön sırada oturuyordu; el testi temiz."],["Ses teknisyeni","Ses masasında, kamerada sabit."],["Garson","İkram alanında, koridora hiç girmedi."],["Husumetli aktivist","Sahte görevli kartıyla arka koridordaydı; elinde barut artığı bulundu."],["Sahne görevlisi","Atış anında sahne arkasında ışıkla ilgileniyordu, tanığı var."]],
+    E:[["forensic","Barut Artığı","{S7} adlı kişinin elinde ve kolunda barut artığı bulundu.",1,0],
+       ["forensic","Atış Açısı","Kurşunun geliş açısı arka koridordaki konumla, yani {S7} adlı kişinin durduğu yerle uyuşuyor.",1,0],
+       ["phone","Sahte Kart","İçeri sokulan sahte görevli kartı {S7} adlı kişinin adına basılmış.",1,0],
+       ["phone","Husumet","{S7} adlı kişinin kurbanla siyasi husumeti mesajlardan anlaşılıyor.",1,0],
+       ["camera","Sahne Önü","{S1} atış anında sahne önünde kameraya yakalanıyor.",1,0],
+       ["camera","Çekim","{S2} sabit kamera arkasında görünüyor.",1,0],
+       ["phone","Telsiz","{S3} atış anında ana kapıdan telsiz konuşması yapıyor.",1,0],
+       ["forensic","El Testi","{S4} adlı kişinin el testi tertemiz çıktı.",1,0],
+       ["witness","Tanık {W1}","{W1}, arka koridorda görevli yeleği giymiş yabancı birini gördüğünü söylüyor.",1,0],
+       ["witness","Tanık {W2}","{W2}, sahne görevlisinin atış anında ışık panosunda olduğunu doğruluyor.",1,0],
+       ["forensic","Kovan","Koridorda bir kovan bulundu; marka yaygın olduğu için tek başına kimseyi göstermiyor.",0,1],
+       ["phone","Gazeteci","Gazetecinin husumeti olduğu konuşuldu ama el testi ve yeri onu temize çıkarıyor.",0,1]] },
+
+  { t:"Gümrüğün Gölgesi", e:"Organize Kaçakçılık", d:"hard", st:"Yasak mallar düzenli olarak gümrükten geçiyor.", nS:8, nW:2, c:3,
+    sum:"Bir gümrük noktasından yasak mallar aylardır fark edilmeden geçiyor. Tarama kayıtları kasıtlı silinmiş; içeride bir bağlantı olduğu kesin.",
+    sol:"Sorumlu {S4}. Silinen tarama kayıtlarının log izi onun kullanıcısına çıkıyor, şüpheli kamyonların geçtiği vardiyalar hep onunki ve hesabına düzenli nakit giriyor. Diğerlerinin yetki, vardiya ya da konum kaydı olayla uyuşmuyor.",
+    S:[["Gümrük şefi","Yetkisi geniş ama şüpheli geçişlerin hiçbirinde vardiyada değildi."],["Tarama operatörü","Cihazı kullanır ama log silme yetkisi yok."],["Bekçi","Sadece bariyerde durur; sisteme erişemez."],["Vardiya amiri","Kayıt silme yetkisi var; şüpheli geçişler hep onun vardiyasında, hesabına nakit giriyor."],["Veteriner kontrol","Sadece canlı hayvan bakar, yük taramasına karışmaz."],["Evrak memuru","Belge girer ama tarama loglarına erişemez."],["Forklift operatörü","Yükleme yapar; gece vardiyasına hiç kalmadı."],["Stajyer","Hiçbir sisteme yetkisi yok."]],
+    E:[["phone","Log İzi","Silinen tarama kayıtlarının log izi {S4} adlı kişinin kullanıcısına çıkıyor.",1,0],
+       ["gps","Vardiya","Şüpheli kamyonların geçtiği tüm vardiyalar {S4} adlı kişinin nöbetine denk geliyor.",1,0],
+       ["phone","Banka","{S4} adlı kişinin hesabına düzenli, açıklanamayan nakit giriyor.",1,0],
+       ["gps","Vardiya Dışı","{S1} şüpheli geçişlerin hiçbirinde görevde değildi.",1,0],
+       ["gps","Yetki","{S2} adlı kişinin log silme yetkisi yok.",1,0],
+       ["gps","Erişim","{S3} adlı kişi sisteme hiç erişemiyor.",1,0],
+       ["gps","Görev","{S5} yalnızca canlı hayvan kontrolü yapıyor, yük taramasına girmiyor.",1,0],
+       ["phone","Belge","{S6} adlı kişi belge girer ama tarama loglarına erişemez.",1,0],
+       ["witness","Tanık {W1}","{W1}, gece şüpheli kamyonları hep aynı amirin geçirdiğini söylüyor.",1,0],
+       ["witness","Tanık {W2}","{W2}, forklift operatörünün gece vardiyasına hiç kalmadığını doğruluyor.",1,0],
+       ["forensic","Telsiz","Sahada sahipsiz bir telsiz bulundu ama kime ait olduğu belirlenemedi.",0,1],
+       ["phone","Şef Şüphesi","Şefin yetkisi geniş diye şüphelenildi ama vardiya dışı olduğu kanıtlı.",0,1]] },
+
+  { t:"Ormandaki İz", e:"Kayıp Kişi", d:"hard", st:"Doğa yürüyüşüne çıkan biri geri dönmedi.", nS:8, nW:2, c:7,
+    sum:"Sekiz kişilik bir grup doğa yürüyüşüne çıktı; biri kamp yerine dönmedi. Patikada boğuşma izleri ve sürüklenme bulundu. Kazadan çok, kasıt şüphesi var.",
+    sol:"Sorumlu {S8}. Kurbanla aralarında büyük bir miras kavgası vardı; GPS onu olay saatinde patikanın o bölümünde tek başına gösteriyor, botunun izi sürüklenme izinin yanında ve ceketinde kurbanın DNA örneği çıktı. Diğerlerinin konumu ya da mazereti olayla uyuşmuyor.",
+    S:[["Rehber","Grubun önündeydi; telsiz kaydı bunu doğruluyor."],["Kampçı","Kamp yerinde yemek hazırlıyordu, iki kişi şahit."],["Fotoğrafçı","Manzara noktasında, fotoğraf zaman damgaları sabit yeri gösteriyor."],["Doktor","İlk yardım çantasıyla geride ama başka bir yürüyüşçüyle birlikteydi."],["Sırt çantacı","Su almak için dereye inmişti, izleri dere yönünde."],["Yeni katılan","Grubu yeni tanıyor; kurbanı tanımıyordu bile."],["Eski dost","Husumetliydi ama olay saatinde kampta telsizle konuşuyordu."],["Mirasçı akraba","Kurbanla büyük miras kavgası var; olay saatinde patikada tek başınaydı."]],
+    E:[["forensic","DNA","{S8} adlı kişinin ceketinde kurbana ait DNA örneği bulundu.",1,0],
+       ["gps","Konum","{S8} adlı kişi olay saatinde patikanın o bölümünde tek başına baz veriyor.",1,0],
+       ["forensic","Bot İzi","Sürüklenme izinin yanındaki bot izi {S8} adlı kişinin ayakkabısıyla uyuşuyor.",1,0],
+       ["phone","Miras","{S8} ile kurban arasında büyük bir miras kavgası mesajlardan belli.",1,0],
+       ["phone","Telsiz","{S1} olay saatinde grubun önünde telsiz konuşuyor.",1,0],
+       ["witness","Tanık {W1}","{W1}, kampçının olay saatinde yemek başında olduğunu doğruluyor.",1,0],
+       ["camera","Zaman Damgası","{S3} adlı kişinin fotoğrafları olay saatinde manzara noktasını gösteriyor.",1,0],
+       ["gps","Dere","{S5} adlı kişinin izleri dere yönünde; patikadan uzaklaşmış.",1,0],
+       ["phone","Yeni Katılan","{S6} grubu yeni tanıyor; kurbanla hiçbir bağı yok.",1,0],
+       ["witness","Tanık {W2}","{W2}, eski dostun olay saatinde kampta telsizle konuştuğunu söylüyor.",1,0],
+       ["forensic","Baston","Patikada bir baston bulundu ama kime ait olduğu belirsiz, üstünde iz yok.",0,1],
+       ["phone","Eski Dost","Eski dostun husumeti yüzünden şüphelenildi ama telsiz kaydı onu temize çıkarıyor.",0,1]] },
+
+  { t:"Sızan Tasarım", e:"Kurumsal Casusluk", d:"hard", st:"Gizli ürün tasarımı rakibe sızdırıldı.", nS:8, nW:2, c:1,
+    sum:"Bir şirketin piyasaya çıkmamış gizli tasarımı rakip firmaya sızdı. Dosyaya yalnızca sınırlı sayıda kişi erişebiliyordu; kopya gece dışarı taşınmış.",
+    sol:"Casus {S2}. Erişim kaydı dosyayı son indiren ve gece bir USBye kopyalayanın o olduğunu, kamera da gece ofiste tek başına olduğunu gösteriyor; rakip firmadan hesabına ödeme geçmiş. Diğerlerinin erişimi, konumu ya da kaydı olayla uyuşmuyor.",
+    S:[["Proje müdürü","Erişimi var ama o gece yurt dışı uçuşundaydı."],["Kıdemli tasarımcı","Dosyayı gece USBye kopyaladı; rakipten hesabına ödeme geçti."],["BT uzmanı","Sisteme erişir ama o akşam evden hiç bağlanmadı, log yok."],["Pazarlama müdürü","Tasarım dosyasına erişim yetkisi yok."],["Asistan","Sadece takvim yönetir, dosyaya giremez."],["Stajyer tasarımcı","Erişimi kısıtlı; yalnızca taslakları görebiliyor."],["Güvenlik görevlisi","Dosya sistemine hiç erişemez."],["Muhasebeci","Mali kayıtlara bakar, tasarıma değil."]],
+    E:[["phone","Erişim Kaydı","Gizli dosyayı son indiren ve gece kopyalayan kişi {S2}.",1,0],
+       ["camera","Ofis Kamerası","{S2} adlı kişi gece ofiste tek başına, bilgisayar başında görülüyor.",1,0],
+       ["phone","Ödeme","Rakip firmadan {S2} adlı kişinin hesabına gizli bir ödeme geçmiş.",1,0],
+       ["phone","Uçuş","{S1} o gece yurt dışı uçuşunda; biniş kartı var.",1,0],
+       ["phone","Bağlantı Yok","{S3} o akşam sisteme hiç bağlanmamış; log boş.",1,0],
+       ["gps","Yetki","{S4} adlı kişinin tasarım dosyasına erişimi yok.",1,0],
+       ["gps","Erişim","{S5} yalnızca takvim yönetiyor, dosyaya giremiyor.",1,0],
+       ["gps","Kısıtlı","{S6} adlı kişi sadece taslakları görebiliyor, ana dosyayı değil.",1,0],
+       ["witness","Tanık {W1}","{W1}, gece geç saatte ofiste yalnızca bir tasarımcının kaldığını söylüyor.",1,0],
+       ["witness","Tanık {W2}","{W2}, BT uzmanının o akşam ofise hiç gelmediğini doğruluyor.",1,0],
+       ["forensic","USB","Ofiste boş bir USB kutusu bulundu ama parmak izi ortak alandan karışık çıktı.",0,1],
+       ["phone","Müdür Şüphesi","Proje müdürünün erişimi olduğu için şüphelenildi ama uçuş kaydı kesin.",0,1]] },
+
+  { t:"Fidye Notu", e:"Kaçırma ve Fidye", d:"hard", st:"Bir iş insanının çocuğu kaçırıldı, fidye istendi.", nS:8, nW:2, c:4,
+    sum:"Zengin bir ailenin çocuğu kaçırıldı ve fidye istendi. Fidye notu evin içinden bilgiyle yazılmış; aileyi yakından tanıyan biri işin içinde.",
+    sol:"Sorumlu {S5}. Fidye notundaki ayrıntılar yalnızca onun bildiği aile sırlarını içeriyor, kullandığı telefonun baz kaydı çocuğun tutulduğu eve gidiyor ve fidye hesabı onunla bağlantılı. Diğerlerinin konumu ya da bilgisi olayla uyuşmuyor.",
+    S:[["Aile şoförü","Çocuğu okuldan o alırdı ama o gün hastanede raporluydu."],["Dadı","Evin sırlarını bilir ama kaçırma anında ailenin yanındaydı."],["Bahçıvan","Eve girer ama aile sırlarını bilmez."],["Aşçı","Mutfaktaydı, iki kişi şahit."],["Eski muhasebeci","Aile sırlarını bilir; telefonu çocuğun tutulduğu eve gidiyor, fidye hesabı onunla bağlantılı."],["Komşu","Aileyle yüzeysel tanışıklığı var."],["Özel öğretmen","Çocuğu tanır ama olay saatinde başka öğrencideydi."],["Güvenlik","Kapıdaydı; kamera onu yerinde gösteriyor."]],
+    E:[["phone","Not Detayı","Fidye notundaki aile sırları yalnızca {S5} adlı kişinin bildiği bilgiler.",1,0],
+       ["gps","Baz Kaydı","{S5} adlı kişinin telefonu çocuğun tutulduğu eve gidiyor.",1,0],
+       ["phone","Fidye Hesabı","İstenen fidye hesabı {S5} adlı kişiyle bağlantılı.",1,0],
+       ["phone","Rapor","{S1} kaçırma günü hastanede raporlu; kaydı var.",1,0],
+       ["witness","Tanık {W1}","{W1}, dadının kaçırma anında ailenin yanında olduğunu doğruluyor.",1,0],
+       ["gps","Bilgi","{S3} adlı kişi eve girer ama aile sırlarını bilmiyor.",1,0],
+       ["witness","Mutfak","{S4} olay saatinde mutfakta; iki kişi şahit.",1,0],
+       ["gps","Konum","{S7} olay saatinde başka bir öğrencisinin evinde.",1,0],
+       ["camera","Kapı","{S8} adlı kişi kapıda kamerada sabit duruyor.",1,0],
+       ["witness","Tanık {W2}","{W2}, eski muhasebecinin aileye kin beslediğini söylüyor.",1,0],
+       ["forensic","Kağıt","Fidye notu sıradan bir kağıda yazılmış; markası ayırt edici değil.",0,1],
+       ["phone","Komşu Şüphesi","Komşudan şüphelenildi ama aileyle yalnızca yüzeysel tanışıklığı olduğu anlaşıldı.",0,1]] },
+
+  { t:"Müzedeki Boş Çerçeve", e:"Sanat Eseri Hırsızlığı", d:"hard", st:"Değerli bir tablo geceleyin çerçevesinden alındı.", nS:8, nW:2, c:0,
+    sum:"Bir müzeden değerli bir tablo gece çalındı. Alarm bakım için kapatılmış, kamera döngüye alınmış; içeriden teknik bilgisi olan biri gerekli.",
+    sol:"Hırsız {S1}. Kamerayı döngüye alan komut onun terminalinden girilmiş, alarmı bakım moduna alan kayıt da ona ait; aracında tabloya ait özel ambalaj bulundu. Diğerlerinin yetki, konum ya da kaydı olayla uyuşmuyor.",
+    S:[["Güvenlik teknisyeni","Kamera ve alarm sistemini yönetir; gece terminalden komut girdi, aracında özel ambalaj bulundu."],["Müze müdürü","Şifreleri bilir ama o gece bir galada, kamerada görünüyor."],["Restoratör","Tabloya erişir ama gece müzede değildi, kart kaydı yok."],["Bekçi","Sadece turla dolaşır; sisteme erişemez."],["Rehber","Gündüz çalışır, gece yetkisi yok."],["Temizlikçi","Salonlara girer ama teknik sisteme erişemez."],["Kurator","Eserleri bilir ama o gece şehir dışındaydı."],["Stajyer","Hiçbir sisteme yetkisi yok."]],
+    E:[["phone","Kamera Komutu","Kamerayı döngüye alan komut {S1} adlı kişinin terminalinden girilmiş.",1,0],
+       ["phone","Alarm Logu","Alarmı bakım moduna alan kayıt {S1} adlı kişiye ait.",1,0],
+       ["forensic","Ambalaj","{S1} adlı kişinin aracında çalınan tabloya uygun özel ambalaj malzemesi bulundu.",1,0],
+       ["camera","Gala","{S2} o gece bir galada kameraya yakalanıyor.",1,0],
+       ["gps","Kart","{S3} adlı kişinin gece müzeye giriş kaydı yok.",1,0],
+       ["gps","Erişim","{S4} adlı kişi teknik sisteme erişemiyor.",1,0],
+       ["gps","Yetki","{S5} adlı kişinin gece yetkisi yok.",1,0],
+       ["gps","Sistem","{S6} adlı kişi salonlara girer ama teknik panele erişemez.",1,0],
+       ["phone","Şehir Dışı","{S7} o gece şehir dışındaydı; konum kaydı var.",1,0],
+       ["witness","Tanık {W1}","{W1}, gece teknik odaya giren tek kişinin güvenlik teknisyeni olduğunu söylüyor.",1,0],
+       ["witness","Tanık {W2}","{W2}, restoratörün o gece müzeye hiç gelmediğini doğruluyor.",1,0],
+       ["forensic","Eldiven","Çerçevede eldiven izi var ama tüm personel aynı eldiveni kullandığı için ayırt edici değil.",0,1]] },
+
+  { t:"Hayalet Hesaplar", e:"Siber Dolandırıcılık Ağı", d:"hard", st:"Sahte hesaplarla büyük çaplı dolandırıcılık yapılıyor.", nS:8, nW:2, c:6,
+    sum:"Bir şirketin altyapısı kullanılarak sahte hesaplarla büyük çaplı dolandırıcılık yapıldı. İçeriden sunucuya erişen biri sahte hesapları açmış ve izleri silmeye çalışmış.",
+    sol:"Sorumlu {S7}. Sunucu logları sahte hesapları açan ve iz silmeye çalışan oturumun ona ait olduğunu, VPN kaydı da onun ev IPsine çıktığını gösteriyor; kripto cüzdanı dolandırılan parayla bağlantılı. Diğerlerinin erişimi, konumu ya da kaydı olayla uyuşmuyor.",
+    S:[["Yazılım takım lideri","Erişimi geniş ama olay haftası ücretli izindeydi, sisteme hiç bağlanmadı."],["Veritabanı yöneticisi","Sunucuya erişir ama oturum kayıtları temiz, anormallik yok."],["Ağ uzmanı","Sadece ağ donanımına bakar, hesap sistemine giremez."],["Destek görevlisi","Yalnızca kullanıcı şifresi sıfırlar, hesap açamaz."],["Tester","Test ortamına erişir, canlı sisteme değil."],["Sistem mimarı","Tasarımı bilir ama olay saatlerinde konferansta, kamerada."],["Kıdemli geliştirici","Sahte hesapları açan oturum ona ait; VPN ev IPsine çıkıyor, kripto cüzdanı dolandırılan parayla bağlantılı."],["Stajyer","Yalnızca okuma yetkisi var, yazma yetkisi yok."]],
+    E:[["phone","Sunucu Logu","Sahte hesapları açan ve iz silen oturum {S7} adlı kişinin kullanıcısına ait.",1,0],
+       ["gps","VPN Kaydı","Saldırıda kullanılan VPN bağlantısı {S7} adlı kişinin ev IPsine çıkıyor.",1,0],
+       ["phone","Kripto Cüzdan","{S7} adlı kişinin kripto cüzdanı dolandırılan parayla bağlantılı.",1,0],
+       ["phone","İzin","{S1} olay haftası ücretli izinde; sisteme hiç bağlanmamış.",1,0],
+       ["phone","Temiz Log","{S2} adlı kişinin oturum kayıtlarında hiçbir anormallik yok.",1,0],
+       ["gps","Yetki","{S3} adlı kişi hesap sistemine giremiyor, yalnızca ağ donanımına bakıyor.",1,0],
+       ["gps","Erişim","{S4} yalnızca şifre sıfırlar, hesap açamaz.",1,0],
+       ["gps","Ortam","{S5} adlı kişi yalnızca test ortamına erişir, canlı sisteme değil.",1,0],
+       ["camera","Konferans","{S6} olay saatlerinde bir konferansta, kamerada görünüyor.",1,0],
+       ["witness","Tanık {W1}","{W1}, geç saatlerde sisteme bağlı kalan tek kişinin kıdemli geliştirici olduğunu söylüyor.",1,0],
+       ["witness","Tanık {W2}","{W2}, takım liderinin o hafta hiç ofise gelmediğini doğruluyor.",1,0],
+       ["forensic","Cihaz","Ortak bir dizüstü bilgisayarda izler var ama herkes kullandığı için ayırt edici değil.",0,1]] },
+
+  { t:"Köprü Altındaki İnfaz", e:"Mafya İnfazı", d:"hard", st:"Bir tetikçi köprü altında infaz edildi.", nS:8, nW:2, c:3,
+    sum:"Bir suç örgütünün adamı köprü altında infaz edildi. Olay profesyonelce işlenmiş; örgüt içinden bir hesaplaşma olduğu düşünülüyor. Failin kurbanla geçmiş husumeti olan biri olduğu kesin.",
+    sol:"Tetikçi {S4}. Kurbanla aralarında eski bir kan davası vardı; balistik silahın daha önce ona bağlanan bir olayla aynı olduğunu, GPS onu olay saatinde köprü altında gösteriyor ve elinde barut artığı bulundu. Diğerlerinin konumu ya da mazereti olayla uyuşmuyor.",
+    S:[["Örgüt muhasebecisi","Para işlerine bakar; olay saatinde kumarhanede kamerada."],["Şoför","Araç kullanır ama o gece başka şehirde teslimattaydı."],["Koruma","Patronun yanındaydı; iki kişi şahit."],["Husumetli tetikçi","Kurbanla eski kan davası var; olay saatinde köprü altında, elinde barut artığı bulundu."],["Bar işletmecisi","Barı açıktı, kamerada görünüyor."],["Haberci","Mesaj taşır ama silah kullanmaz, olay saatinde uzaktaydı."],["Eski ortak","Husumetliydi ama o gece hastanede yatıyordu."],["Tefeci","Borç toplar; olay saatinde başka semtte tanıkla birlikte."]],
+    E:[["forensic","Balistik","İnfazda kullanılan silah, daha önce {S4} adlı kişiye bağlanan bir olayla aynı.",1,0],
+       ["gps","Konum","{S4} adlı kişi olay saatinde köprü altı bölgesinde baz veriyor.",1,0],
+       ["forensic","Barut Artığı","{S4} adlı kişinin elinde barut artığı bulundu.",1,0],
+       ["phone","Kan Davası","{S4} ile kurban arasında eski bir kan davası olduğu biliniyor.",1,0],
+       ["camera","Kumarhane","{S1} olay saatinde kumarhanede kameraya yakalanıyor.",1,0],
+       ["gps","Teslimat","{S2} o gece başka şehirde teslimatta; konum kaydı var.",1,0],
+       ["witness","Koruma","{S3} olay saatinde patronun yanında; iki kişi şahit.",1,0],
+       ["gps","Uzak","{S6} olay saatinde olay yerinden uzakta baz veriyor.",1,0],
+       ["phone","Hastane","{S7} o gece hastanede yatıyordu.",1,0],
+       ["witness","Tanık {W1}","{W1}, köprü altından silah sesi gelmeden önce oradan ayrılan tek bir adam gördüğünü söylüyor.",1,0],
+       ["witness","Tanık {W2}","{W2}, tefecinin olay saatinde başka semtte olduğunu doğruluyor.",1,0],
+       ["forensic","İzmarit","Olay yerinde izmarit bulundu ama DNA karışık çıktı, tek kişiyi göstermiyor.",0,1]] }
+];
+
+function _detShuffle(arr) { var c = arr.slice(); for (var i = c.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = c[i]; c[i] = c[j]; c[j] = t; } return c; }
+
+async function _seedCaseChar(tpl, pool) {
+  var need = tpl.nS + (tpl.nW || 0);
+  var cast = _detShuffle(pool).slice(0, Math.min(need, pool.length));
+  while (cast.length < need) cast.push(pool[Math.floor(Math.random() * pool.length)]);
+  var nameOf = function (ch) { return (((ch.name || '') + ' ' + (ch.surname || '')).trim()) || ('Karakter ' + ch.id); };
+  var map = {};
+  for (var i = 0; i < tpl.nS; i++) map['S' + (i + 1)] = nameOf(cast[i]);
+  for (var w = 0; w < (tpl.nW || 0); w++) map['W' + (w + 1)] = nameOf(cast[tpl.nS + w]);
+  var rep = function (s) { return (s || '').replace(/\{(S\d+|W\d+)\}/g, function (m, k) { return map[k] != null ? map[k] : m; }); };
+  var cr = await query("INSERT INTO detective_cases (title,event_type,summary,status_text,difficulty,solution,active) VALUES ($1,$2,$3,$4,$5,$6,true) RETURNING id",
+    [tpl.t, tpl.e, rep(tpl.sum), rep(tpl.st), tpl.d, rep(tpl.sol)]);
+  var caseId = cr.rows[0].id, susIds = [];
+  for (var s = 0; s < tpl.nS; s++) {
+    var ch = cast[s], role = tpl.S[s];
+    var sr = await query("INSERT INTO detective_suspects (case_id,char_id,name,profession,background,img,ord) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id",
+      [caseId, ch.id, nameOf(ch), role[0], rep(role[1]), ch.img || '', s]);
+    susIds.push(sr.rows[0].id);
+  }
+  await query("UPDATE detective_cases SET culprit_id=$1 WHERE id=$2", [susIds[tpl.c], caseId]);
+  for (var e = 0; e < tpl.E.length; e++) {
+    var ev = tpl.E[e];
+    await query("INSERT INTO detective_evidence (case_id,category,title,content,important,misleading,ord) VALUES ($1,$2,$3,$4,$5,$6,$7)",
+      [caseId, ev[0], ev[1], rep(ev[2]), !!ev[3], !!ev[4], e]);
+  }
+}
+
+async function seedDetectiveChars() {
+  var ver = await getConfig('detective_seed_v');
+  if (ver === 'chars30') return;
+  var poolR = await query("SELECT id, name, surname, img FROM characters WHERE active=true");
+  var pool = poolR.rows;
+  if (pool.length < 3) { console.warn('Dedektif: yeterli aktif karakter yok, seed atlandı.'); return; }
+  await query("DELETE FROM detective_cases");
+  await query("DELETE FROM detective_guesses");
+  for (var ci = 0; ci < DET_CASES.length; ci++) {
+    try { await _seedCaseChar(DET_CASES[ci], pool); } catch (e) { console.error('seed case ' + ci + ':', e.message); }
+  }
+  await setConfig('detective_seed_v', 'chars30');
+  console.log('Dedektif: ' + DET_CASES.length + ' vaka seed edildi.');
+}
+
+async function getDetectiveNextCase(userId, difficulty) {
+  var cr = await query("SELECT id FROM detective_cases WHERE active=true AND difficulty=$1 ORDER BY id", [difficulty]);
+  var ids = cr.rows.map(function (r) { return r.id; });
+  if (!ids.length) return null;
+  var chosen, allDone = false;
+  if (userId) {
+    var doneR = await query("SELECT DISTINCT case_id FROM detective_guesses WHERE user_id=$1 AND (correct=true OR attempt_no>=3)", [userId]);
+    var doneSet = {}; doneR.rows.forEach(function (r) { doneSet[r.case_id] = true; });
+    var notDone = ids.filter(function (id) { return !doneSet[id]; });
+    if (notDone.length) chosen = notDone[Math.floor(Math.random() * notDone.length)];
+    else { allDone = true; chosen = ids[Math.floor(Math.random() * ids.length)]; }
+  } else {
+    chosen = ids[Math.floor(Math.random() * ids.length)];
+  }
+  var c = await getDetectiveCase(chosen);
+  var out = { case: c, all_done: allDone };
+  if (userId) { out.progress = await getDetectiveProgress(userId, chosen); if (out.progress && out.progress.done) out.reveal = await getDetectiveRevealForUser(userId, chosen); }
+  return out;
 }
