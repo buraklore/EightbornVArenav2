@@ -310,7 +310,8 @@ module.exports = {
   upsertDetectiveSuspect: upsertDetectiveSuspect, deleteDetectiveSuspect: deleteDetectiveSuspect,
   upsertDetectiveEvidence: upsertDetectiveEvidence, deleteDetectiveEvidence: deleteDetectiveEvidence,
   getDetectiveRevealForUser: getDetectiveRevealForUser, getDetectiveNextCase: getDetectiveNextCase,
-  getDetectiveCharPool: getDetectiveCharPool, setDetectiveCharPool: setDetectiveCharPool, regenerateDetectiveCases: regenerateDetectiveCases
+  getDetectiveCharPool: getDetectiveCharPool, setDetectiveCharPool: setDetectiveCharPool, regenerateDetectiveCases: regenerateDetectiveCases,
+  getDetectiveStreamReveal: getDetectiveStreamReveal
 };
 
 // ═══ SAVED DUELS ═══
@@ -1032,6 +1033,17 @@ async function getDetectiveRevealForUser(userId, caseId) {
   var chosen = g.rows[0] ? g.rows[0].suspect_id : cr.rows[0].culprit_id;
   var rev = await _detectiveReveal(caseId, cr.rows[0], chosen);
   rev.your_pick = chosen;
+  return rev;
+}
+// Yayıncı modu: kaydetmeden doğru/yanlış + tam reveal döndürür (skora yazmaz)
+async function getDetectiveStreamReveal(caseId, suspectId) {
+  var cr = await query("SELECT id, culprit_id, solution FROM detective_cases WHERE id=$1 AND active=true", [caseId]);
+  if (!cr.rows[0]) return { error: 'Vaka bulunamadi.' };
+  var cas = cr.rows[0];
+  var sv = await query("SELECT id FROM detective_suspects WHERE id=$1 AND case_id=$2", [suspectId, caseId]);
+  if (!sv.rows[0]) return { error: 'Gecersiz supheli.' };
+  var rev = await _detectiveReveal(caseId, cas, suspectId);
+  rev.correct = String(suspectId) === String(cas.culprit_id);
   return rev;
 }
 
