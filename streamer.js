@@ -65,18 +65,18 @@ function streamStart() {
     '<div class="gc-new" onclick="streamSetup(\'QUOTE\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.QUOTE||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'\ud83d\udcac\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('QUOTE','Replik Bil') +'</h3><p>'+ _sd('QUOTE','Repli\u011fi kime ait?') +'</p><div class="diff" style="background:rgba(255,84,77,.08);color:#ffb4ac">\u0130NTERAKT\u0130F</div></div>' +
     '<div class="gc-new" onclick="streamSetup(\'FACE\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.FACE||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'\ud83e\udd14\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('FACE','Y\u00fczden Bil') +'</h3><p>'+ _sd('FACE','Karakteri tan\u0131!') +'</p><div class="diff" style="background:rgba(255,84,77,.08);color:#ffb4ac">\u0130NTERAKT\u0130F</div></div>' +
     '<div class="gc-new" onclick="streamSetup(\'MEMORY\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.MEM||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'\ud83e\udde0\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('MEMORY','Eightborn Moruq') +'</h3><p>'+ _sd('MEMORY','EightbornV hakk\u0131nda ne kadar bilgilisin?') +'</p><div class="diff" style="background:rgba(255,84,77,.08);color:#ffb4ac">\u0130NTERAKT\u0130F</div></div>' +
-    '<div class="gc-new" onclick="streamSetup(\'STORY\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.FATE||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'\ud83c\udfac\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('STORY','Chat Kaderini Belirler') +'</h3><p>'+ _sd('STORY','Hikayeni chat belirler!') +'</p><div class="diff" style="background:rgba(255,84,77,.08);color:#ffb4ac">\u0130NTERAKT\u0130F</div></div>' +
     '<div class="gc-new" onclick="streamSetup(\'CDIE\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.DIE||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'\u2694\ufe0f\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('CDIE','Kim Hayatta Kalacak') +'</h3><p>'+ _sd('CDIE','Chat CK\'y\u0131 belirler!') +'</p><div class="diff" style="background:rgba(255,84,77,.08);color:#ffb4ac">\u0130NTERAKT\u0130F</div></div>' +
     '<div class="gc-new" onclick="streamSetup(\'CTEAM\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.TEAM||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'\ud83d\udc65\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('CTEAM','Ekibini Kur') +'</h3><p>'+ _sd('CTEAM','Ekibi chat belirler!') +'</p><div class="diff" style="background:rgba(255,84,77,.08);color:#ffb4ac">\u0130NTERAKT\u0130F</div></div>' +
     '<div class="gc-new" onclick="streamSetup(\'CFATE\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.FATE||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'\ud83c\udfb2\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('CFATE','Kaderini Se\u00e7') +'</h3><p>'+ _sd('CFATE','Kaderi chat belirler!') +'</p><div class="diff" style="background:rgba(255,84,77,.08);color:#ffb4ac">\u0130NTERAKT\u0130F</div></div>' +
     '<div class="gc-new" onclick="streamSetup(\'CRPSIM\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.RPSIM||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'🎮\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('CRPSIM','RP Simülasyonu') +'</h3><p>'+ _sd('CRPSIM','Şehrin kaderini chat seçer!') +'</p><div class="diff" style="background:rgba(167,139,250,.12);color:#c4b5fd">İNTERAKTİF</div></div>' +
+    '<div class="gc-new" onclick="streamSetup(\'CDETECTIVE\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.DETECTIVE||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'\ud83d\udd75\ufe0f\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('CDETECTIVE','Dedektif Dosyası') +'</h3><p>'+ _sd('CDETECTIVE','Suçluyu chat ile bul!') +'</p><div class="diff" style="background:rgba(202,164,106,.12);color:#caa46a">İNTERAKTİF</div></div>' +
     '</div></div>';
 }
 
 function streamSetup(mode) {
   var ag = document.getElementById('ag');
   var isStory = mode === 'STORY';
-  var modeNames = {QUOTE:'Replik Bil',FACE:'Yüzden Bil',MEMORY:'Eightborn Moruq',STORY:'Chat Kaderini Belirler',CDIE:'Kim Hayatta Kalacak',CTEAM:'Ekibini Kur',CFATE:'Kaderini Seç',CRPSIM:'🎮 RP Simülasyonu',DUEL:'Düello Oluştur'};
+  var modeNames = {QUOTE:'Replik Bil',FACE:'Yüzden Bil',MEMORY:'Eightborn Moruq',CDIE:'Kim Hayatta Kalacak',CTEAM:'Ekibini Kur',CFATE:'Kaderini Seç',CRPSIM:'🎮 RP Simülasyonu',CDETECTIVE:'🕵️ Dedektif Dosyası',DUEL:'Düello Oluştur'};
   if(window._pushUrl) window._pushUrl('streamer-setup');
   
   // Calculate max counts for dynamic options
@@ -122,7 +122,9 @@ function streamSetup(mode) {
       '<div class="form-group"><label class="lbl" style="font-size:20px;margin-bottom:10px">🎯 Oyun Uzunluğu</label><select class="inp" style="font-size:22px;padding:20px;border-radius:16px" id="stream-count"><option value="8">Kısa — 8 tur</option><option value="12" selected>Klasik — 12 tur</option><option value="18">Uzun — 18 tur</option></select></div>' +
       '</div>' +
       '<p style="font-size:15px;color:var(--t3);margin-bottom:8px;text-align:center">Her turda senaryo ekrana gelir, <b style="color:#c4b5fd">chat 1 / 2 / 3 yazarak</b> karar verir. 💰 Para · 👑 İtibar · 🔥 Tehlike statlarına göre şehrin kralı mı soytarısı mı olunacağını chat belirler!</p>';
-  } else if (mode === 'DUEL') {
+  } else if (mode === 'CDETECTIVE') {
+    extraField = '<div class="form-group" style="margin-bottom:20px"><label class="lbl" style="font-size:20px;margin-bottom:10px">🔍 Zorluk Seviyesi</label><select class="inp" style="font-size:22px;padding:20px;border-radius:16px" id="det-stream-diff"><option value="easy">🟢 Kolay — 3 şüpheli</option><option value="medium" selected>🟡 Orta — 5 şüpheli</option><option value="hard">🔴 Zor — 8 şüpheli</option></select></div>' +
+      '<p style="font-size:15px;color:var(--t3);margin-bottom:8px;text-align:center">Rastgele bir vaka açılır. Chat kanıtları inceleyip <b style="color:#caa46a">şüpheli harfini (A / B / C…)</b> yazarak oy verir. Süre yok — düşünmek serbest! Oylar geldikçe <b style="color:#caa46a">suçluyu sen seçersin</b>, sonra gerçek suçlu açıklanır.</p>';
     var charListHtml = '';
     var activeChars = chars.filter(function(c){ return c.a; });
     activeChars.forEach(function(c, i) {
@@ -624,6 +626,27 @@ async function streamConnect() {
     nextCRpsimRound();
     return;
   }
+  if (mode === 'CDETECTIVE') {
+    var detDiff = ((document.getElementById('det-stream-diff')||{}).value) || 'easy';
+    var detData = await apiGet('/detective/by-difficulty?difficulty=' + encodeURIComponent(detDiff));
+    if (!detData || detData.error || !detData.case) { toast((detData && detData.error) || 'Vaka bulunamadı.', false); return; }
+    streamState = {
+      platform: platform, channelId: channelId, mode: 'CDETECTIVE', active: true,
+      phase: 'VOTING', votes: {}, voters: {}, voteTimer: null, chatMessages: [],
+      det: { case: detData.case, difficulty: detDiff }
+    };
+    if (platform === 'youtube') {
+      var initDetRes = await apiPost('/stream/youtube-init', { videoId: channelId });
+      if (initDetRes.error) { toast('YouTube bağlantı hatası: ' + initDetRes.error, false); return; }
+      streamState.liveChatId = initDetRes.liveChatId;
+      startChatPolling();
+    } else {
+      startKickChat(channelId);
+    }
+    if(window._pushUrl) window._pushUrl('streamer-live'); showPauseButton();
+    renderCDetCase();
+    return;
+  }
   if (questions.length === 0) { toast('Yeterli soru yok!', false); return; }
   
   streamState = {
@@ -797,6 +820,7 @@ function processStreamMessage(author, text) {
   if (streamState.paused) return; // ⏸️ Skip when paused
   if (streamState.mode === 'STORY') { processStoryChatMessage(author, text); return; }
   if (streamState.mode === 'CRPSIM') { processChatVote(author, text); return; }
+  if (streamState.mode === 'CDETECTIVE') { processChatVote(author, text); return; }
   if (streamState.mode === 'CDIE' || streamState.mode === 'CTEAM' || streamState.mode === 'CFATE' || streamState.mode === 'DUEL') { processChatVote(author, text); return; }
   if (streamState.roundWinner) return;
   
@@ -1264,6 +1288,19 @@ function processChatVote(author, text) {
       isValidVote = true;
       voteDisplay = ck;
       updateCRpsimVoteBar();
+    }
+  } else if (s.mode === 'CDETECTIVE') {
+    var sus = (s.det && s.det.case && s.det.case.suspects) ? s.det.case.suspects : [];
+    var nS = sus.length;
+    var letter = null;
+    if (upperText.length === 1 && nS > 0 && upperText >= 'A' && upperText <= String.fromCharCode(64 + nS)) letter = upperText;
+    else { var dnum = parseInt(rawText, 10); if (dnum >= 1 && dnum <= nS) letter = String.fromCharCode(64 + dnum); }
+    if (letter) {
+      s.voters[author] = letter;
+      s.votes[letter] = (s.votes[letter] || 0) + 1;
+      isValidVote = true;
+      voteDisplay = letter;
+      updateCDetVoteBar();
     }
   }
   
@@ -1943,4 +1980,166 @@ function renderCRpsimEnd(busted) {
       '</div>'+
     '</div>';
   streamCleanup();
+}
+
+// ═══════════════════════════════════════════════════
+// DEDEKTİF DOSYASI (CHAT) — yayıncı modu (süresiz, chat A/B/C oylar, suçluyu yayıncı seçer)
+// ═══════════════════════════════════════════════════
+var _cdetCols = ['#caa46a','#60a5fa','#3cddc7','#ffb95f','#ff6a63','#c4b5fd','#5ad1a5','#ff9d6b'];
+function _cdetLetter(i){ return String.fromCharCode(65 + i); }
+function _cdetImg(img, size){
+  if (img) return '<img src="'+esc(img)+'" style="width:'+size+'px;height:'+size+'px;border-radius:10px;object-fit:cover" onerror="this.outerHTML=\'<div style=\\\'width:'+size+'px;height:'+size+'px;border-radius:10px;background:#2a2620;display:flex;align-items:center;justify-content:center;font-size:'+Math.round(size*0.5)+'px\\\'>🕵️</div>\'">';
+  return '<div style="width:'+size+'px;height:'+size+'px;border-radius:10px;background:#2a2620;display:flex;align-items:center;justify-content:center;font-size:'+Math.round(size*0.5)+'px">🕵️</div>';
+}
+function _cdetCat(cat){ return ({camera:['📹','Kamera Kaydı'],phone:['📱','Telefon'],gps:['🚗','GPS'],witness:['👤','Tanık'],forensic:['🔬','Adli Bulgu'],other:['🗂️','Diğer']})[cat] || ['🗂️','Diğer']; }
+
+function updateCDetVoteBar() {
+  var s = streamState; if (!s || !s.det || !s.det.case) return;
+  var sus = s.det.case.suspects || [];
+  var total = 0; for (var i = 0; i < sus.length; i++) total += (s.votes[_cdetLetter(i)] || 0);
+  var t = total || 1;
+  var bar = document.getElementById('cdet-vote-bar');
+  if (bar) {
+    var h = '<div style="display:flex;border-radius:12px;overflow:hidden;height:40px;font-weight:800;font-size:15px">';
+    for (var i = 0; i < sus.length; i++) { var L = _cdetLetter(i); var v = s.votes[L] || 0; var p = Math.round(v / t * 100); h += '<div style="background:'+_cdetCols[i%8]+';width:'+Math.max(p,3)+'%;display:flex;align-items:center;justify-content:center;color:#13131b;transition:width .3s" title="'+L+'">'+L+'</div>'; }
+    h += '</div><div style="text-align:center;font-size:13px;color:var(--t3);margin-top:6px">Toplam: '+total+' oy · chat şüpheli harfini yazar (A, B, C…)</div>';
+    bar.innerHTML = h;
+  }
+  var stats = document.getElementById('cdet-vote-stats');
+  if (stats) {
+    var sh = '';
+    for (var i = 0; i < sus.length; i++) { var L = _cdetLetter(i); var v = s.votes[L] || 0; var p = Math.round(v / t * 100);
+      sh += '<div style="padding:7px 9px;border-radius:8px;background:'+_cdetCols[i%8]+'12;border:1px solid '+_cdetCols[i%8]+'30;margin-bottom:6px"><div style="display:flex;justify-content:space-between;gap:8px;font-size:13px;font-weight:700;color:'+_cdetCols[i%8]+'"><span>'+L+') '+esc(sus[i].name)+'</span><span>'+p+'%</span></div><div style="height:5px;background:var(--bg3);border-radius:3px;margin-top:5px"><div style="height:100%;background:'+_cdetCols[i%8]+';border-radius:3px;width:'+p+'%;transition:width .3s"></div></div><div style="font-size:11px;color:var(--t3);margin-top:3px">'+v+' oy</div></div>';
+    }
+    stats.innerHTML = sh;
+  }
+}
+
+function renderCDetCase() {
+  var s = streamState; if (!s || !s.active || !s.det) return;
+  var c = s.det.case; var ag = document.getElementById('ag');
+  var diffMap = { easy: ['🟢 KOLAY','#3cdd8c'], medium: ['🟡 ORTA','#ffb95f'], hard: ['🔴 ZOR','#ff6a63'] };
+  var dm = diffMap[c.difficulty] || diffMap.easy;
+  var sus = c.suspects || [];
+  var suspectsHtml = sus.map(function(su, i) {
+    var col = _cdetCols[i % 8];
+    return '<div style="background:'+col+'10;border:2px solid '+col+'33;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px">'+
+      '<div style="display:flex;gap:12px;align-items:center">'+
+        '<span style="flex-shrink:0;width:38px;height:38px;border-radius:10px;background:'+col+';color:#13131b;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:20px">'+_cdetLetter(i)+'</span>'+
+        _cdetImg(su.img, 58)+
+        '<div style="min-width:0"><div class="fd" style="font-size:17px;color:#f0e6cf;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(su.name)+'</div><div style="font-size:12px;color:'+col+'">'+esc(su.profession || '')+'</div></div>'+
+      '</div>'+
+      '<p style="font-size:13px;color:#bdb6a6;line-height:1.55;margin:0;flex:1">'+esc(su.background || '')+'</p>'+
+      '<button onclick="streamerCDetAccuse('+su.id+')" style="width:100%;padding:9px;border-radius:9px;border:1px solid '+col+'55;background:'+col+'18;color:'+col+';font-weight:700;font-size:14px;cursor:pointer;transition:all .2s" onmouseover="this.style.background=\''+col+'\';this.style.color=\'#13131b\'" onmouseout="this.style.background=\''+col+'18\';this.style.color=\''+col+'\'">⚖️ '+_cdetLetter(i)+' Suçlu</button>'+
+    '</div>';
+  }).join('');
+  var evHtml = (c.evidence || []).map(function(e) {
+    var meta = _cdetCat(e.category);
+    return '<div style="background:#15130e;border:1px solid #352c1f;border-left:3px solid #caa46a;border-radius:8px;padding:11px 13px;margin-bottom:8px">'+
+      '<div style="display:flex;align-items:center;gap:7px;margin-bottom:3px"><span style="font-size:15px">'+meta[0]+'</span><span style="font-size:11px;font-weight:700;letter-spacing:.5px;color:#caa46a">'+meta[1].toUpperCase()+'</span>'+(e.title ? '<span style="font-size:13px;font-weight:700;color:#e8d9b5;margin-left:auto">'+esc(e.title)+'</span>' : '')+'</div>'+
+      '<p style="font-size:13px;color:#cfc8b8;line-height:1.6;margin:0">'+esc(e.content || '')+'</p>'+
+    '</div>';
+  }).join('');
+
+  ag.innerHTML =
+    '<div style="display:flex;gap:20px;padding:18px">'+
+      '<div style="flex:1;min-width:0">'+
+        '<h2 class="fd" style="font-size:28px;text-align:center;margin-bottom:6px">🕵️ Dedektif Dosyası — Chat</h2>'+
+        '<div style="text-align:center;margin-bottom:10px"><span style="font-size:13px;font-weight:800;letter-spacing:1px;padding:4px 12px;border-radius:8px;background:'+dm[1]+'20;color:'+dm[1]+';border:1px solid '+dm[1]+'40">'+dm[0]+'</span></div>'+
+        '<p style="text-align:center;color:#caa46a;font-size:16px;font-weight:700;margin-bottom:14px">Chat şüpheli harfini yazsın! <b>A, B, C…</b> · ⏱️ Süre yok, düşünün!</p>'+
+        '<div style="background:linear-gradient(135deg,#221c14,#191712);border:1px solid #3a3024;border-radius:16px;padding:18px 22px;margin:0 auto 16px;max-width:760px;position:relative;overflow:hidden">'+
+          '<div style="position:absolute;top:-10px;right:-10px;font-size:110px;opacity:.05">🕵️</div>'+
+          '<div style="margin-bottom:6px"><span style="font-size:12px;color:#ff8a80;letter-spacing:1px;font-weight:700">OLAY: '+esc((c.event_type || '').toUpperCase())+'</span></div>'+
+          '<h3 class="fd" style="font-size:clamp(24px,3vw,32px);color:#f0e6cf;margin-bottom:8px">'+esc(c.title)+'</h3>'+
+          '<p style="font-size:16px;color:#cfc8b8;line-height:1.7;margin-bottom:10px">'+esc(c.summary || '')+'</p>'+
+          '<div style="font-size:13px;color:#ffb95f;border-top:1px dashed #3a3024;padding-top:9px">DURUM: '+esc(c.status_text || 'Soruşturma sürüyor.')+'</div>'+
+        '</div>'+
+        '<h3 class="fd" style="font-size:20px;color:#e4e1ee;margin:0 auto 10px;max-width:760px">🕵️ Şüpheliler ('+sus.length+') — Suçluyu sen seç</h3>'+
+        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;max-width:760px;margin:0 auto 18px">'+suspectsHtml+'</div>'+
+        '<h3 class="fd" style="font-size:20px;color:#e4e1ee;margin:0 auto 10px;max-width:760px">🔍 Kanıtlar ('+(c.evidence || []).length+')</h3>'+
+        '<div style="max-width:760px;margin:0 auto 16px">'+evHtml+'</div>'+
+        '<div id="cdet-vote-bar" style="max-width:760px;margin:14px auto 8px"></div>'+
+      '</div>'+
+      '<div style="width:300px;flex-shrink:0">'+
+        '<div class="cg" style="margin-bottom:12px;padding:16px"><h4 style="font-size:14px;color:var(--m);margin-bottom:10px">📊 Chat Oyları</h4><div id="cdet-vote-stats"></div></div>'+
+        '<div class="cg" style="padding:16px"><h4 style="font-size:14px;color:var(--pk);margin-bottom:8px">💬 Chat</h4><div id="chat-msgs" style="height:250px;overflow-y:auto;font-size:13px"></div></div>'+
+      '</div>'+
+    '</div>';
+  updateCDetVoteBar();
+  updateChatPanel();
+}
+
+function streamerCDetAccuse(suspectId) {
+  var s = streamState; if (!s || !s.active || !s.det) return;
+  if (s.phase === 'RESULT') return;
+  var sus = null; (s.det.case.suspects || []).forEach(function(x){ if (x.id === suspectId) sus = x; });
+  if (!sus) return;
+  if (!confirm(sus.name + ' adlı kişiyi suçluyorsun. Karar kesindir — gerçek suçlu açıklanacak. Emin misin?')) return;
+  s.phase = 'RESULT';
+  if (s.voteTimer) { clearInterval(s.voteTimer); s.voteTimer = null; }
+  apiPost('/detective/stream-guess', { case_id: s.det.case.id, suspect_id: suspectId }).then(function(r) {
+    if (!r || r.error) { toast((r && r.error) || 'Hata oluştu.', false); s.phase = 'VOTING'; return; }
+    s.det.result = r; s.det.accusedId = suspectId;
+    renderCDetResult();
+  }).catch(function(){ toast('Bağlantı hatası.', false); s.phase = 'VOTING'; });
+}
+
+function renderCDetResult() {
+  var s = streamState; if (!s || !s.det || !s.det.result) return;
+  var r = s.det.result, c = s.det.case, ag = document.getElementById('ag');
+  var sus = c.suspects || [];
+  var accused = null, accIdx = -1; sus.forEach(function(x, i){ if (x.id === s.det.accusedId) { accused = x; accIdx = i; } });
+  var correct = !!r.correct;
+  var col = correct ? '#3cdd8c' : '#ff6a63';
+  var head = correct ? '✅ DOĞRU! Suçlu Yakalandı' : '❌ Yanlış Suçlama';
+  // chat'in tercihi
+  var total = 0, topL = null, topV = -1;
+  for (var i = 0; i < sus.length; i++) { var L = _cdetLetter(i); var v = s.votes[L] || 0; total += v; if (v > topV) { topV = v; topL = L; } }
+  var chatPick = (total > 0 && topL != null) ? (topL + ') ' + esc(sus[topL.charCodeAt(0) - 65].name) + ' (%' + Math.round(topV / total * 100) + ')') : 'Oy yok';
+
+  function evList(arr, color) {
+    if (!arr || !arr.length) return '<div style="font-size:13px;color:var(--t3)">—</div>';
+    return arr.map(function(e) { var meta = _cdetCat(e.category);
+      return '<div style="background:#15130e;border:1px solid '+color+'33;border-left:3px solid '+color+';border-radius:8px;padding:9px 11px;margin-bottom:7px"><div style="font-size:12px;color:'+color+';font-weight:700;margin-bottom:2px">'+meta[0]+' '+(e.title ? esc(e.title) : meta[1])+'</div><div style="font-size:13px;color:#cfc8b8;line-height:1.55">'+esc(e.content || '')+'</div></div>';
+    }).join('');
+  }
+
+  ag.innerHTML =
+    '<div style="flex:1;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto">'+
+      '<div style="max-width:820px;width:100%">'+
+        '<div style="text-align:center;margin-bottom:18px">'+
+          '<div style="font-size:60px;line-height:1">'+(correct ? '🕵️' : '📁')+'</div>'+
+          '<h2 class="fd" style="font-size:clamp(28px,5vw,42px);color:'+col+';letter-spacing:1px">'+head+'</h2>'+
+          '<p style="font-size:14px;color:var(--t3);margin-top:4px">Senin seçimin: <b style="color:#e8d9b5">'+(accused ? (_cdetLetter(accIdx) + ') ' + esc(accused.name)) : '—')+'</b> · Chat: <b style="color:#caa46a">'+chatPick+'</b></p>'+
+        '</div>'+
+        (r.culprit ? '<div style="background:linear-gradient(135deg,#221c14,#191712);border:1px solid '+col+'55;border-radius:16px;padding:20px;text-align:center;margin-bottom:16px">'+
+          '<div style="font-size:12px;letter-spacing:2px;color:#ff8a80;margin-bottom:10px;font-weight:700">■ GERÇEK SUÇLU ■</div>'+
+          '<div style="display:flex;flex-direction:column;align-items:center;gap:8px">'+_cdetImg(r.culprit.img, 100)+
+            '<div class="fd" style="font-size:26px;color:#f0e6cf">'+esc(r.culprit.name)+'</div>'+
+            '<div style="font-size:14px;color:#caa46a">'+esc(r.culprit.profession || '')+'</div></div>'+
+        '</div>' : '')+
+        (r.solution ? '<div style="background:#1b1b24;border:1px solid #352c1f;border-radius:14px;padding:16px 18px;margin-bottom:16px"><div style="font-size:14px;font-weight:700;color:#caa46a;margin-bottom:8px">🧩 ÇÖZÜM</div><p style="font-size:15px;color:#cfc8b8;line-height:1.75;margin:0">'+esc(r.solution)+'</p></div>' : '')+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">'+
+          '<div style="background:#1b1b24;border:1px solid #352c1f;border-radius:14px;padding:14px"><div style="font-size:13px;font-weight:700;color:#3cdd8c;margin-bottom:10px">🔑 KİLİT KANITLAR</div>'+evList(r.key_evidence, '#3cdd8c')+'</div>'+
+          '<div style="background:#1b1b24;border:1px solid #352c1f;border-radius:14px;padding:14px"><div style="font-size:13px;font-weight:700;color:#ff6a63;margin-bottom:10px">🎭 YANILTICI İPUÇLARI</div>'+evList(r.misleading_evidence, '#ff6a63')+'</div>'+
+        '</div>'+
+        '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">'+
+          '<button class="btn bp" style="font-size:18px;padding:14px 32px;background:linear-gradient(135deg,#caa46a,#a07d3e);border:none;color:#1a1612" onclick="cdetNewCase()">🔄 Yeni Vaka</button>'+
+          '<button class="btn" style="font-size:18px;padding:14px 32px;background:var(--bg3);border:1px solid var(--b1);color:var(--t1)" onclick="streamStop()">🏠 Ana Sayfa</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+}
+
+function cdetNewCase() {
+  var s = streamState; if (!s || !s.det) { if (typeof streamStart === 'function') streamStart(); return; }
+  var diff = s.det.difficulty || 'easy';
+  var ag = document.getElementById('ag');
+  ag.innerHTML = '<div style="text-align:center;padding:60px;color:var(--t2)">Yeni vaka hazırlanıyor...</div>';
+  apiGet('/detective/by-difficulty?difficulty=' + encodeURIComponent(diff)).then(function(data) {
+    if (!data || data.error || !data.case) { toast((data && data.error) || 'Vaka bulunamadı.', false); return; }
+    s.det = { case: data.case, difficulty: diff };
+    s.votes = {}; s.voters = {}; s.chatMessages = []; s.phase = 'VOTING';
+    renderCDetCase();
+  }).catch(function(){ toast('Vaka açılamadı.', false); });
 }
