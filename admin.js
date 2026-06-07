@@ -1390,6 +1390,7 @@ function skuSave(userId) {
 // 🕵️ DEDEKTİF DOSYASI — ADMIN
 // ═══════════════════════════════════════════════════
 var _detC = null;
+var _detPoolIds = [];
 function _dv(id){ var el=document.getElementById(id); return el?el.value.trim():''; }
 function _dset(id,v){ var el=document.getElementById(id); if(el)el.value=v; }
 function _detFld(label,id,val){ return '<label style="font-size:13px;color:var(--t2);display:block;margin:8px 0 4px">'+label+'</label><input id="'+id+'" value="'+esc(val||'')+'" style="width:100%;padding:10px;border-radius:8px;background:var(--bg3);border:1px solid var(--b1);color:var(--t1);margin-bottom:4px">'; }
@@ -1397,7 +1398,9 @@ function _detTa(label,id,val){ return '<label style="font-size:13px;color:var(--
 
 function aDetective(e){
   e.innerHTML='<div style="padding:20px;color:var(--t2)">Yukleniyor...</div>';
-  apiGet('/admin/detective/cases').then(function(r){
+  Promise.all([apiGet('/admin/detective/cases'), apiGet('/admin/detective/char-pool').catch(function(){return {ids:[]};})]).then(function(res){
+    var r=res[0]||{}, pool=res[1]||{ids:[]};
+    _detPoolIds=pool.ids||[];
     var cases=(r&&r.cases)||[];
     var diffMap={easy:'Kolay',medium:'Orta',hard:'Zor'};
     var rows=cases.map(function(c){
@@ -1408,8 +1411,49 @@ function aDetective(e){
         '<div style="display:flex;gap:6px"><button class="btn bg bsm" onclick="aDetEdit('+c.id+')">\u270f\ufe0f Duzenle</button>'+
         '<button class="btn bg bsm" style="color:var(--pk)" onclick="aDetDelCase('+c.id+')">\ud83d\uddd1\ufe0f</button></div></div>';
     }).join('')||'<div style="color:var(--t3);padding:14px">Henuz vaka yok. Yeni vaka ekleyin.</div>';
-    e.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h3 style="font-size:20px;font-weight:700">\ud83d\udd75\ufe0f Dedektif Vakalari</h3><button class="btn bp" onclick="aDetNew()">+ Yeni Vaka</button></div>'+rows;
+    e.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h3 style="font-size:20px;font-weight:700">\ud83d\udd75\ufe0f Dedektif Vakalari</h3><button class="btn bp" onclick="aDetNew()">+ Yeni Vaka</button></div>'+_detPoolSectionHtml()+rows;
   }).catch(function(){ e.innerHTML='<div style="color:#ffb4ac;padding:14px">Yuklenemedi.</div>'; });
+}
+function _detPoolSectionHtml(){
+  var active=(typeof chars!=='undefined'?chars:[]).filter(function(c){return c.a!==false && c.dbId;}).sort(function(a,b){return (a.n+' '+(a.s||'')).localeCompare(b.n+' '+(b.s||''),'tr');});
+  var set={}; _detPoolIds.forEach(function(id){set[id]=true;});
+  var boxes=active.map(function(c){
+    var ck=set[c.dbId]?' checked':'';
+    return '<label class="det-pool-item" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;border:1px solid var(--b1);background:var(--bg3);font-size:13px;cursor:pointer">'+
+      '<input type="checkbox" class="det-pool-cb" value="'+c.dbId+'" onchange="_detUpdatePoolCount()"'+ck+'>'+
+      '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.n+' '+(c.s||''))+'</span></label>';
+  }).join('');
+  return '<div class="card" style="padding:16px;margin-bottom:16px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px">'+
+      '<h4 style="font-weight:700;font-size:15px">\ud83c\udfad Vakalarda Görünecek Karakterler <span id="det-pool-count" style="font-size:12px;color:var(--t3);font-weight:400">('+_detPoolIds.length+' seçili)</span></h4>'+
+      '<div style="display:flex;gap:6px"><button class="btn bg bsm" onclick="aDetPoolAll(true)">Tümünü Seç</button><button class="btn bg bsm" onclick="aDetPoolAll(false)">Temizle</button></div>'+
+    '</div>'+
+    '<p style="font-size:12px;color:var(--t3);margin-bottom:10px">Seçili karakterler vakalara şüpheli ve tanık olarak atanır. <b>Hiçbiri seçili değilse tüm aktif karakterler kullanılır.</b> Seçim yaparsan <b>en az 10 karakter</b> gerekir (en zor vaka 8 şüpheli + 2 tanık içerir). Değişikliği uygulamak için <b>Yeniden Oluştur</b>a bas — mevcut vaka ilerlemeleri sıfırlanır.</p>'+
+    (active.length?'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px;max-height:260px;overflow-y:auto;padding:4px;border:1px solid var(--b1);border-radius:10px">'+boxes+'</div>':'<div style="color:#ff8a80;font-size:13px">Aktif karakter yok. Önce Karakterler sekmesinden ekleyin.</div>')+
+    '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'+
+      '<button class="btn bp bsm" onclick="aDetPoolSave()">\ud83d\udcbe Havuzu Kaydet</button>'+
+      '<button class="btn bp bsm" style="background:linear-gradient(135deg,#caa46a,#a07d3e);border:none" onclick="aDetRegenerate()">\ud83d\udd04 Vakaları Bu Havuzla Yeniden Oluştur</button>'+
+    '</div></div>';
+}
+function _detPoolSelectedIds(){ var ids=[]; var cbs=document.querySelectorAll('.det-pool-cb'); for(var i=0;i<cbs.length;i++){ if(cbs[i].checked) ids.push(parseInt(cbs[i].value)); } return ids; }
+function _detUpdatePoolCount(){ var el=document.getElementById('det-pool-count'); if(el)el.textContent='('+_detPoolSelectedIds().length+' seçili)'; }
+function aDetPoolAll(on){ var cbs=document.querySelectorAll('.det-pool-cb'); for(var i=0;i<cbs.length;i++)cbs[i].checked=on; _detUpdatePoolCount(); }
+function aDetPoolSave(){
+  var ids=_detPoolSelectedIds();
+  apiPost('/admin/detective/char-pool',{ids:ids}).then(function(r){ if(!r||r.error){toast((r&&r.error)||'Hata',false);return;} _detPoolIds=r.ids||ids; toast('Havuz kaydedildi ('+_detPoolIds.length+' karakter). Uygulamak için Yeniden Oluştur.'); });
+}
+function aDetRegenerate(){
+  var ids=_detPoolSelectedIds();
+  if(ids.length>0 && ids.length<10){ toast('En az 10 karakter seç (veya hiç seçme = tüm aktif karakterler kullanılır).',false); return; }
+  if(!confirm('Vakalar seçili karakter havuzuyla baştan oluşturulacak.\nTüm oyuncuların vaka ilerlemeleri SIFIRLANACAK.\nDevam edilsin mi?'))return;
+  toast('Yeniden oluşturuluyor, lütfen bekleyin...');
+  apiPost('/admin/detective/char-pool',{ids:ids}).then(function(){
+    apiPost('/admin/detective/regenerate',{}).then(function(r){
+      if(!r||r.error){toast((r&&r.error)||'Hata',false);return;}
+      toast(r.count+' vaka yeniden oluşturuldu ('+r.poolSize+' karakterlik havuz).');
+      aDetective(document.getElementById('adm-c'));
+    });
+  });
 }
 function aDetNew(){ _detC={id:null,title:'',event_type:'',summary:'',status_text:'',difficulty:'easy',solution:'',active:true,culprit_id:null,suspects:[],evidence:[]}; _detRenderEditor(); }
 function aDetEdit(id){ apiGet('/admin/detective/case?id='+id).then(function(r){ if(!r||!r.case){toast('Bulunamadi.',false);return;} _detC=r.case; _detRenderEditor(); }); }
