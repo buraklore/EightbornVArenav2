@@ -1036,14 +1036,21 @@ async function getDetectiveRevealForUser(userId, caseId) {
   return rev;
 }
 // Yayıncı modu: kaydetmeden doğru/yanlış + tam reveal döndürür (skora yazmaz)
-async function getDetectiveStreamReveal(caseId, suspectId) {
+async function getDetectiveStreamReveal(caseId, suspectId, attempt) {
   var cr = await query("SELECT id, culprit_id, solution FROM detective_cases WHERE id=$1 AND active=true", [caseId]);
   if (!cr.rows[0]) return { error: 'Vaka bulunamadi.' };
   var cas = cr.rows[0];
   var sv = await query("SELECT id FROM detective_suspects WHERE id=$1 AND case_id=$2", [suspectId, caseId]);
   if (!sv.rows[0]) return { error: 'Gecersiz supheli.' };
+  var correct = String(suspectId) === String(cas.culprit_id);
+  var MAX = 2;
+  var att = parseInt(attempt) || 1;
+  // İlk yanlış tahminde çözümü/suçluyu SIZDIRMA — sadece yanlış olduğunu bildir
+  if (!correct && att < MAX) return { correct: false, final: false, attempt: att, remaining: MAX - att };
   var rev = await _detectiveReveal(caseId, cas, suspectId);
-  rev.correct = String(suspectId) === String(cas.culprit_id);
+  rev.correct = correct;
+  rev.final = true;
+  rev.attempt = att;
   return rev;
 }
 
