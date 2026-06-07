@@ -627,5 +627,72 @@ app.post('/api/admin/stock/set-cash', auth, adm, async function(req, res) {
   } catch (e) { console.error('admin/stock/set-cash:', e.message); res.status(500).json({ error: 'Kaydedilemedi.' }); }
 });
 
+// ═══ DEDEKTİF DOSYASI ═══
+app.get('/api/detective/cases', async function(req, res) {
+  try { await ensureDb(); res.json({ cases: await db.getDetectiveCases() }); }
+  catch (e) { res.status(500).json({ error: 'Yuklenemedi.' }); }
+});
+app.get('/api/detective/case', async function(req, res) {
+  try {
+    await ensureDb();
+    var c = await db.getDetectiveCase(parseInt(req.query.id));
+    if (!c) return res.status(404).json({ error: 'Vaka bulunamadi.' });
+    var out = { case: c };
+    // giriş yapmışsa ilerlemesini ekle
+    try {
+      var token = (req.cookies && req.cookies.ebv_token) || ((req.headers.authorization || '').startsWith('Bearer ') ? req.headers.authorization.split(' ')[1] : null);
+      if (token) { var dec = jwt.verify(token, JWT_SECRET); if (dec && dec.id) { out.progress = await db.getDetectiveProgress(dec.id, c.id); if (out.progress && out.progress.done) out.reveal = await db.getDetectiveRevealForUser(dec.id, c.id); } }
+    } catch (e) {}
+    res.json(out);
+  } catch (e) { res.status(500).json({ error: 'Yuklenemedi.' }); }
+});
+app.post('/api/detective/guess', auth, async function(req, res) {
+  try {
+    await ensureDb();
+    var caseId = parseInt(req.body.case_id), suspectId = parseInt(req.body.suspect_id);
+    if (!caseId || !suspectId) return res.status(400).json({ error: 'Eksik bilgi.' });
+    var r = await db.recordDetectiveGuess(req.user.id, caseId, suspectId);
+    if (r.error) return res.status(400).json(r);
+    res.json(r);
+  } catch (e) { console.error('detective/guess:', e.message); res.status(500).json({ error: 'Islenemedi.' }); }
+});
+app.get('/api/detective/stats', auth, async function(req, res) {
+  try { await ensureDb(); res.json(await db.getDetectiveStats(req.user.id)); }
+  catch (e) { res.status(500).json({ error: 'Yuklenemedi.' }); }
+});
+// Admin
+app.get('/api/admin/detective/cases', auth, adm, async function(req, res) {
+  try { await ensureDb(); res.json({ cases: await db.adminGetDetectiveCases() }); }
+  catch (e) { res.status(500).json({ error: 'Yuklenemedi.' }); }
+});
+app.get('/api/admin/detective/case', auth, adm, async function(req, res) {
+  try { await ensureDb(); var c = await db.adminGetDetectiveCase(parseInt(req.query.id)); if (!c) return res.status(404).json({ error: 'Bulunamadi.' }); res.json({ case: c }); }
+  catch (e) { res.status(500).json({ error: 'Yuklenemedi.' }); }
+});
+app.post('/api/admin/detective/case', auth, adm, async function(req, res) {
+  try { await ensureDb(); if (!req.body.title) return res.status(400).json({ error: 'Baslik gerekli.' }); res.json(await db.upsertDetectiveCase(req.body)); }
+  catch (e) { console.error('admin/detective/case:', e.message); res.status(500).json({ error: 'Kaydedilemedi.' }); }
+});
+app.delete('/api/admin/detective/case', auth, adm, async function(req, res) {
+  try { await ensureDb(); await db.deleteDetectiveCase(parseInt(req.query.id)); res.json({ success: true }); }
+  catch (e) { res.status(500).json({ error: 'Silinemedi.' }); }
+});
+app.post('/api/admin/detective/suspect', auth, adm, async function(req, res) {
+  try { await ensureDb(); if (!req.body.name || !req.body.case_id) return res.status(400).json({ error: 'Eksik bilgi.' }); res.json(await db.upsertDetectiveSuspect(req.body)); }
+  catch (e) { console.error('admin/detective/suspect:', e.message); res.status(500).json({ error: 'Kaydedilemedi.' }); }
+});
+app.delete('/api/admin/detective/suspect', auth, adm, async function(req, res) {
+  try { await ensureDb(); await db.deleteDetectiveSuspect(parseInt(req.query.id)); res.json({ success: true }); }
+  catch (e) { res.status(500).json({ error: 'Silinemedi.' }); }
+});
+app.post('/api/admin/detective/evidence', auth, adm, async function(req, res) {
+  try { await ensureDb(); if (!req.body.case_id) return res.status(400).json({ error: 'Eksik bilgi.' }); res.json(await db.upsertDetectiveEvidence(req.body)); }
+  catch (e) { console.error('admin/detective/evidence:', e.message); res.status(500).json({ error: 'Kaydedilemedi.' }); }
+});
+app.delete('/api/admin/detective/evidence', auth, adm, async function(req, res) {
+  try { await ensureDb(); await db.deleteDetectiveEvidence(parseInt(req.query.id)); res.json({ success: true }); }
+  catch (e) { res.status(500).json({ error: 'Silinemedi.' }); }
+});
+
 // #12 Security: module.exports dosya sonunda — tüm route'lar kayıtlı
 module.exports = app;
