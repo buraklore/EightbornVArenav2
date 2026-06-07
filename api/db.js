@@ -302,6 +302,7 @@ module.exports = {
   tradeStock: tradeStock, noteStockSelections: noteStockSelections, getStockLeaderboard: getStockLeaderboard,
   ensureStockCycle: ensureStockCycle, getStockCycleInfo: getStockCycleInfo, getStockPlayState: getStockPlayState,
   adminSetStockPrice: adminSetStockPrice, adminSetUserCash: adminSetUserCash, getAdminStockWallets: getAdminStockWallets,
+  getAdminStockHoldings: getAdminStockHoldings,
   // Dedektif Dosyası
   getDetectiveCases: getDetectiveCases, getDetectiveCase: getDetectiveCase, getDetectiveProgress: getDetectiveProgress,
   recordDetectiveGuess: recordDetectiveGuess, getDetectiveStats: getDetectiveStats,
@@ -830,6 +831,29 @@ async function getAdminStockWallets() {
   return r.rows.map(function(row){
     var cash = parseFloat(row.cash || 0), hv = parseFloat(row.holdings_value || 0);
     return { user_id: row.user_id, username: row.username, cash: _round2(cash), total: _round2(cash + hv), has_wallet: !!row.has_wallet };
+  });
+}
+
+// Hangi kullanıcı hangi karakterin hissesini tutuyor (admin görünümü)
+async function getAdminStockHoldings() {
+  var r = await query(
+    "SELECT h.user_id, u.username, h.char_id, h.shares, h.avg_cost, COALESCE(p.price, 0) AS price, " +
+    "ch.name AS cname, ch.surname AS csurname, ch.img AS cimg, ch.gender AS cgender " +
+    "FROM stock_holdings h " +
+    "JOIN users u ON u.id = h.user_id " +
+    "LEFT JOIN characters ch ON CAST(ch.id AS VARCHAR) = h.char_id OR CAST(ch.id AS VARCHAR) = regexp_replace(h.char_id, '^c', '') " +
+    "LEFT JOIN stock_prices p ON p.char_id = h.char_id " +
+    "WHERE h.shares > 0 " +
+    "ORDER BY ch.name NULLS LAST, ch.surname NULLS LAST, h.shares DESC"
+  );
+  return r.rows.map(function(row){
+    var shares = parseInt(row.shares) || 0, price = parseFloat(row.price) || 0;
+    return {
+      user_id: row.user_id, username: row.username, char_id: String(row.char_id),
+      name: row.cname || '', surname: row.csurname || '', img: row.cimg || '', gender: row.cgender || 'M',
+      shares: shares, avg_cost: _round2(parseFloat(row.avg_cost) || 0),
+      price: _round2(price), value: _round2(shares * price)
+    };
   });
 }
 
