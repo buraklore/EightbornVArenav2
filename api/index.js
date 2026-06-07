@@ -646,6 +646,21 @@ app.get('/api/detective/case', async function(req, res) {
     res.json(out);
   } catch (e) { res.status(500).json({ error: 'Yuklenemedi.' }); }
 });
+app.get('/api/detective/by-difficulty', async function(req, res) {
+  try {
+    await ensureDb();
+    var diff = (req.query.difficulty || 'easy').toLowerCase();
+    if (['easy', 'medium', 'hard'].indexOf(diff) === -1) diff = 'easy';
+    var userId = null;
+    try {
+      var token = (req.cookies && req.cookies.ebv_token) || ((req.headers.authorization || '').startsWith('Bearer ') ? req.headers.authorization.split(' ')[1] : null);
+      if (token) { var dec = jwt.verify(token, JWT_SECRET); if (dec && dec.id) userId = dec.id; }
+    } catch (e) {}
+    var r = await db.getDetectiveNextCase(userId, diff);
+    if (!r || !r.case) return res.status(404).json({ error: 'Bu zorlukta vaka bulunamadı.' });
+    res.json(r);
+  } catch (e) { console.error('detective/by-difficulty:', e.message); res.status(500).json({ error: 'Yuklenemedi.' }); }
+});
 app.post('/api/detective/guess', auth, async function(req, res) {
   try {
     await ensureDb();
