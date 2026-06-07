@@ -1999,16 +1999,9 @@ function updateCDetVoteBar() {
   var sus = s.det.case.suspects || [];
   var total = 0; for (var i = 0; i < sus.length; i++) total += (s.votes[_cdetLetter(i)] || 0);
   var t = total || 1;
-  var bar = document.getElementById('cdet-vote-bar');
-  if (bar) {
-    var h = '<div style="display:flex;border-radius:12px;overflow:hidden;height:40px;font-weight:800;font-size:15px">';
-    for (var i = 0; i < sus.length; i++) { var L = _cdetLetter(i); var v = s.votes[L] || 0; var p = Math.round(v / t * 100); h += '<div style="background:'+_cdetCols[i%8]+';width:'+Math.max(p,3)+'%;display:flex;align-items:center;justify-content:center;color:#13131b;transition:width .3s" title="'+L+'">'+L+'</div>'; }
-    h += '</div><div style="text-align:center;font-size:13px;color:var(--t3);margin-top:6px">Toplam: '+total+' oy · chat şüpheli harfini yazar (A, B, C…)</div>';
-    bar.innerHTML = h;
-  }
   var stats = document.getElementById('cdet-vote-stats');
   if (stats) {
-    var sh = '';
+    var sh = '<div style="font-size:11px;color:var(--t3);margin-bottom:8px">Toplam '+total+' oy · chat A, B, C… yazar</div>';
     for (var i = 0; i < sus.length; i++) { var L = _cdetLetter(i); var v = s.votes[L] || 0; var p = Math.round(v / t * 100);
       sh += '<div style="padding:7px 9px;border-radius:8px;background:'+_cdetCols[i%8]+'12;border:1px solid '+_cdetCols[i%8]+'30;margin-bottom:6px"><div style="display:flex;justify-content:space-between;gap:8px;font-size:13px;font-weight:700;color:'+_cdetCols[i%8]+'"><span>'+L+') '+esc(sus[i].name)+'</span><span>'+p+'%</span></div><div style="height:5px;background:var(--bg3);border-radius:3px;margin-top:5px"><div style="height:100%;background:'+_cdetCols[i%8]+';border-radius:3px;width:'+p+'%;transition:width .3s"></div></div><div style="font-size:11px;color:var(--t3);margin-top:3px">'+v+' oy</div></div>';
     }
@@ -2024,73 +2017,68 @@ function renderCDetCase() {
   var sus = c.suspects || [];
   var suspectsHtml = sus.map(function(su, i) {
     var col = _cdetCols[i % 8];
-    return '<div style="background:'+col+'10;border:1px solid '+col+'33;border-radius:10px;padding:8px 9px;display:flex;flex-direction:column;gap:5px">'+
-      '<div style="display:flex;gap:8px;align-items:center">'+
-        '<span style="flex-shrink:0;width:28px;height:28px;border-radius:8px;background:'+col+';color:#13131b;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:16px">'+_cdetLetter(i)+'</span>'+
-        _cdetImg(su.img, 40)+
-        '<div style="min-width:0"><div class="fd" style="font-size:14px;color:#f0e6cf;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(su.name)+'</div><div style="font-size:11px;color:'+col+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(su.profession || '')+'</div></div>'+
+    return '<div style="background:'+col+'10;border:2px solid '+col+'33;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px">'+
+      '<div style="display:flex;gap:12px;align-items:center">'+
+        '<span style="flex-shrink:0;width:38px;height:38px;border-radius:10px;background:'+col+';color:#13131b;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:20px">'+_cdetLetter(i)+'</span>'+
+        _cdetImg(su.img, 58)+
+        '<div style="min-width:0"><div class="fd" style="font-size:17px;color:#f0e6cf;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(su.name)+'</div><div style="font-size:12px;color:'+col+'">'+esc(su.profession || '')+'</div></div>'+
       '</div>'+
-      '<p style="font-size:11.5px;color:#bdb6a6;line-height:1.45;margin:0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">'+esc(su.background || '')+'</p>'+
-      '<button onclick="streamerCDetAccuse('+su.id+')" style="width:100%;padding:6px;border-radius:8px;border:1px solid '+col+'55;background:'+col+'18;color:'+col+';font-weight:700;font-size:12.5px;cursor:pointer;transition:all .15s" onmouseover="this.style.background=\''+col+'\';this.style.color=\'#13131b\'" onmouseout="this.style.background=\''+col+'18\';this.style.color=\''+col+'\'">⚖️ '+_cdetLetter(i)+' Suçlu</button>'+
-    '</div>';
-  }).join('');
-  var evHtml = (c.evidence || []).map(function(e) {
-    var meta = _cdetCat(e.category);
-    var label = e.title ? esc(e.title) : meta[1];
-    return '<div style="border:1px solid #352c1f;border-left:3px solid #caa46a;border-radius:8px;margin-bottom:6px;overflow:hidden;background:#15130e">'+
-      '<div onclick="var c=this.nextElementSibling;var o=c.style.display===\'block\';c.style.display=o?\'none\':\'block\';this.querySelector(\'.cdet-chev\').textContent=o?\'▸\':\'▾\';" style="cursor:pointer;display:flex;align-items:center;gap:7px;padding:8px 10px">'+
-        '<span style="font-size:14px;flex-shrink:0">'+meta[0]+'</span>'+
-        '<span style="font-size:13px;font-weight:700;color:#e8d9b5;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+label+'</span>'+
-        '<span style="font-size:9px;font-weight:700;letter-spacing:.5px;color:#caa46a;flex-shrink:0">'+meta[1].toUpperCase()+'</span>'+
-        '<span class="cdet-chev" style="color:#caa46a;font-size:13px;flex-shrink:0">▸</span>'+
-      '</div>'+
-      '<div style="display:none;padding:0 10px 9px 30px;font-size:12.5px;color:#cfc8b8;line-height:1.55">'+esc(e.content || '')+'</div>'+
+      '<p style="font-size:13px;color:#bdb6a6;line-height:1.55;margin:0;flex:1">'+esc(su.background || '')+'</p>'+
+      '<button onclick="streamerCDetAccuse('+su.id+')" style="width:100%;padding:9px;border-radius:9px;border:1px solid '+col+'55;background:'+col+'18;color:'+col+';font-weight:700;font-size:14px;cursor:pointer;transition:all .2s" onmouseover="this.style.background=\''+col+'\';this.style.color=\'#13131b\'" onmouseout="this.style.background=\''+col+'18\';this.style.color=\''+col+'\'">⚖️ '+_cdetLetter(i)+' Suçlu</button>'+
     '</div>';
   }).join('');
 
   ag.innerHTML =
-    '<div id="cdet-root" style="height:calc(100vh - 90px);min-height:420px;display:flex;flex-direction:column;overflow:hidden;padding:8px 14px;box-sizing:border-box;gap:8px">'+
-      // header
-      '<div style="flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'+
-        '<h2 class="fd" style="font-size:21px">🕵️ Dedektif Dosyası — Chat</h2>'+
-        '<div style="display:flex;align-items:center;gap:10px">'+
-          '<span style="font-size:12px;font-weight:800;letter-spacing:.5px;padding:4px 11px;border-radius:8px;background:'+dm[1]+'20;color:'+dm[1]+';border:1px solid '+dm[1]+'40">'+dm[0]+'</span>'+
-          '<span style="font-size:13px;color:#caa46a;font-weight:700">Chat şüpheli harfini yazsın (A, B, C…) · ⏱️ Süre yok</span>'+
+    '<div style="display:flex;gap:20px;padding:18px">'+
+      '<div style="flex:1;min-width:0">'+
+        '<h2 class="fd" style="font-size:28px;text-align:center;margin-bottom:6px">🕵️ Dedektif Dosyası — Chat</h2>'+
+        '<div style="text-align:center;margin-bottom:10px"><span style="font-size:13px;font-weight:800;letter-spacing:1px;padding:4px 12px;border-radius:8px;background:'+dm[1]+'20;color:'+dm[1]+';border:1px solid '+dm[1]+'40">'+dm[0]+'</span></div>'+
+        '<p style="text-align:center;color:#caa46a;font-size:16px;font-weight:700;margin-bottom:14px">Chat şüpheli harfini yazsın! <b>A, B, C…</b> · ⏱️ Süre yok, düşünün!</p>'+
+        '<div style="background:linear-gradient(135deg,#221c14,#191712);border:1px solid #3a3024;border-radius:16px;padding:18px 22px;margin:0 auto 14px;max-width:760px;position:relative;overflow:hidden">'+
+          '<div style="position:absolute;top:-10px;right:-10px;font-size:110px;opacity:.05">🕵️</div>'+
+          '<div style="margin-bottom:6px"><span style="font-size:12px;color:#ff8a80;letter-spacing:1px;font-weight:700">OLAY: '+esc((c.event_type || '').toUpperCase())+'</span></div>'+
+          '<h3 class="fd" style="font-size:clamp(24px,3vw,32px);color:#f0e6cf;margin-bottom:8px">'+esc(c.title)+'</h3>'+
+          '<p style="font-size:16px;color:#cfc8b8;line-height:1.7;margin-bottom:10px">'+esc(c.summary || '')+'</p>'+
+          '<div style="font-size:13px;color:#ffb95f;border-top:1px dashed #3a3024;padding-top:9px">DURUM: '+esc(c.status_text || 'Soruşturma sürüyor.')+'</div>'+
         '</div>'+
+        '<div style="max-width:760px;margin:0 auto 18px"><button onclick="cdetShowEvidence()" style="width:100%;padding:15px;border-radius:12px;border:1px solid #caa46a55;background:linear-gradient(135deg,#caa46a22,#caa46a0d);color:#e8d9b5;font-weight:700;font-size:16px;cursor:pointer;transition:all .2s" onmouseover="this.style.background=\'#caa46a33\'" onmouseout="this.style.background=\'linear-gradient(135deg,#caa46a22,#caa46a0d)\'">🔍 Kanıtları İncele ('+(c.evidence || []).length+') — tıkla, aç</button></div>'+
+        '<h3 class="fd" style="font-size:20px;color:#e4e1ee;margin:0 auto 10px;max-width:760px">🕵️ Şüpheliler ('+sus.length+') — Suçluyu sen seç</h3>'+
+        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;max-width:760px;margin:0 auto 18px">'+suspectsHtml+'</div>'+
       '</div>'+
-      // case summary (compact)
-      '<div style="flex-shrink:0;background:linear-gradient(135deg,#221c14,#191712);border:1px solid #3a3024;border-radius:12px;padding:9px 14px">'+
-        '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><span style="font-size:11px;color:#ff8a80;letter-spacing:.5px;font-weight:700;flex-shrink:0">OLAY: '+esc((c.event_type || '').toUpperCase())+'</span>'+
-          '<h3 class="fd" style="font-size:19px;color:#f0e6cf">'+esc(c.title)+'</h3></div>'+
-        '<p style="font-size:14px;color:#cfc8b8;line-height:1.5;margin:4px 0 0">'+esc(c.summary || '')+'</p>'+
-        '<div style="font-size:12px;color:#ffb95f;margin-top:5px">DURUM: '+esc(c.status_text || 'Soruşturma sürüyor.')+'</div>'+
-      '</div>'+
-      // body: 3 columns
-      '<div style="flex:1;min-height:0;display:flex;gap:12px;overflow:hidden">'+
-        // suspects
-        '<div style="flex:1.5;min-width:0;display:flex;flex-direction:column;overflow:hidden">'+
-          '<h4 class="fd" style="font-size:15px;color:#e4e1ee;margin-bottom:6px;flex-shrink:0">🕵️ Şüpheliler ('+sus.length+') — suçluyu sen seç</h4>'+
-          '<div style="flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;align-content:start;padding-right:4px">'+suspectsHtml+'</div>'+
-        '</div>'+
-        // evidence accordion
-        '<div style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden">'+
-          '<h4 class="fd" style="font-size:15px;color:#e4e1ee;margin-bottom:6px;flex-shrink:0">🔍 Kanıtlar ('+(c.evidence || []).length+') — <span style="font-size:12px;color:var(--t3);font-weight:400">tıkla, aç</span></h4>'+
-          '<div style="flex:1;overflow-y:auto;padding-right:4px">'+evHtml+'</div>'+
-        '</div>'+
-        // right sidebar: votes + chat
-        '<div style="width:268px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;overflow:hidden">'+
-          '<div id="cdet-vote-bar" style="flex-shrink:0"></div>'+
-          '<div class="cg" style="padding:10px;flex-shrink:0;max-height:40%;display:flex;flex-direction:column;overflow:hidden"><h4 style="font-size:13px;color:var(--m);margin-bottom:7px;flex-shrink:0">📊 Chat Oyları</h4><div id="cdet-vote-stats" style="overflow-y:auto"></div></div>'+
-          '<div class="cg" style="padding:10px;flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden"><h4 style="font-size:13px;color:var(--pk);margin-bottom:6px;flex-shrink:0">💬 Chat</h4><div id="chat-msgs" style="flex:1;overflow-y:auto;font-size:13px;min-height:50px"></div></div>'+
-        '</div>'+
+      '<div style="width:300px;flex-shrink:0">'+
+        '<div class="cg" style="margin-bottom:12px;padding:16px"><h4 style="font-size:14px;color:var(--m);margin-bottom:10px">📊 Chat Oyları</h4><div id="cdet-vote-stats"></div></div>'+
+        '<div class="cg" style="padding:16px"><h4 style="font-size:14px;color:var(--pk);margin-bottom:8px">💬 Chat</h4><div id="chat-msgs" style="height:320px;overflow-y:auto;font-size:13px"></div></div>'+
       '</div>'+
     '</div>';
-  // tek ekrana sığdır: kullanılabilir yüksekliği ölç, sayfa kaydırmasını engelle
-  try { if (window.scrollTo) window.scrollTo(0, 0); } catch (e) {}
-  var root = document.getElementById('cdet-root');
-  if (root) { try { var top = root.getBoundingClientRect().top; var h = (window.innerHeight || 800) - top - 10; if (h > 380) root.style.height = h + 'px'; } catch (e) {} }
   updateCDetVoteBar();
   updateChatPanel();
+}
+
+// Kanıtlar pop-up (modal) — yayıncı isteğine göre kanıtlar ayrı pencerede
+function _cdetCloseEv() { var m = document.getElementById('cdet-ev-modal'); if (m) m.remove(); }
+function cdetShowEvidence() {
+  var s = streamState; if (!s || !s.det) return;
+  var c = s.det.case;
+  _cdetCloseEv();
+  var evHtml = (c.evidence || []).map(function(e) {
+    var meta = _cdetCat(e.category);
+    return '<div style="background:#15130e;border:1px solid #352c1f;border-left:3px solid #caa46a;border-radius:10px;padding:13px 15px;margin-bottom:10px">'+
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"><span style="font-size:17px">'+meta[0]+'</span><span style="font-size:12px;font-weight:700;letter-spacing:.5px;color:#caa46a">'+meta[1].toUpperCase()+'</span>'+(e.title ? '<span style="font-size:15px;font-weight:700;color:#e8d9b5;margin-left:auto">'+esc(e.title)+'</span>' : '')+'</div>'+
+      '<p style="font-size:14.5px;color:#cfc8b8;line-height:1.65;margin:0">'+esc(e.content || '')+'</p>'+
+    '</div>';
+  }).join('') || '<p style="color:var(--t3);text-align:center;padding:20px">Bu vakada kanıt yok.</p>';
+  var ov = document.createElement('div');
+  ov.id = 'cdet-ev-modal';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;padding:24px';
+  ov.onclick = function(ev) { if (ev.target === ov) _cdetCloseEv(); };
+  ov.innerHTML = '<div style="background:#16130d;border:1px solid #3a3024;border-radius:18px;max-width:720px;width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.55)">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #2c2418;flex-shrink:0">'+
+      '<h3 class="fd" style="font-size:21px;color:#f0e6cf">🔍 Kanıtlar ('+(c.evidence || []).length+')</h3>'+
+      '<button onclick="_cdetCloseEv()" style="background:#2a2016;border:1px solid #3a3024;color:#e8d9b5;width:36px;height:36px;border-radius:10px;font-size:18px;cursor:pointer">✕</button>'+
+    '</div>'+
+    '<div style="padding:16px 20px;overflow-y:auto">'+evHtml+'</div>'+
+  '</div>';
+  document.body.appendChild(ov);
 }
 
 function streamerCDetAccuse(suspectId) {
@@ -2099,6 +2087,7 @@ function streamerCDetAccuse(suspectId) {
   var sus = null; (s.det.case.suspects || []).forEach(function(x){ if (x.id === suspectId) sus = x; });
   if (!sus) return;
   if (!confirm(sus.name + ' adlı kişiyi suçluyorsun. Karar kesindir — gerçek suçlu açıklanacak. Emin misin?')) return;
+  _cdetCloseEv();
   s.phase = 'RESULT';
   if (s.voteTimer) { clearInterval(s.voteTimer); s.voteTimer = null; }
   apiPost('/detective/stream-guess', { case_id: s.det.case.id, suspect_id: suspectId }).then(function(r) {
@@ -2157,6 +2146,7 @@ function renderCDetResult() {
 
 function cdetNewCase() {
   var s = streamState; if (!s || !s.det) { if (typeof streamStart === 'function') streamStart(); return; }
+  _cdetCloseEv();
   var diff = s.det.difficulty || 'easy';
   var ag = document.getElementById('ag');
   ag.innerHTML = '<div style="text-align:center;padding:60px;color:var(--t2)">Yeni vaka hazırlanıyor...</div>';
