@@ -48,20 +48,76 @@ function _detCat(cat) {
   })[cat] || ['\ud83d\uddc2\ufe0f', 'Diğer'];
 }
 
-// ── GİRİŞ: VAKA LİSTESİ ──
+// ── GİRİŞ: ZORLUK SEÇİMİ ──
 function detStart() {
   if (typeof checkBanned === 'function' && checkBanned()) return;
   _detEnsureStyle();
   detState = null;
   var ag = document.getElementById('ag');
-  ag.innerHTML = '<div style="text-align:center;padding:60px;color:var(--t2)">Dosyalar yükleniyor...</div>';
+  ag.innerHTML = '<div style="text-align:center;padding:60px;color:var(--t2)">Yükleniyor...</div>';
   var statsP = (typeof curUser !== 'undefined' && curUser) ? apiGet('/detective/stats').catch(function(){ return null; }) : Promise.resolve(null);
-  Promise.all([apiGet('/detective/cases'), statsP]).then(function(res) {
+  Promise.all([apiGet('/detective/cases').catch(function(){ return null; }), statsP]).then(function(res) {
     var data = res[0] || {}, stats = res[1] || { solved: 0, perfect: 0 };
-    renderDetList(data.cases || [], stats);
+    var counts = { easy: 0, medium: 0, hard: 0 };
+    (data.cases || []).forEach(function(c) { if (counts[c.difficulty] != null) counts[c.difficulty]++; });
+    renderDetDifficulty(counts, stats);
   }).catch(function() {
-    ag.innerHTML = '<div style="text-align:center;padding:60px;color:#ffb4ac">Dosyalar yüklenemedi. Tekrar deneyin.</div>';
+    ag.innerHTML = '<div style="text-align:center;padding:60px;color:#ffb4ac">Yüklenemedi. Tekrar deneyin.</div>';
   });
+}
+
+function renderDetDifficulty(counts, stats) {
+  _detEnsureStyle();
+  var ag = document.getElementById('ag');
+  var diffs = [
+    { k: 'easy', name: 'KOLAY', col: '#3cdd8c', icon: '\ud83d\udfe2', desc: '3 şüpheli \u00b7 4 kanıt', sub: 'Yeni başlayan dedektifler için' },
+    { k: 'medium', name: 'ORTA', col: '#ffb95f', icon: '\ud83d\udfe1', desc: '5 şüpheli \u00b7 8 kanıt', sub: 'Dikkat ve eleme gerektirir' },
+    { k: 'hard', name: 'ZOR', col: '#ff6a63', icon: '\ud83d\udd34', desc: '8 şüpheli \u00b7 12 kanıt', sub: 'Gerçek dedektiflere göre' }
+  ];
+  var cards = diffs.map(function(d) {
+    var n = counts[d.k] || 0;
+    return '<div class="det-folder det-fade" onclick="detPickDifficulty(\'' + d.k + '\')" style="padding:26px;cursor:pointer;border-color:' + d.col + '40">' +
+      '<div style="font-size:46px;line-height:1;margin-bottom:10px">' + d.icon + '</div>' +
+      '<h3 class="fd" style="font-size:30px;color:' + d.col + ';margin-bottom:4px;letter-spacing:1px">' + d.name + '</h3>' +
+      '<div class="det-mono" style="font-size:12px;color:#bdb6a6;letter-spacing:1px;margin-bottom:6px">' + d.desc + '</div>' +
+      '<p style="font-size:13px;color:#8a8474;margin-bottom:16px">' + d.sub + '</p>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center">' +
+        '<span style="font-size:12px;color:#7a7568">\ud83d\udcc1 ' + n + ' vaka</span>' +
+        '<span class="btn bp" style="padding:9px 20px;font-size:14px;background:' + d.col + ';color:#1a1612;border:none">BAŞLA \u2192</span>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  ag.innerHTML =
+    '<div class="det-fade" style="max-width:1000px;margin:0 auto;padding:14px 18px 56px">' +
+      '<div style="text-align:center;margin-bottom:10px">' +
+        '<div style="font-size:54px;line-height:1">\ud83d\udd75\ufe0f</div>' +
+        '<h2 class="fd" style="font-size:clamp(34px,5vw,52px);letter-spacing:1px;color:#f0e6cf">DEDEKTİF DOSYASI</h2>' +
+        '<p style="color:#bdb6a6;font-size:16px;max-width:580px;margin:6px auto 0">Bir zorluk seç; sana rastgele bir vaka açılır. Kanıtları incele, şüphelileri sorgula, mantığını kullan ve <b style="color:#caa46a">gerçek suçluyu</b> bul. İlk denemede bulursan en yüksek puanı kaparsın!</p>' +
+        ((typeof curUser !== 'undefined' && curUser) ? '<p class="det-mono" style="font-size:13px;color:#7a7568;margin-top:8px">Çözülen vaka: <b style="color:#3cdd8c">' + stats.solved + '</b> \u00b7 Kusursuz: <b style="color:#caa46a">' + stats.perfect + '</b></p>' : '<p style="font-size:13px;color:#7a7568;margin-top:8px">İlerlemenin kaydedilmesi için giriş yapmalısın.</p>') +
+      '</div>' +
+      '<div style="width:90px;height:4px;background:linear-gradient(90deg,#caa46a,#ff544d);margin:14px auto 22px;border-radius:2px"></div>' +
+      _detAch(stats) +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px">' + cards + '</div>' +
+    '</div>';
+}
+
+// ── ZORLUK SEÇİLDİ: RASTGELE VAKA AÇ ──
+function detPickDifficulty(diff) {
+  _detEnsureStyle();
+  var ag = document.getElementById('ag');
+  ag.innerHTML = '<div style="text-align:center;padding:60px;color:var(--t2)">Vaka hazırlanıyor...</div>';
+  apiGet('/detective/by-difficulty?difficulty=' + encodeURIComponent(diff)).then(function(data) {
+    if (!data || !data.case) { ag.innerHTML = '<div style="text-align:center;padding:60px;color:#ffb4ac">Bu zorlukta vaka bulunamadı.</div>'; return; }
+    detState = {
+      case: data.case,
+      progress: data.progress || { attempts: 0, solved: false, done: false, tried: [] },
+      reveal: data.reveal || null,
+      tab: 'suspects', evCat: 'all', notes: '', difficulty: diff
+    };
+    if (data.all_done && typeof toast === 'function') toast('Bu zorluktaki tüm vakaları çözdün! Tekrar oynuyorsun.');
+    renderDetCase();
+  }).catch(function() { ag.innerHTML = '<div style="text-align:center;padding:60px;color:#ffb4ac">Vaka açılamadı. Tekrar deneyin.</div>'; });
 }
 
 function _detAch(stats) {
@@ -201,7 +257,7 @@ function renderDetCase() {
   ag.innerHTML =
     '<div class="det-fade" style="max-width:920px;margin:0 auto;padding:10px 18px 56px">' +
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">' +
-        '<button class="btn bg bsm" onclick="detStart()">\u2190 Dosyalar</button>' +
+        '<button class="btn bg bsm" onclick="detStart()">\u2190 Zorluk Seç</button>' +
         (done ? '<span class="det-stamp" style="margin-left:auto">' + (s.progress.solved ? 'ÇÖZÜLDÜ' : 'KAPANDI') + '</span>' : '') +
       '</div>' +
       // dosya başlığı
@@ -334,8 +390,9 @@ function renderDetResult(r) {
         '<div style="height:10px;background:#0f0e0a;border-radius:6px;overflow:hidden"><div style="width:' + comm.percent + '%;height:100%;background:linear-gradient(90deg,#caa46a,#ff544d);border-radius:6px;transition:width .5s"></div></div>' +
       '</div>' +
       '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">' +
-        '<button class="btn bp" style="padding:15px 30px;font-size:16px;background:#caa46a;color:#1a1612;border:none" onclick="detStart()">\ud83d\udcc1 Başka Vaka</button>' +
-        '<button class="btn bg" style="padding:15px 30px;font-size:16px" onclick="(typeof go===\'function\')&&go(\'lb\')">\ud83c\udfc6 Sıralama</button>' +
+        '<button class="btn bp" style="padding:15px 28px;font-size:16px;background:#caa46a;color:#1a1612;border:none" onclick="detPickDifficulty(\'' + ((detState && detState.difficulty) || 'easy') + '\')">\ud83d\udd04 Aynı Zorlukta Yeni Vaka</button>' +
+        '<button class="btn bg" style="padding:15px 28px;font-size:16px" onclick="detStart()">\ud83d\udcc2 Zorluk Seç</button>' +
+        '<button class="btn bg" style="padding:15px 28px;font-size:16px" onclick="(typeof go===\'function\')&&go(\'lb\')">\ud83c\udfc6 Sıralama</button>' +
       '</div>' +
     '</div>';
 }
