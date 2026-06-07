@@ -675,6 +675,16 @@ app.get('/api/detective/stats', auth, async function(req, res) {
   try { await ensureDb(); res.json(await db.getDetectiveStats(req.user.id)); }
   catch (e) { res.status(500).json({ error: 'Yuklenemedi.' }); }
 });
+app.post('/api/detective/stream-guess', auth, async function(req, res) {
+  try {
+    await ensureDb();
+    var caseId = parseInt(req.body.case_id), suspectId = parseInt(req.body.suspect_id);
+    if (!caseId || !suspectId) return res.status(400).json({ error: 'Eksik bilgi.' });
+    var r = await db.getDetectiveStreamReveal(caseId, suspectId);
+    if (r.error) return res.status(400).json(r);
+    res.json(r);
+  } catch (e) { console.error('detective/stream-guess:', e.message); res.status(500).json({ error: 'Islenemedi.' }); }
+});
 // Admin
 app.get('/api/admin/detective/cases', auth, adm, async function(req, res) {
   try { await ensureDb(); res.json({ cases: await db.adminGetDetectiveCases() }); }
