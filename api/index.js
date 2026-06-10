@@ -180,7 +180,7 @@ app.post('/api/admin/update-score', auth, adm, async function(req, res) { try { 
 // Heartbeat
 app.post('/api/heartbeat', auth, async function(req, res) { try { await ensureDb(); await db.updateLastActive(req.user.id); res.json({ ok: true }); } catch (e) { res.json({ ok: false }); } });
 
-app.delete('/api/admin/users/:id', auth, adm, async function(req, res) { try { await ensureDb(); await db.deleteUser(parseInt(req.params.id)); res.json({ success: true }); } catch (e) { res.status(500).json({ error: 'Silinemedi.' }); } });
+app.delete('/api/admin/users/:id', auth, adm, async function(req, res) { try { await ensureDb(); await db.deleteUser(parseInt(req.params.id)); res.json({ success: true }); } catch (e) { console.error('deleteUser:', e.message); res.status(500).json({ error: 'Silinemedi.' }); } });
 
 app.get('/api/discord', async function(req, res) { try { await ensureDb(); var link = await db.getDiscordLink(); res.json({ link: link }); } catch(e) { res.json({ link: '' }); } });
 app.post('/api/discord', auth, adm, async function(req, res) { try { await ensureDb(); await db.setDiscordLink(req.body.link || ''); res.json({ success: true }); } catch(e) { res.status(500).json({ error: 'Kaydedilemedi.' }); } });
