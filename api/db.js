@@ -240,10 +240,23 @@ async function updateLastActive(userId) {
 }
 
 async function deleteUser(userId) {
-  await query("DELETE FROM streamer_requests WHERE user_id = $1", [userId]);
-  await query("DELETE FROM notifications WHERE user_id = $1", [userId]);
-  await query("DELETE FROM contact_messages WHERE user_id = $1", [userId]);
-  await query("DELETE FROM game_scores WHERE user_id = $1", [userId]);
+  // Kullanıcıya bağlı TÜM alt kayıtları önce sil (users'a FK veren tablolar; aksi halde silme FK hatasıyla patlar).
+  var childDeletes = [
+    "DELETE FROM streamer_requests WHERE user_id = $1",
+    "DELETE FROM streamer_links WHERE user_id = $1",
+    "DELETE FROM notifications WHERE user_id = $1",
+    "DELETE FROM contact_messages WHERE user_id = $1",
+    "DELETE FROM game_scores WHERE user_id = $1",
+    "DELETE FROM saved_duels WHERE creator_id = $1",
+    "DELETE FROM detective_guesses WHERE user_id = $1",
+    "DELETE FROM stock_tx WHERE user_id = $1",
+    "DELETE FROM stock_holdings WHERE user_id = $1",
+    "DELETE FROM stock_wallets WHERE user_id = $1"
+  ];
+  for (var i = 0; i < childDeletes.length; i++) {
+    try { await query(childDeletes[i], [userId]); }
+    catch (e) { if (e && e.code === '42P01') continue; throw e; } // tablo henüz yoksa atla, gerçek hatayı yükselt
+  }
   await query("DELETE FROM users WHERE id = $1", [userId]);
 }
 
