@@ -240,7 +240,18 @@ async function updateLastActive(userId) {
 }
 
 async function deleteUser(userId) {
-  // Kullanıcıya bağlı TÜM alt kayıtları önce sil (users'a FK veren tablolar; aksi halde silme FK hatasıyla patlar).
+  // Borsa tutarlılığı: kullanıcının elindeki hisseleri, ilgili karakterlerin toplam arzından (shares_out) düş.
+  // (Fiyat yol-bağımlı olduğu için geri alınmaz; yalnızca tedavüldeki hisse sayacı gerçeğe göre güncellenir.)
+  try {
+    await query(
+      "UPDATE stock_prices p SET shares_out = GREATEST(0, p.shares_out - h.sh), updated_at = NOW() " +
+      "FROM (SELECT char_id, SUM(shares) AS sh FROM stock_holdings WHERE user_id = $1 GROUP BY char_id) h " +
+      "WHERE p.char_id = h.char_id",
+      [userId]
+    );
+  } catch (e) { if (!(e && e.code === '42P01')) throw e; }
+
+  // Kullanıcıya bağlı TÜM alt kayıtları sil (users'a FK veren tablolar; aksi halde silme FK hatasıyla patlar).
   var childDeletes = [
     "DELETE FROM streamer_requests WHERE user_id = $1",
     "DELETE FROM streamer_links WHERE user_id = $1",
