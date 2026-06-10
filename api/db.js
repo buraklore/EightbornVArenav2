@@ -240,15 +240,24 @@ async function updateLastActive(userId) {
 }
 
 async function deleteUser(userId) {
-  // Borsa tutarlılığı: kullanıcının elindeki hisseleri, ilgili karakterlerin toplam arzından (shares_out) düş.
-  // (Fiyat yol-bağımlı olduğu için geri alınmaz; yalnızca tedavüldeki hisse sayacı gerçeğe göre güncellenir.)
+  // Borsa: silinen hesabın (çoğu spam) elindeki hisseler piyasaya SATILMIŞ gibi işlenir.
+  // Her karakter için, o hisseleri satmanın normal fiyat etkisi uygulanır → fiyat DÜŞER ve arz (shares_out) azalır.
+  // Böylece spam alımlarıyla şişirilen fiyat geri çekilir. (Hesaba nakit yatmaz; hisseler piyasadan çıkar.)
   try {
-    await query(
-      "UPDATE stock_prices p SET shares_out = GREATEST(0, p.shares_out - h.sh), updated_at = NOW() " +
-      "FROM (SELECT char_id, SUM(shares) AS sh FROM stock_holdings WHERE user_id = $1 GROUP BY char_id) h " +
-      "WHERE p.char_id = h.char_id",
-      [userId]
-    );
+    var hold = await query("SELECT char_id, SUM(shares) AS sh FROM stock_holdings WHERE user_id = $1 GROUP BY char_id", [userId]);
+    for (var hi = 0; hi < hold.rows.length; hi++) {
+      var cid = String(hold.rows[hi].char_id), sh = parseInt(hold.rows[hi].sh) || 0;
+      if (sh <= 0) continue;
+      var prRow = await query("SELECT price FROM stock_prices WHERE char_id = $1", [cid]);
+      if (prRow.rows.length === 0) continue;
+      var price = parseFloat(prRow.rows[0].price);
+      var fDn = Math.min(0.25, 0.004 * sh);                 // satış fiyat etkisi (tradeStock ile aynı formül)
+      var newPrice = Math.max(5, _round2(price * (1 - fDn))); // 5 Coin taban
+      await query(
+        "UPDATE stock_prices SET price = $1, prev_price = $2, shares_out = GREATEST(0, shares_out - $3), updated_at = NOW() WHERE char_id = $4",
+        [newPrice, price, sh, cid]
+      );
+    }
   } catch (e) { if (!(e && e.code === '42P01')) throw e; }
 
   // Kullanıcıya bağlı TÜM alt kayıtları sil (users'a FK veren tablolar; aksi halde silme FK hatasıyla patlar).
