@@ -1774,3 +1774,5 @@ async function getDetectiveNextCase(userId, difficulty) {
   if (userId) { out.progress = await getDetectiveProgress(userId, chosen); if (out.progress && out.progress.done) out.reveal = await getDetectiveRevealForUser(userId, chosen); }
   return out;
 }
+
+
