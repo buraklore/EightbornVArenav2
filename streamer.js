@@ -133,6 +133,7 @@ function streamSetup(mode) {
       '</div>' +
       '<div class="form-group" style="margin-bottom:18px"><label class="lbl" style="font-size:20px;margin-bottom:10px">⏱️ Oy Süresi</label><select class="inp" style="font-size:22px;padding:20px;border-radius:16px" id="cstory-secs"><option value="30">30 saniye</option><option value="45">45 saniye</option><option value="60" selected>60 saniye</option><option value="90">90 saniye</option><option value="0">Manuel — süresiz (yayıncı seçer)</option></select></div>' +
       '<p style="font-size:15px;color:var(--t3);margin-bottom:8px;text-align:center">Sistem <b style="color:#c4b5fd">10 soru</b> sorar; yayıncı cevaplamaz, <b style="color:#c4b5fd">chat 1 / 2 / 3 / 4 yazarak</b> oy verir. Süre bitince en çok oy alan seçenek otomatik seçilir — yayıncı dilediği an seçeneğe tıklayıp geçebilir ya da oylamayı duraklatabilir. 10 soru sonunda <b style="color:#c4b5fd">tamamen özgün bir RP karakter hikâyesi</b> + suç/güven/liderlik/zekâ/kaos istatistikleri üretilir. 100+ soruluk havuzdan her oyun farklı!</p>';
+  } else if (mode === 'DUEL') {
     var charListHtml = '';
     var activeChars = chars.filter(function(c){ return c.a; });
     activeChars.forEach(function(c, i) {
@@ -665,7 +666,8 @@ async function streamConnect() {
     var sgSecs = parseInt(((document.getElementById('cstory-secs')||{}).value), 10);
     if (isNaN(sgSecs)) sgSecs = 60;
     var sgPool = await apiGet('/storygen/pool');
-    if (!sgPool || sgPool.error || !sgPool.questions || sgPool.questions.length < 4) { toast((sgPool && sgPool.error) || 'Soru havuzu yüklenemedi.', false); return; }
+    if (!sgPool || sgPool.error) { toast('Sunucuya ulaşılamadı — api dosyalarını yükleyip sunucuyu yeniden başlatın.', false); return; }
+    if (!sgPool.questions || sgPool.questions.length < 4) { toast('Soru havuzu boş. storygen_seed.js dosyasını api/ klasörüne koyup sunucuyu yeniden başlatın.', false); return; }
     var sgPlan = SGEN_makePlan(sgPool);
     if (!sgPlan.length) { toast('Soru planı oluşturulamadı.', false); return; }
     streamState = {
