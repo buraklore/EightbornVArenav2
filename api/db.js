@@ -1,6 +1,22 @@
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
-var STORYGEN_SEED = require('./storygen_seed.js').STORYGEN_SEED;
+var STORYGEN_SEED;
+try {
+  STORYGEN_SEED = require('./storygen_seed.js').STORYGEN_SEED;
+} catch (e) {
+  console.error('!!! storygen_seed.js yüklenemedi (api/ klasörüne koyduğunuzdan emin olun):', e.message);
+  // API çökmesin diye boş ama geçerli bir yedek; admin panelden soru eklenebilir.
+  STORYGEN_SEED = {
+    categories: [
+      { key: 'cocukluk', name: 'Çocukluk', ord: 1 }, { key: 'genclik', name: 'Gençlik', ord: 2 },
+      { key: 'donum', name: 'Kırılma Noktaları', ord: 3 }, { key: 'kariyer', name: 'Kariyer', ord: 4 },
+      { key: 'sosyal', name: 'Sosyal Hayat', ord: 5 }, { key: 'kisilik', name: 'Karakter Özellikleri', ord: 6 },
+      { key: 'gelecek', name: 'Gelecek Hedefleri', ord: 7 }
+    ],
+    plan: { cocukluk: 2, genclik: 2, donum: 1, kariyer: 1, sosyal: 1, kisilik: 2, gelecek: 1 },
+    questions: []
+  };
+}
 
 const pool = new Pool({
   connectionString: (process.env.DATABASE_URL || '').replace(/[?&]sslmode=[^&]*/g, ''),
@@ -350,6 +366,13 @@ async function _seedStorygenIfEmpty() {
 
 // Oyunun çekeceği havuz (yalnızca aktif kategori/soru/seçenek)
 async function getStoryPool() {
+  // Tablolar yoksa/boşsa kendi kendini onar (init sırası ne olursa olsun çalışsın)
+  try {
+    var chk = await query("SELECT COUNT(*)::int AS n FROM story_questions WHERE active=true");
+    if (chk.rows[0].n === 0) { try { await storygenInit(); } catch (e) {} }
+  } catch (e) {
+    try { await storygenInit(); } catch (e2) {}
+  }
   var cats = await query("SELECT id, ckey, name, ord FROM story_categories WHERE active=true ORDER BY ord, id");
   var qs = await query("SELECT q.id, q.text, q.category_id, c.ckey FROM story_questions q JOIN story_categories c ON c.id=q.category_id WHERE q.active=true AND c.active=true ORDER BY q.ord, q.id");
   var opts = await query("SELECT question_id, text, frag, cr, tr, ld, sm, ch FROM story_options ORDER BY ord, id");
@@ -1774,5 +1797,3 @@ async function getDetectiveNextCase(userId, difficulty) {
   if (userId) { out.progress = await getDetectiveProgress(userId, chosen); if (out.progress && out.progress.done) out.reveal = await getDetectiveRevealForUser(userId, chosen); }
   return out;
 }
-
-
