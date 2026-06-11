@@ -459,10 +459,11 @@ function _sgSoloBegin() {
   var ag = document.getElementById('ag');
   ag.innerHTML = '<div style="text-align:center;padding:80px;color:var(--t2)">Sorular hazırlanıyor...</div>';
   apiGet('/storygen/pool').then(function(pool) {
-    if (!pool || pool.error || !pool.questions || pool.questions.length < 4) { if (typeof toast === 'function') toast((pool && pool.error) || 'Soru havuzu yüklenemedi.', false); storygenSoloStart(); return; }
+    if (!pool || pool.error) { if (typeof toast === 'function') toast('Sunucuya ulaşılamadı — api dosyalarını yükleyip sunucuyu yeniden başlatın.', false); storygenSoloStart(); return; }
+    if (!pool.questions || pool.questions.length < 4) { if (typeof toast === 'function') toast('Soru havuzu boş. storygen_seed.js dosyasını api/ klasörüne koyup sunucuyu yeniden başlatın (ya da admin panelden soru ekleyin).', false); storygenSoloStart(); return; }
     sgSoloState = { firstName: name, lastName: surname, name: (name + ' ' + surname).trim(), pool: pool, plan: SGEN_makePlan(pool), idx: 0, answers: [], story: null };
     _sgSoloRenderQ();
-  }).catch(function() { if (typeof toast === 'function') toast('Havuz yüklenemedi.', false); storygenSoloStart(); });
+  }).catch(function() { if (typeof toast === 'function') toast('Bağlantı hatası — sunucu çalışıyor mu?', false); storygenSoloStart(); });
 }
 
 function _sgSoloRenderQ() {
