@@ -739,5 +739,36 @@ app.post('/api/admin/detective/regenerate', auth, adm, async function(req, res) 
   } catch (e) { console.error('admin/detective/regenerate:', e.message); res.status(500).json({ error: 'Olusturulamadi.' }); }
 });
 
+// ═══════════ KARAKTER HİKAYESİ OLUŞTURUCU ═══════════
+app.get('/api/storygen/pool', async function(req, res) {
+  try { await ensureDb(); res.json(await db.getStoryPool()); }
+  catch (e) { console.error('storygen/pool:', e.message); res.status(500).json({ error: 'Yuklenemedi.' }); }
+});
+// Admin
+app.get('/api/admin/storygen/content', auth, adm, async function(req, res) {
+  try { await ensureDb(); res.json(await db.adminGetStoryContent()); }
+  catch (e) { res.status(500).json({ error: 'Yuklenemedi.' }); }
+});
+app.post('/api/admin/storygen/category', auth, adm, async function(req, res) {
+  try { await ensureDb(); var r = await db.upsertStoryCategory(req.body || {}); if (r.error) return res.status(400).json(r); res.json(r); }
+  catch (e) { console.error('admin/storygen/category:', e.message); res.status(500).json({ error: 'Kaydedilemedi.' }); }
+});
+app.delete('/api/admin/storygen/category', auth, adm, async function(req, res) {
+  try { await ensureDb(); await db.deleteStoryCategory(parseInt(req.query.id)); res.json({ success: true }); }
+  catch (e) { res.status(500).json({ error: 'Silinemedi.' }); }
+});
+app.post('/api/admin/storygen/question', auth, adm, async function(req, res) {
+  try { await ensureDb(); var r = await db.upsertStoryQuestion(req.body || {}); if (r.error) return res.status(400).json(r); res.json(r); }
+  catch (e) { console.error('admin/storygen/question:', e.message); res.status(500).json({ error: 'Kaydedilemedi.' }); }
+});
+app.delete('/api/admin/storygen/question', auth, adm, async function(req, res) {
+  try { await ensureDb(); await db.deleteStoryQuestion(parseInt(req.query.id)); res.json({ success: true }); }
+  catch (e) { res.status(500).json({ error: 'Silinemedi.' }); }
+});
+app.post('/api/admin/storygen/plan', auth, adm, async function(req, res) {
+  try { await ensureDb(); res.json(await db.setStoryPlan(req.body.plan || {})); }
+  catch (e) { console.error('admin/storygen/plan:', e.message); res.status(500).json({ error: 'Kaydedilemedi.' }); }
+});
+
 // #12 Security: module.exports dosya sonunda — tüm route'lar kayıtlı
 module.exports = app;
