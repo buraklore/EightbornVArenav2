@@ -1,6 +1,6 @@
 // ═══ ADMIN (simplified for focus on tournament) ═══
-const AT=[{k:'games',l:'Oyunlar',i:'🎮'},{k:'ranking',l:'Sıralama',i:'🏆'},{k:'users',l:'Kullanıcılar',i:'👤'},{k:'gameedit',l:'Oyun Düzenle',i:'✏️'},{k:'questions',l:'Sorular',i:'❓'},{k:'rankcrit',l:'Sıralama Kriterleri',i:'🎯'},{k:'rankpool',l:'Sıralama Havuzu',i:'🎲'},{k:'rpsim',l:'RP Simülasyonu',i:'🎭'},{k:'stock',l:'Karakter Borsası',i:'📈'},{k:'detective',l:'Dedektif Vakaları',i:'🕵️'},{k:'whoChars',l:'WHO Sonuçları',i:'🪞'},{k:'ads',l:'Reklamlar',i:'📢'},{k:'msgs',l:'Mesajlar',i:'📨'},{k:'hero',l:'Hero Görseli',i:'🖼️'},{k:'discord',l:'Discord',i:'🎮'},{k:'footerpages',l:'Footer Sayfaları',i:'📄'},{k:'chars',l:'Karakterler',i:'⚔️'},{k:'seo',l:'SEO',i:'🔍'}];
-function rAdm(){document.getElementById('adm-nav').innerHTML=AT.map(t=>'<button class="nl'+(aTab===t.k?' a':'')+'" style="justify-content:flex-start;width:100%;font-size:15px;padding:12px 16px" onclick="aTab=\''+t.k+'\';rAdm()">'+t.i+' '+t.l+'</button>').join('');const e=document.getElementById('adm-c');({chars:aChars,questions:aQuestions,games:aGames,ranking:aRanking,users:aUsers,ads:aAds,msgs:aMsgs,gameedit:aGameEdit,hero:aHero,discord:aDiscord,footerpages:aFooterPages,seo:aSeo,whoChars:aWhoChars,rankcrit:aRankCrit,rankpool:aRankPool,rpsim:aRpsimPool,stock:aStock,detective:aDetective})[aTab](e)}
+const AT=[{k:'games',l:'Oyunlar',i:'🎮'},{k:'ranking',l:'Sıralama',i:'🏆'},{k:'users',l:'Kullanıcılar',i:'👤'},{k:'gameedit',l:'Oyun Düzenle',i:'✏️'},{k:'questions',l:'Sorular',i:'❓'},{k:'rankcrit',l:'Sıralama Kriterleri',i:'🎯'},{k:'rankpool',l:'Sıralama Havuzu',i:'🎲'},{k:'rpsim',l:'RP Simülasyonu',i:'🎭'},{k:'stock',l:'Karakter Borsası',i:'📈'},{k:'detective',l:'Dedektif Vakaları',i:'🕵️'},{k:'storygen',l:'Karakter Hikayesi',i:'📖'},{k:'whoChars',l:'WHO Sonuçları',i:'🪞'},{k:'ads',l:'Reklamlar',i:'📢'},{k:'msgs',l:'Mesajlar',i:'📨'},{k:'hero',l:'Hero Görseli',i:'🖼️'},{k:'discord',l:'Discord',i:'🎮'},{k:'footerpages',l:'Footer Sayfaları',i:'📄'},{k:'chars',l:'Karakterler',i:'⚔️'},{k:'seo',l:'SEO',i:'🔍'}];
+function rAdm(){document.getElementById('adm-nav').innerHTML=AT.map(t=>'<button class="nl'+(aTab===t.k?' a':'')+'" style="justify-content:flex-start;width:100%;font-size:15px;padding:12px 16px" onclick="aTab=\''+t.k+'\';rAdm()">'+t.i+' '+t.l+'</button>').join('');const e=document.getElementById('adm-c');({chars:aChars,questions:aQuestions,games:aGames,ranking:aRanking,users:aUsers,ads:aAds,msgs:aMsgs,gameedit:aGameEdit,hero:aHero,discord:aDiscord,footerpages:aFooterPages,seo:aSeo,whoChars:aWhoChars,rankcrit:aRankCrit,rankpool:aRankPool,rpsim:aRpsimPool,stock:aStock,detective:aDetective,storygen:aStorygen})[aTab](e)}
 
 function aChars(e){
   if(!window._dataReady){
@@ -1609,3 +1609,153 @@ function aDetSaveEv(){
   _detPersistCase(function(){ body.case_id=_detC.id; apiPost('/admin/detective/evidence',body).then(function(r){ if(!r||r.error){toast((r&&r.error)||'Hata',false);return;} toast('Kaydedildi.'); aDetEdit(_detC.id); }); });
 }
 function aDetDelEv(id){ if(!confirm('Kanit silinsin mi?'))return; _detPersistCase(function(){ apiDelete('/admin/detective/evidence?id='+id).then(function(){toast('Silindi.');aDetEdit(_detC.id);}); }); }
+
+// ═══════════════════════════════════════════════════
+// KARAKTER HİKAYESİ OLUŞTURUCU — Admin Yönetimi
+// ═══════════════════════════════════════════════════
+var _sgAdmData = null;   // {categories, questions, plan}
+var _sgQ = null;         // düzenlenen soru
+
+function _sgCatName(id){ var c=(_sgAdmData&&_sgAdmData.categories||[]).find(function(x){return x.id===id;}); return c?c.name:'?'; }
+function _sgInp(label,id,val,ph){ return '<label style="font-size:13px;color:var(--t2);display:block;margin:8px 0 4px">'+label+'</label><input id="'+id+'" value="'+esc(val==null?'':String(val))+'" placeholder="'+(ph||'')+'" style="width:100%;padding:10px;border-radius:8px;background:var(--bg3);border:1px solid var(--b1);color:var(--t1);margin-bottom:4px">'; }
+
+function aStorygen(e){
+  e.innerHTML='<div style="padding:20px;color:var(--t2)">Yukleniyor...</div>';
+  apiGet('/admin/storygen/content').then(function(r){
+    if(!r||r.error){ e.innerHTML='<div style="color:#ffb4ac;padding:14px">Yuklenemedi.</div>'; return; }
+    _sgAdmData=r;
+    var cats=r.categories||[], qs=r.questions||[], plan=r.plan||{};
+    // soru sayıları
+    var cntByCat={}; qs.forEach(function(q){cntByCat[q.category_id]=(cntByCat[q.category_id]||0)+1;});
+    // ── Plan editörü ──
+    var planSum=0; var planRows=cats.map(function(c){
+      var v=plan[c.ckey]||0; planSum+=v;
+      return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="flex:1;font-size:14px">'+esc(c.name)+' <span style="color:var(--t3);font-size:12px">('+(cntByCat[c.id]||0)+' soru)</span></span>'+
+        '<input id="sgplan_'+c.ckey+'" type="number" min="0" max="10" value="'+v+'" onchange="_sgPlanSum()" style="width:70px;padding:8px;border-radius:8px;background:var(--bg3);border:1px solid var(--b1);color:var(--t1);text-align:center"></div>';
+    }).join('');
+    var planBox='<div class="card" style="padding:16px;margin-bottom:16px">'+
+      '<h4 style="font-weight:700;font-size:15px;margin-bottom:6px">🎲 Oyun Planı — her oyunda kategoriden çekilecek soru sayısı</h4>'+
+      '<p style="font-size:12px;color:var(--t3);margin-bottom:10px">Toplam <b>10</b> olmalı. Her oyunda bu sayıda soru, kategorinin havuzundan <b>rastgele</b> seçilir — böylece her oyun farklı sorularla oynanır.</p>'+
+      planRows+
+      '<div style="margin-top:8px;font-size:13px">Toplam: <b id="sgplan-sum" style="color:'+(planSum===10?'#3cdd8c':'#ffb95f')+'">'+planSum+'</b> / 10</div>'+
+      '<button class="btn bp bsm" style="margin-top:10px" onclick="_sgSavePlan()">💾 Planı Kaydet</button>'+
+    '</div>';
+    // ── Kategori yöneticisi ──
+    var catRows=cats.map(function(c){
+      return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;padding:8px 10px;border:1px solid var(--b1);border-radius:8px;background:var(--bg3)">'+
+        '<input id="sgcat_name_'+c.id+'" value="'+esc(c.name)+'" style="flex:1;padding:7px;border-radius:6px;background:var(--bg2);border:1px solid var(--b1);color:var(--t1)">'+
+        '<input id="sgcat_ord_'+c.id+'" type="number" value="'+(c.ord||0)+'" title="sıra" style="width:60px;padding:7px;border-radius:6px;background:var(--bg2);border:1px solid var(--b1);color:var(--t1);text-align:center">'+
+        '<label style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:4px"><input type="checkbox" id="sgcat_act_'+c.id+'"'+(c.active?' checked':'')+'>aktif</label>'+
+        '<button class="btn bg bsm" onclick="_sgSaveCat('+c.id+')">💾</button>'+
+        '<button class="btn bg bsm" style="color:var(--pk)" onclick="_sgDelCat('+c.id+',\''+esc(c.name).replace(/'/g,"\\'")+'\')">🗑️</button></div>';
+    }).join('');
+    var catBox='<div class="card" style="padding:16px;margin-bottom:16px">'+
+      '<h4 style="font-weight:700;font-size:15px;margin-bottom:10px">🗂️ Kategoriler</h4>'+catRows+
+      '<div style="display:flex;gap:8px;margin-top:10px">'+
+        '<input id="sgcat_new" placeholder="Yeni kategori adı" style="flex:1;padding:9px;border-radius:8px;background:var(--bg3);border:1px solid var(--b1);color:var(--t1)">'+
+        '<button class="btn bp bsm" onclick="_sgAddCat()">+ Kategori Ekle</button></div>'+
+      '<p style="font-size:12px;color:var(--t3);margin-top:8px">Not: Kategoriyi silersen içindeki tüm sorular da silinir. Yeni kategori eklersen Oyun Planı\'ndan ona soru sayısı vermeyi unutma.</p>'+
+    '</div>';
+    // ── Soru listesi (kategoriye göre) ──
+    var qByCat={}; qs.forEach(function(q){(qByCat[q.category_id]=qByCat[q.category_id]||[]).push(q);});
+    var qListHtml=cats.map(function(c){
+      var list=(qByCat[c.id]||[]).map(function(q){
+        return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--b1);border-radius:8px;background:var(--bg3);margin-bottom:6px">'+
+          '<div style="min-width:0"><div style="font-size:14px;overflow:hidden;text-overflow:ellipsis">'+esc(q.text)+(q.active?'':' <span style="color:var(--t3)">(pasif)</span>')+'</div>'+
+          '<div style="font-size:11px;color:var(--t3)">'+(q.options||[]).length+' seçenek</div></div>'+
+          '<div style="display:flex;gap:6px;flex-shrink:0"><button class="btn bg bsm" onclick="_sgEditQ('+q.id+')">✏️</button>'+
+          '<button class="btn bg bsm" style="color:var(--pk)" onclick="_sgDelQ('+q.id+')">🗑️</button></div></div>';
+      }).join('')||'<div style="color:var(--t3);font-size:13px;padding:6px">Bu kategoride soru yok.</div>';
+      return '<div style="margin-bottom:14px"><div style="font-weight:700;font-size:15px;margin-bottom:8px;color:#c4b5fd">'+esc(c.name)+' <span style="font-size:12px;color:var(--t3);font-weight:400">('+(qByCat[c.id]||[]).length+')</span> <button class="btn bp bsm" style="margin-left:8px" onclick="_sgNewQ('+c.id+')">+ Soru</button></div>'+list+'</div>';
+    }).join('');
+    e.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h3 style="font-size:20px;font-weight:700">📖 Karakter Hikayesi — İçerik</h3><span style="font-size:13px;color:var(--t3)">'+qs.length+' soru · '+cats.length+' kategori</span></div>'+
+      planBox+catBox+
+      '<div class="card" style="padding:16px"><h4 style="font-weight:700;font-size:15px;margin-bottom:12px">❓ Sorular</h4>'+qListHtml+'</div>';
+  }).catch(function(){ e.innerHTML='<div style="color:#ffb4ac;padding:14px">Yuklenemedi.</div>'; });
+}
+
+function _sgPlanSum(){
+  if(!_sgAdmData)return; var sum=0;
+  _sgAdmData.categories.forEach(function(c){ var el=document.getElementById('sgplan_'+c.ckey); if(el)sum+=parseInt(el.value)||0; });
+  var s=document.getElementById('sgplan-sum'); if(s){ s.textContent=sum; s.style.color=(sum===10?'#3cdd8c':'#ffb95f'); }
+}
+function _sgSavePlan(){
+  if(!_sgAdmData)return; var plan={};
+  _sgAdmData.categories.forEach(function(c){ var el=document.getElementById('sgplan_'+c.ckey); var v=parseInt(el&&el.value)||0; if(v>0)plan[c.ckey]=v; });
+  var sum=Object.keys(plan).reduce(function(a,k){return a+plan[k];},0);
+  if(sum!==10){ if(!confirm('Toplam '+sum+' (önerilen 10). Yine de kaydedilsin mi?'))return; }
+  apiPost('/admin/storygen/plan',{plan:plan}).then(function(r){ if(!r||r.error){toast((r&&r.error)||'Hata',false);return;} toast('Plan kaydedildi.'); });
+}
+function _sgAddCat(){
+  var el=document.getElementById('sgcat_new'); var name=(el&&el.value||'').trim();
+  if(!name){ toast('Kategori adı gerekli.',false); return; }
+  apiPost('/admin/storygen/category',{name:name,ord:( _sgAdmData.categories.length+1)}).then(function(r){ if(!r||r.error){toast((r&&r.error)||'Hata',false);return;} toast('Kategori eklendi.'); aStorygen(document.getElementById('adm-c')); });
+}
+function _sgSaveCat(id){
+  var name=(document.getElementById('sgcat_name_'+id)||{}).value||'';
+  var ord=parseInt((document.getElementById('sgcat_ord_'+id)||{}).value)||0;
+  var act=(document.getElementById('sgcat_act_'+id)||{}).checked;
+  apiPost('/admin/storygen/category',{id:id,name:name,ord:ord,active:act}).then(function(r){ if(!r||r.error){toast((r&&r.error)||'Hata',false);return;} toast('Kaydedildi.'); });
+}
+function _sgDelCat(id,name){
+  if(!confirm('"'+name+'" kategorisi ve içindeki TÜM sorular silinsin mi?'))return;
+  apiDelete('/admin/storygen/category?id='+id).then(function(){ toast('Silindi.'); aStorygen(document.getElementById('adm-c')); });
+}
+
+function _sgNewQ(catId){ _sgQ={id:null,category_id:catId||(_sgAdmData.categories[0]&&_sgAdmData.categories[0].id),text:'',active:true,options:[]}; _sgRenderQEditor(); }
+function _sgEditQ(id){
+  var q=(_sgAdmData.questions||[]).find(function(x){return x.id===id;});
+  if(!q){ toast('Bulunamadı.',false); return; }
+  _sgQ=JSON.parse(JSON.stringify(q)); _sgRenderQEditor();
+}
+function _sgDelQ(id){ if(!confirm('Soru silinsin mi?'))return; apiDelete('/admin/storygen/question?id='+id).then(function(){ toast('Silindi.'); aStorygen(document.getElementById('adm-c')); }); }
+
+function _sgStatInputs(o,i){
+  function n(k,lbl,val){ return '<div style="text-align:center"><label style="font-size:10px;color:var(--t3);display:block">'+lbl+'</label><input id="sgopt_'+i+'_'+k+'" type="number" min="-3" max="3" value="'+(val|0)+'" style="width:54px;padding:6px;border-radius:6px;background:var(--bg2);border:1px solid var(--b1);color:var(--t1);text-align:center"></div>'; }
+  return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">'+
+    n('cr','🔪Suç',o.cr)+n('tr','🤝Güven',o.tr)+n('ld','👑Lider',o.ld)+n('sm','🧠Zekâ',o.sm)+n('ch','🔥Kaos',o.ch)+'</div>';
+}
+function _sgRenderQEditor(){
+  var e=document.getElementById('adm-c'); var q=_sgQ;
+  var catOpts=(_sgAdmData.categories||[]).map(function(c){ return '<option value="'+c.id+'"'+(c.id===q.category_id?' selected':'')+'>'+esc(c.name)+'</option>'; }).join('');
+  // 4 seçenek slotu (mevcut + boş)
+  var opts=(q.options||[]).slice(0,4);
+  while(opts.length<4) opts.push({text:'',frag:'',cr:0,tr:0,ld:0,sm:0,ch:0});
+  var optRows=opts.map(function(o,i){
+    return '<div style="border:1px solid var(--b1);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--bg3)">'+
+      '<div style="font-size:12px;font-weight:700;color:#c4b5fd;margin-bottom:6px">Seçenek '+(i+1)+(i>1?' <span style="color:var(--t3);font-weight:400">(boş bırakılırsa eklenmez)</span>':'')+'</div>'+
+      '<input id="sgopt_'+i+'_text" value="'+esc(o.text||'')+'" placeholder="Cevap metni (chat\'in göreceği)" style="width:100%;padding:9px;border-radius:8px;background:var(--bg2);border:1px solid var(--b1);color:var(--t1);margin-bottom:6px">'+
+      '<textarea id="sgopt_'+i+'_frag" placeholder="Hikâye parçası — küçük harfle başla, isim otomatik eklenir. Örn: kalabalık ama yoksul bir evde büyüdü" style="width:100%;min-height:54px;padding:9px;border-radius:8px;background:var(--bg2);border:1px solid var(--b1);color:var(--t1);resize:vertical">'+esc(o.frag||'')+'</textarea>'+
+      _sgStatInputs(o,i)+
+    '</div>';
+  }).join('');
+  e.innerHTML='<div style="max-width:760px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h3 style="font-size:20px;font-weight:700">'+(q.id?'✏️ Soru Düzenle':'+ Yeni Soru')+'</h3><button class="btn bg bsm" onclick="aStorygen(document.getElementById(\'adm-c\'))">← Geri</button></div>'+
+    '<div class="card" style="padding:18px">'+
+      '<label style="font-size:13px;color:var(--t2);display:block;margin-bottom:4px">Kategori</label>'+
+      '<select id="sgq_cat" style="width:100%;padding:10px;border-radius:8px;background:var(--bg3);border:1px solid var(--b1);color:var(--t1);margin-bottom:10px">'+catOpts+'</select>'+
+      '<label style="font-size:13px;color:var(--t2);display:block;margin-bottom:4px">Soru Metni</label>'+
+      '<input id="sgq_text" value="'+esc(q.text||'')+'" placeholder="Örn: Nasıl bir ailede büyüdü?" style="width:100%;padding:10px;border-radius:8px;background:var(--bg3);border:1px solid var(--b1);color:var(--t1);margin-bottom:8px">'+
+      '<label style="font-size:13px;color:var(--t2);display:flex;align-items:center;gap:6px;margin-bottom:14px"><input type="checkbox" id="sgq_active"'+(q.active!==false?' checked':'')+'> Aktif (oyunda kullanılsın)</label>'+
+      '<div style="font-size:13px;font-weight:700;color:var(--t2);margin-bottom:8px">Cevap Seçenekleri (en az 2)</div>'+
+      '<p style="font-size:12px;color:var(--t3);margin-bottom:10px">Stat değerleri −3 ile +3 arasında. Bu değerler sonuç ekranındaki yüzdeleri (suç, güven, liderlik, zekâ, kaos) belirler.</p>'+
+      optRows+
+      '<button class="btn bp" style="margin-top:6px" onclick="_sgSaveQ()">💾 Soruyu Kaydet</button>'+
+    '</div></div>';
+}
+function _sgSaveQ(){
+  var catId=parseInt((document.getElementById('sgq_cat')||{}).value);
+  var text=((document.getElementById('sgq_text')||{}).value||'').trim();
+  var active=(document.getElementById('sgq_active')||{}).checked;
+  if(!text){ toast('Soru metni gerekli.',false); return; }
+  var options=[];
+  for(var i=0;i<4;i++){
+    var t=((document.getElementById('sgopt_'+i+'_text')||{}).value||'').trim();
+    if(!t)continue;
+    function gv(k){ return parseInt((document.getElementById('sgopt_'+i+'_'+k)||{}).value)||0; }
+    options.push({text:t,frag:((document.getElementById('sgopt_'+i+'_frag')||{}).value||'').trim(),cr:gv('cr'),tr:gv('tr'),ld:gv('ld'),sm:gv('sm'),ch:gv('ch')});
+  }
+  if(options.length<2){ toast('En az 2 dolu seçenek gerekli.',false); return; }
+  var body={id:_sgQ&&_sgQ.id,category_id:catId,text:text,active:active,options:options};
+  apiPost('/admin/storygen/question',body).then(function(r){ if(!r||r.error){toast((r&&r.error)||'Hata',false);return;} toast('Soru kaydedildi.'); aStorygen(document.getElementById('adm-c')); });
+}
