@@ -1,5 +1,6 @@
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
+var STORYGEN_SEED = require('./storygen_seed.js').STORYGEN_SEED;
 
 const pool = new Pool({
   connectionString: (process.env.DATABASE_URL || '').replace(/[?&]sslmode=[^&]*/g, ''),
@@ -74,6 +75,8 @@ async function init() {
   await query("CREATE TABLE IF NOT EXISTS stock_tx (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id), char_id VARCHAR(20), side VARCHAR(4), shares INTEGER, price NUMERIC(12,2), created_at TIMESTAMP DEFAULT NOW())");
 
   await detectiveInit();
+
+  try { await storygenInit(); } catch (e) { console.error('storygenInit:', e.message); }
 
   var r = await query("SELECT id FROM users WHERE role = 'ADMIN'");
   if (r.rows.length === 0) {
@@ -309,6 +312,123 @@ async function updateUserScore(userId, score) {
 }
 
 
+// ═══════════════════════════════════════════════════
+// KARAKTER HİKAYESİ OLUŞTURUCU — tablolar, seed ve CRUD
+// ═══════════════════════════════════════════════════
+async function storygenInit() {
+  await query("CREATE TABLE IF NOT EXISTS story_categories (id SERIAL PRIMARY KEY, ckey VARCHAR(30) UNIQUE NOT NULL, name VARCHAR(60) NOT NULL, ord INTEGER DEFAULT 0, active BOOLEAN DEFAULT true)");
+  await query("CREATE TABLE IF NOT EXISTS story_questions (id SERIAL PRIMARY KEY, category_id INTEGER REFERENCES story_categories(id) ON DELETE CASCADE, text VARCHAR(300) NOT NULL, active BOOLEAN DEFAULT true, ord INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT NOW())");
+  await query("CREATE TABLE IF NOT EXISTS story_options (id SERIAL PRIMARY KEY, question_id INTEGER REFERENCES story_questions(id) ON DELETE CASCADE, text VARCHAR(160) NOT NULL, frag TEXT DEFAULT '', cr INTEGER DEFAULT 0, tr INTEGER DEFAULT 0, ld INTEGER DEFAULT 0, sm INTEGER DEFAULT 0, ch INTEGER DEFAULT 0, ord INTEGER DEFAULT 0)");
+  try { await _seedStorygenIfEmpty(); } catch (e) { console.error('storygen seed:', e.message); }
+}
+
+async function _seedStorygenIfEmpty() {
+  // Admin içeriğini ASLA ezme: yalnızca soru tablosu boşsa seed et.
+  var cnt = await query("SELECT COUNT(*)::int AS n FROM story_questions");
+  if (cnt.rows[0].n > 0) return;
+  var catId = {};
+  for (var i = 0; i < STORYGEN_SEED.categories.length; i++) {
+    var c = STORYGEN_SEED.categories[i];
+    var cr = await query("INSERT INTO story_categories (ckey, name, ord, active) VALUES ($1,$2,$3,true) ON CONFLICT (ckey) DO UPDATE SET name=$2, ord=$3 RETURNING id", [c.key, c.name, c.ord || 0]);
+    catId[c.key] = cr.rows[0].id;
+  }
+  for (var q = 0; q < STORYGEN_SEED.questions.length; q++) {
+    var qq = STORYGEN_SEED.questions[q];
+    if (!catId[qq.cat]) continue;
+    var qr = await query("INSERT INTO story_questions (category_id, text, active, ord) VALUES ($1,$2,true,$3) RETURNING id", [catId[qq.cat], qq.q, q]);
+    var qid = qr.rows[0].id;
+    for (var o = 0; o < qq.opts.length; o++) {
+      var op = qq.opts[o];
+      await query("INSERT INTO story_options (question_id, text, frag, cr, tr, ld, sm, ch, ord) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)", [qid, op.t, op.frag || '', op.cr|0, op.tr|0, op.ld|0, op.sm|0, op.ch|0, o]);
+    }
+  }
+  // Plan'ı config'e yaz (admin sonradan değiştirebilir)
+  var existPlan = await getConfig('story_plan');
+  if (!existPlan) await setConfig('story_plan', JSON.stringify(STORYGEN_SEED.plan));
+  console.log('Karakter Hikayesi: ' + STORYGEN_SEED.questions.length + ' soru seed edildi.');
+}
+
+// Oyunun çekeceği havuz (yalnızca aktif kategori/soru/seçenek)
+async function getStoryPool() {
+  var cats = await query("SELECT id, ckey, name, ord FROM story_categories WHERE active=true ORDER BY ord, id");
+  var qs = await query("SELECT q.id, q.text, q.category_id, c.ckey FROM story_questions q JOIN story_categories c ON c.id=q.category_id WHERE q.active=true AND c.active=true ORDER BY q.ord, q.id");
+  var opts = await query("SELECT question_id, text, frag, cr, tr, ld, sm, ch FROM story_options ORDER BY ord, id");
+  var byQ = {};
+  opts.rows.forEach(function(o) { (byQ[o.question_id] = byQ[o.question_id] || []).push({ t: o.text, frag: o.frag, cr: o.cr, tr: o.tr, ld: o.ld, sm: o.sm, ch: o.ch }); });
+  var questions = qs.rows.filter(function(q) { return (byQ[q.id] || []).length >= 2; }).map(function(q) {
+    return { id: q.id, cat: q.ckey, text: q.text, opts: byQ[q.id] };
+  });
+  var planRaw = await getConfig('story_plan');
+  var plan = STORYGEN_SEED.plan;
+  if (planRaw) { try { plan = JSON.parse(planRaw); } catch (e) {} }
+  return { categories: cats.rows.map(function(c) { return { key: c.ckey, name: c.name, ord: c.ord }; }), plan: plan, questions: questions };
+}
+
+// ── Admin CRUD ──
+async function adminGetStoryContent() {
+  var cats = await query("SELECT id, ckey, name, ord, active FROM story_categories ORDER BY ord, id");
+  var qs = await query("SELECT id, category_id, text, active, ord FROM story_questions ORDER BY ord, id");
+  var opts = await query("SELECT id, question_id, text, frag, cr, tr, ld, sm, ch, ord FROM story_options ORDER BY ord, id");
+  var byQ = {};
+  opts.rows.forEach(function(o) { (byQ[o.question_id] = byQ[o.question_id] || []).push(o); });
+  var questions = qs.rows.map(function(q) { return { id: q.id, category_id: q.category_id, text: q.text, active: q.active, ord: q.ord, options: byQ[q.id] || [] }; });
+  var planRaw = await getConfig('story_plan');
+  var plan = STORYGEN_SEED.plan; if (planRaw) { try { plan = JSON.parse(planRaw); } catch (e) {} }
+  return { categories: cats.rows, questions: questions, plan: plan };
+}
+
+async function upsertStoryCategory(data) {
+  var name = (data.name || '').trim();
+  if (!name) return { error: 'Kategori adı gerekli.' };
+  if (data.id) {
+    await query("UPDATE story_categories SET name=$1, ord=$2, active=$3 WHERE id=$4", [name, data.ord | 0, data.active !== false, parseInt(data.id)]);
+    return { success: true, id: parseInt(data.id) };
+  }
+  var key = (data.ckey || name).toString().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 30) || ('cat_' + Date.now());
+  var r = await query("INSERT INTO story_categories (ckey, name, ord, active) VALUES ($1,$2,$3,$4) ON CONFLICT (ckey) DO UPDATE SET name=$2, ord=$3, active=$4 RETURNING id", [key, name, data.ord | 0, data.active !== false]);
+  return { success: true, id: r.rows[0].id, ckey: key };
+}
+
+async function deleteStoryCategory(id) {
+  await query("DELETE FROM story_categories WHERE id=$1", [parseInt(id)]);
+  return { success: true };
+}
+
+async function upsertStoryQuestion(data) {
+  var text = (data.text || '').trim();
+  var catId = parseInt(data.category_id);
+  if (!text || !catId) return { error: 'Soru metni ve kategori gerekli.' };
+  var options = Array.isArray(data.options) ? data.options.filter(function(o) { return o && (o.text || '').trim(); }) : [];
+  if (options.length < 2) return { error: 'En az 2 cevap seçeneği gerekli.' };
+  var qid;
+  if (data.id) {
+    qid = parseInt(data.id);
+    await query("UPDATE story_questions SET category_id=$1, text=$2, active=$3, ord=$4 WHERE id=$5", [catId, text, data.active !== false, data.ord | 0, qid]);
+    await query("DELETE FROM story_options WHERE question_id=$1", [qid]);
+  } else {
+    var qr = await query("INSERT INTO story_questions (category_id, text, active, ord) VALUES ($1,$2,$3,$4) RETURNING id", [catId, text, data.active !== false, data.ord | 0]);
+    qid = qr.rows[0].id;
+  }
+  for (var i = 0; i < options.length; i++) {
+    var o = options[i];
+    await query("INSERT INTO story_options (question_id, text, frag, cr, tr, ld, sm, ch, ord) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+      [qid, (o.text || '').trim().slice(0, 160), (o.frag || '').trim(), o.cr | 0, o.tr | 0, o.ld | 0, o.sm | 0, o.ch | 0, i]);
+  }
+  return { success: true, id: qid };
+}
+
+async function deleteStoryQuestion(id) {
+  await query("DELETE FROM story_questions WHERE id=$1", [parseInt(id)]);
+  return { success: true };
+}
+
+async function setStoryPlan(plan) {
+  var clean = {};
+  if (plan && typeof plan === 'object') { Object.keys(plan).forEach(function(k) { var v = parseInt(plan[k]); if (v > 0) clean[k] = v; }); }
+  await setConfig('story_plan', JSON.stringify(clean));
+  return { success: true, plan: clean };
+}
+
 module.exports = {
   init: init, query: query,
   createUser: createUser, findUserByEmail: findUserByEmail, findUserByUsername: findUserByUsername, findUserById: findUserById, verifyPassword: verifyPassword,
@@ -345,7 +465,12 @@ module.exports = {
   upsertDetectiveEvidence: upsertDetectiveEvidence, deleteDetectiveEvidence: deleteDetectiveEvidence,
   getDetectiveRevealForUser: getDetectiveRevealForUser, getDetectiveNextCase: getDetectiveNextCase,
   getDetectiveCharPool: getDetectiveCharPool, setDetectiveCharPool: setDetectiveCharPool, regenerateDetectiveCases: regenerateDetectiveCases,
-  getDetectiveStreamReveal: getDetectiveStreamReveal
+  getDetectiveStreamReveal: getDetectiveStreamReveal,
+  // Karakter Hikayesi Oluşturucu
+  getStoryPool: getStoryPool, adminGetStoryContent: adminGetStoryContent,
+  upsertStoryCategory: upsertStoryCategory, deleteStoryCategory: deleteStoryCategory,
+  upsertStoryQuestion: upsertStoryQuestion, deleteStoryQuestion: deleteStoryQuestion,
+  setStoryPlan: setStoryPlan
 };
 
 // ═══ SAVED DUELS ═══
