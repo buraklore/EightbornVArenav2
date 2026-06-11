@@ -123,8 +123,8 @@ function streamSetup(mode) {
       '</div>' +
       '<p style="font-size:15px;color:var(--t3);margin-bottom:8px;text-align:center">Her turda senaryo ekrana gelir, <b style="color:#c4b5fd">chat 1 / 2 / 3 yazarak</b> karar verir. 💰 Para · 👑 İtibar · 🔥 Tehlike statlarına göre şehrin kralı mı soytarısı mı olunacağını chat belirler!</p>';
   } else if (mode === 'CDETECTIVE') {
-    extraField = '<div class="form-group" style="margin-bottom:20px"><label class="lbl" style="font-size:20px;margin-bottom:10px">🔍 Zorluk Seviyesi</label><select class="inp" style="font-size:22px;padding:20px;border-radius:16px" id="det-stream-diff"><option value="easy">🟢 Kolay — 3 şüpheli</option><option value="medium" selected>🟡 Orta — 5 şüpheli</option><option value="hard">🔴 Zor — 8 şüpheli</option></select></div>' +
-      '<p style="font-size:15px;color:var(--t3);margin-bottom:8px;text-align:center">Rastgele bir vaka açılır. Chat kanıtları inceleyip <b style="color:#caa46a">şüpheli harfini (A / B / C…)</b> yazarak oy verir. Süre yok — düşünmek serbest! Oylar geldikçe <b style="color:#caa46a">suçluyu sen seçersin</b>, sonra gerçek suçlu açıklanır.</p>';
+    extraField = '<div class="form-group" style="margin-bottom:20px"><label class="lbl" style="font-size:20px;margin-bottom:10px">🔍 Zorluk Seviyesi</label><select class="inp" style="font-size:22px;padding:20px;border-radius:16px" id="det-stream-diff"><option value="easy">🟢 Kolay — 3 şüpheli · 2 hak</option><option value="medium" selected>🟡 Orta — 5 şüpheli · 2 hak</option><option value="hard">🔴 Zor — 8 şüpheli · TEK HAK</option></select></div>' +
+      '<p style="font-size:15px;color:var(--t3);margin-bottom:8px;text-align:center">Rastgele bir vaka açılır. <b style="color:#ff8a80">Hiçbir kanıt suçluyu doğrudan söylemez</b> — chat kanıtları çapraz kontrol edip <b style="color:#caa46a">şüpheli harfini (A / B / C…)</b> yazarak oy verir. Süre yok — düşünmek serbest! Oylar geldikçe <b style="color:#caa46a">suçluyu sen seçersin</b>, sonra gerçek suçlu açıklanır. Zor modda TEK suçlama hakkı vardır!</p>';
   } else if (mode === 'DUEL') {
     var charListHtml = '';
     var activeChars = chars.filter(function(c){ return c.a; });
@@ -2031,8 +2031,9 @@ function renderCDetCase() {
     return '<div style="background:'+(elim ? '#15130e' : col+'10')+';border:2px solid '+(elim ? '#2c2418' : col+'33')+';border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px'+(elim ? ';opacity:.55' : '')+'">'+topRow+foot+'</div>';
   }).join('');
   var attN = s.det.attempts || 0;
-  var attMsg = attN === 0 ? '🎯 2 tahmin hakkın var' : '⚠️ 1 hakkın kaldı — son seçimini dikkatli yap!';
-  var attCol = attN === 0 ? '#caa46a' : '#ffb95f';
+  var maxAtt = (s.det.case && s.det.case.difficulty === 'hard') ? 1 : 2;
+  var attMsg = maxAtt === 1 ? '🔴 TEK suçlama hakkın var — kanıtları çapraz kontrol et!' : (attN === 0 ? '🎯 2 tahmin hakkın var' : '⚠️ 1 hakkın kaldı — son seçimini dikkatli yap!');
+  var attCol = maxAtt === 1 ? '#ff6a63' : (attN === 0 ? '#caa46a' : '#ffb95f');
 
   ag.innerHTML =
     '<div style="display:flex;gap:20px;padding:18px">'+
@@ -2097,7 +2098,8 @@ function cdetConfirmAccuse(suspectId) {
   var sus = null, idx = -1; (s.det.case.suspects || []).forEach(function(x, i){ if (x.id === suspectId) { sus = x; idx = i; } });
   if (!sus) return;
   var attemptNo = (s.det.attempts || 0) + 1;
-  var last = attemptNo >= 2;
+  var maxAtt = (s.det.case && s.det.case.difficulty === 'hard') ? 1 : 2;
+  var last = attemptNo >= maxAtt;
   var col = _cdetCols[idx % 8];
   _cdetRm('cdet-confirm-modal');
   var ov = document.createElement('div');
@@ -2112,7 +2114,7 @@ function cdetConfirmAccuse(suspectId) {
       '<div style="font-size:13px;color:'+col+'">'+esc(sus.profession || '')+'</div>'+
     '</div>'+
     '<p style="font-size:15px;color:#cfc8b8;line-height:1.5;margin-bottom:8px">Bu kişiyi <b style="color:#f0e6cf">suçlu</b> olarak seçmek istediğine emin misin?</p>'+
-    '<div style="font-size:13px;font-weight:700;color:'+(last ? '#ff6a63' : '#ffb95f')+';background:'+(last ? '#ff6a63' : '#ffb95f')+'15;border:1px solid '+(last ? '#ff6a63' : '#ffb95f')+'33;border-radius:9px;padding:8px 12px;margin-bottom:20px">'+(last ? '⚠️ Son hakkın! Yanlışsa vaka kapanır.' : '🎯 '+attemptNo+'. tahmin · yanlışsa 1 hakkın daha olur') +'</div>'+
+    '<div style="font-size:13px;font-weight:700;color:'+(last ? '#ff6a63' : '#ffb95f')+';background:'+(last ? '#ff6a63' : '#ffb95f')+'15;border:1px solid '+(last ? '#ff6a63' : '#ffb95f')+'33;border-radius:9px;padding:8px 12px;margin-bottom:20px">'+(last ? (maxAtt === 1 ? '⚠️ TEK hakkın var! Yanlışsa vaka kapanır.' : '⚠️ Son hakkın! Yanlışsa vaka kapanır.') : '🎯 '+attemptNo+'. tahmin · yanlışsa 1 hakkın daha olur') +'</div>'+
     '<div style="display:flex;gap:10px">'+
       '<button onclick="_cdetRm(\'cdet-confirm-modal\')" style="flex:1;padding:13px;border-radius:11px;border:1px solid var(--b1);background:var(--bg3);color:var(--t1);font-size:15px;font-weight:700;cursor:pointer">Vazgeç</button>'+
       '<button onclick="cdetDoAccuse('+suspectId+')" style="flex:1;padding:13px;border-radius:11px;border:none;background:linear-gradient(135deg,'+col+','+col+'bb);color:#13131b;font-size:15px;font-weight:800;cursor:pointer">⚖️ Evet, Suçla</button>'+
@@ -2121,12 +2123,13 @@ function cdetConfirmAccuse(suspectId) {
   document.body.appendChild(ov);
 }
 
-// 2) Suçlamayı uygula (2 hak: ilk yanlışta uyarı, ikincide/doğruda sonuç)
+// 2) Suçlamayı uygula (kolay/orta 2 hak, zor TEK hak: ilk yanlışta uyarı yalnızca çok haklı modlarda)
 function cdetDoAccuse(suspectId) {
   var s = streamState; if (!s || !s.active || !s.det) return;
   if (s.phase === 'RESULT') return;
   _cdetRm('cdet-confirm-modal'); _cdetCloseEv();
   var attemptNo = (s.det.attempts || 0) + 1;
+  var maxAtt = (s.det.case && s.det.case.difficulty === 'hard') ? 1 : 2;
   apiPost('/detective/stream-guess', { case_id: s.det.case.id, suspect_id: suspectId, attempt: attemptNo }).then(function(r) {
     if (!r || r.error) { toast((r && r.error) || 'Hata oluştu.', false); return; }
     s.det.attempts = attemptNo;
@@ -2138,7 +2141,7 @@ function cdetDoAccuse(suspectId) {
     }
     if (!s.det.wrongIds) s.det.wrongIds = [];
     if (s.det.wrongIds.indexOf(suspectId) < 0) s.det.wrongIds.push(suspectId);
-    if (r.final || attemptNo >= 2) {
+    if (r.final || attemptNo >= maxAtt) {
       s.det.result = r; s.det.accusedId = suspectId; s.phase = 'RESULT';
       if (s.voteTimer) { clearInterval(s.voteTimer); s.voteTimer = null; }
       renderCDetResult();
@@ -2178,7 +2181,7 @@ function renderCDetResult() {
   var attUsed = s.det.attempts || 1;
   var attBadge = correct
     ? '<span style="display:inline-block;background:#3cdd8c18;border:1px solid #3cdd8c40;color:#3cdd8c;font-weight:700;font-size:13px;padding:5px 14px;border-radius:9px;margin-top:8px">🎯 '+attUsed+'. denemede bildin</span>'
-    : '<span style="display:inline-block;background:#ff6a6318;border:1px solid #ff6a6340;color:#ff6a63;font-weight:700;font-size:13px;padding:5px 14px;border-radius:9px;margin-top:8px">2 hakkın da bitti</span>';
+    : '<span style="display:inline-block;background:#ff6a6318;border:1px solid #ff6a6340;color:#ff6a63;font-weight:700;font-size:13px;padding:5px 14px;border-radius:9px;margin-top:8px">'+((s.det.case && s.det.case.difficulty === 'hard') ? 'Tek hak doluydu' : '2 hakkın da bitti')+'</span>';
   // chat'in tercihi
   var total = 0, topL = null, topV = -1;
   for (var i = 0; i < sus.length; i++) { var L = _cdetLetter(i); var v = s.votes[L] || 0; total += v; if (v > topV) { topV = v; topL = L; } }
