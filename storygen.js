@@ -149,36 +149,121 @@ var SGEN_REFLECT = [
   'Bu çizgi yıllar boyunca onunla kaldı.',
   'Geriye dönüp baktığında, bu anların hiçbirini değiştirmek istemezdi.'
 ];
+// 1. paragraf — o dönemde olanları genişleten cümleler (her parçaya uyacak kadar evrensel).
+var SGEN_ELAB = [
+  'O dönem yaşadıkları, sonradan anlatacağı hikâyelerin ilk satırlarıydı.',
+  'Kimisi için sıradan bir ayrıntı, onun içinse bir dönüm taşıydı.',
+  'Bu küçük anlar, farkında olmadan onun yönünü çiziyordu.',
+  'Etrafındakiler belki fark etmedi, ama içinde bir şeyler sessizce şekilleniyordu.',
+  'Hayat ona o günlerde ilk derslerini verdi; o da çabuk öğrenen biri çıktı.',
+  'Bazıları bu yükü kaldıramazdı; o ise omuzladı ve yürümeye devam etti.',
+  'O günlerin tozu, üstünden hiçbir zaman tam olarak silinmedi.',
+  'Gözlerini açtığı her sabah, dünyayı biraz daha iyi tanıyordu.',
+  'Sokak ona, kitapların asla öğretemeyeceği şeyleri öğretti.',
+  'O an belki küçüktü, ama bıraktığı iz büyük oldu.',
+  'Kimi anılar yara gibidir; bu da öyleydi, kapansa bile izi kaldı.',
+  'Geçen her gün, onu olmak istediği kişiye bir adım daha yaklaştırdı.',
+  'Bu yaşananları kimseyle paylaşmadı; içinde bir yere usulca yerleştirdi.',
+  'Şehrin gri yüzü, ona pek çok şeyi tek kelime etmeden anlattı.',
+  'Herkesin bir hikâyesi vardır; onunki tam burada şekil almaya başladı.',
+  'Bu, ileride "her şey o zaman başladı" diyeceği anlardan biriydi.',
+  'Zaman bu anı silmedi; aksine, yıllar geçtikçe daha da netleşti.',
+  'O dönem attığı her adım, bugünkü izlerinin ilk taslağıydı.',
+  'Belki kimse görmedi, ama o anı asla unutmadı.',
+  'Hayat ona burada bir seçim sundu; o da seçimini yaptı.'
+];
+// 2. paragrafı açan cümleler — olaylardan anlama geçiş.
+var SGEN_DEV_OPEN = [
+  'Ama asıl önemli olan, bütün bunların onu nasıl bir insana dönüştürdüğüydü.',
+  'Geriye dönüp bakıldığında, o dönemin gerçek anlamı çok daha sonra ortaya çıktı.',
+  'Yaşananların ötesinde, bir de bunların ardında kalan kişi vardı.',
+  'Dışarıdan görünen buydu; içeride ise bambaşka bir şey büyüyordu.',
+  'Önemli olan ne yaşadığı değil, yaşadıklarıyla ne yaptığıydı.',
+  'Ve işte tam burada, karakteri sessizce çelikleşmeye başladı.',
+  'Bu dönem ona bir şey öğrettiyse, o da kendisiyle ilgiliydi.',
+  'Bütün bunların altında, yavaş yavaş kendini bulan biri vardı.',
+  'Zaman geçtikçe bu yaşananlar bir derse, o ders de bir kimliğe dönüştü.',
+  'Olanları kabullenmek kolay olmadı; ama o, kabullenmekten fazlasını yaptı.',
+  'Bu yıllar onu kırmadı; tam tersine, yeniden inşa etti.',
+  'Asıl hikâye, gözle görülenin değil, içeride olup bitenin hikâyesiydi.'
+];
+// 2. paragraf gövdesi — kim olduğu / nasıl geliştiği (evrensel).
+var SGEN_DEV = [
+  'Her zorluk, onun iradesine bir tuğla daha ekledi.',
+  'Güvenini kazanmak giderek zorlaştı, kaybetmekse bir o kadar kolay.',
+  'Artık dünyaya daha temkinli ama daha kararlı bakıyordu.',
+  'İçindeki o ses, "durma, devam et" demeyi hiç bırakmadı.',
+  'Yumuşak kalbini sert bir kabuğun ardına sakladı.',
+  'Ne istediğini bilen biri olmak ona pahalıya mal oldu, ama vazgeçmedi.',
+  'Kaybettikleri, ona kazanmanın gerçek değerini öğretti.',
+  'O günden sonra kolay kolay kimseye sırtını dönmedi.',
+  'İnsanları tartmayı, niyetleri okumayı erkenden öğrendi.',
+  'Korkularıyla yüzleşmek onu korkusuz yapmadı; cesur yaptı.',
+  'Her düşüşten biraz daha bilenmiş biçimde kalktı.',
+  'Hayatın ona öğrettiği en büyük ders sabırdı — ve onu iyi öğrendi.',
+  'Gücün gürültüde değil, sessiz kararlılıkta olduğunu kavradı.',
+  'Bu deneyim onu hem daha güçlü hem de biraz daha yalnız yaptı.',
+  'Zamanla, başkalarının çekindiği şeylere o gülüp geçer oldu.',
+  'İçindeki ateşi söndürmek yerine onu kontrol etmeyi öğrendi.',
+  'Bir kez sarsılan güveni, onda bir daha asla eskisi gibi onarılmadı.',
+  'Kendi kurallarını koymaya ve o kurallara sadık kalmaya başladı.',
+  'Geçmişini bir yük değil, bir zırh gibi taşımayı seçti.',
+  'Artık ne istediğini biliyor, istediğini almaya da niyetliydi.'
+];
+// 1. paragrafı kapatan nötr cümleler.
+var SGEN_SCENE_CLOSE = [
+  'İşte o günler, böyle bir telaş içinde gelip geçti.',
+  'Ve o dönem, sessizce tarihe karıştı.',
+  'Günler birbirini kovaladı; o da kendini akışına bıraktı.',
+  'O sayfa böylece yazıldı ve usulca kapandı.',
+  'Zaman akıp gitti, ama bıraktığı izler kaldı.',
+  'Böylece o bölüm de geride bırakıldı.',
+  'Ve hayat, her zamanki gibi, akmaya devam etti.',
+  'O günlerin defteri işte böyle doldu.',
+  'Derken o dönem de yavaşça sona erdi.',
+  'Bir devir kapandı, hemen ardından bir yenisi aralandı.',
+  'O günler artık yalnızca bir hatıra — ama silinmez bir hatıra.',
+  'Ve zaman, bir sonraki sınava doğru onu usulca itti.'
+];
+// "Günümüz" girişleri (bugünü çerçeveler).
+var SGEN_GUNUMUZ_INTRO = [
+  'Bugüne gelindiğinde, {name} artık eskisinden çok daha farklı biri.',
+  'Ve işte bugün, geçmişin tüm o yollarından sonra, {name} tam buradadır.',
+  'Şimdi, aradan geçen onca zamanın ardından, {first} adını şehir iyi biliyor.',
+  'Bütün o yaşananlar, bugünkü {name} tablosunu ortaya çıkardı.',
+  'Geçmiş geride kaldı; bugünse {first} sahnenin tam ortasında duruyor.'
+];
 
-// Bir bölümü zengin bir paragrafa dönüştür: açılış + örülmüş parçalar + köprü + kapanış.
+// Bir bölümü İKİ dolgun paragrafa dönüştür: (1) o dönemde olanlar, (2) anlamı ve karakter gelişimi.
 function _sgPara(secKey, full, first, frags, rng, used) {
   frags = (frags || []).filter(function (f) { return f && f.trim(); });
   if (!frags.length) return '';
   used = used || [];
-  var out = [];
-  if (SGEN_OPENERS[secKey]) out.push(_sgSub(_sgPick(SGEN_OPENERS[secKey], rng), full, first));
-  // ilk parça
-  out.push(_sgDot(_sgCap(frags[0].trim())));
-  // tek parçalıysa araya bir düşünce cümlesi koy (paragraf dolgun olsun)
-  if (frags.length === 1) {
-    out.push(_sgPickU(SGEN_REFLECT, rng, used));
+  // ── Paragraf 1: olaylar ──
+  var p1 = [];
+  if (SGEN_OPENERS[secKey]) p1.push(_sgSub(_sgPick(SGEN_OPENERS[secKey], rng), full, first));
+  p1.push(_sgDot(_sgCap(frags[0].trim())));
+  p1.push(_sgPickU(SGEN_ELAB, rng, used));
+  if (frags.length >= 2) {
+    for (var i = 1; i < frags.length; i++) p1.push(_sgDot(_sgPick(SGEN_CONN, rng) + frags[i].trim()));
   } else {
-    // ikinci ve sonraki parçalar bağlayıcılarla
-    for (var i = 1; i < frags.length; i++) {
-      var conn = _sgPick(SGEN_CONN, rng);
-      out.push(_sgDot(conn + frags[i].trim()));
-      // çok parça varsa arada bir düşünce cümlesi
-      if (i === 1 && frags.length >= 2 && rng() < 0.6) out.push(_sgPickU(SGEN_REFLECT, rng, used));
-    }
+    p1.push(_sgPickU(SGEN_ELAB, rng, used));
   }
-  if (SGEN_CLOSERS[secKey]) out.push(_sgSub(_sgPick(SGEN_CLOSERS[secKey], rng), full, first));
-  return out.join(' ');
+  p1.push(_sgPickU(SGEN_SCENE_CLOSE, rng, used));
+  // ── Paragraf 2: anlam + gelişim ──
+  var p2 = [];
+  p2.push(_sgPickU(SGEN_DEV_OPEN, rng, used));
+  p2.push(_sgPickU(SGEN_DEV, rng, used));
+  p2.push(_sgPickU(SGEN_DEV, rng, used));
+  if (SGEN_CLOSERS[secKey]) p2.push(_sgSub(_sgPick(SGEN_CLOSERS[secKey], rng), full, first));
+  return p1.join(' ') + '\n\n' + p2.join(' ');
 }
 
-// "Günümüz" bölümü — baskın istatistik + isim üzerinden zengin biçimde sentezlenir (çelişki üretmez).
-function _sgGunumuz(full, first, stats, rng) {
+// "Günümüz" bölümü — İKİ paragraf: (1) bugünkü durum, (2) anlamı ve kapanış.
+function _sgGunumuz(full, first, stats, rng, used) {
+  used = used || [];
   var axes = [
-    { k: 'leader', hi: 'Bugün {name}, etrafına insan toplayan, sözü dinlenen bir figür hâline geldi', lo: 'Bugün {name}, kimsenin gölgesine sığmayan, kendi yolunda yürüyen bir yalnız' },
+    { k: 'leader', hi: '{name}, etrafına insan toplayan, sözü dinlenen bir figür hâline geldi', lo: '{name}, kimsenin gölgesine sığmayan, kendi yolunda yürüyen bir yalnız' },
     { k: 'crime', hi: 'şehrin karanlık işlerinde adı sıkça anılıyor', lo: 'tüm baskıya rağmen elini temiz tutmayı başardı' },
     { k: 'chaos', hi: 'nereye gitse ardında bir fırtına bırakıyor', lo: 'gürültüden uzak, sakin sularda yüzmeyi seçiyor' },
     { k: 'smart', hi: 'her hamlesini önceden hesaplayan keskin zekâsıyla tanınıyor', lo: 'kararlarını kitaplardan değil, sokağın öğrettiği içgüdüyle veriyor' },
@@ -187,13 +272,15 @@ function _sgGunumuz(full, first, stats, rng) {
   var lead = _sgSub(stats.leader >= 50 ? axes[0].hi : axes[0].lo, full, first);
   var rest = axes.slice(1).map(function (a) { return { txt: stats[a.k] >= 50 ? a.hi : a.lo, dist: Math.abs(stats[a.k] - 50) }; })
                  .sort(function (a, b) { return b.dist - a.dist; });
-  var body = lead + '. ' + _sgCap(rest[0].txt) + '; ' + rest[1].txt + '. ' + _sgCap(rest[2].txt) + '.';
+  var intro = _sgSub(_sgPick(SGEN_GUNUMUZ_INTRO, rng), full, first);
+  var p1 = intro + ' ' + _sgCap(lead) + '. ' + _sgCap(rest[0].txt) + '; ' + rest[1].txt + '. ' + _sgCap(rest[2].txt) + '.';
   var close;
   if (stats.crime >= 62 || stats.chaos >= 68) close = 'Şehir onun adını duyduğunda bir adım geri çekiliyor — çünkü ' + first + ' adındaki bu insanın nereye kadar gideceğini kimse kestiremiyor.';
   else if (stats.trust >= 62) close = 'Bugün ona güvenenlerin sayısı, karşısında durmaya cesaret edenlerden çok daha fazla.';
   else if (stats.leader >= 62) close = 'Artık birçok kapı ona kendiliğinden aralanıyor; gerisini de zamanla açmaya kararlı.';
   else close = 'Hikâyesi henüz tamamlanmadı; bugünü, yarını için attığı sessiz bir basamak olarak görüyor.';
-  return body + ' ' + close;
+  var p2 = _sgPickU(SGEN_DEV_OPEN, rng, used) + ' ' + _sgPickU(SGEN_DEV, rng, used) + ' ' + close;
+  return p1 + '\n\n' + p2;
 }
 
 // Özet — istatistik profilinden, ismi içine örerek kısa bir tanım
@@ -243,7 +330,7 @@ function SGEN_build(name, surname, answers) {
   ['cocukluk', 'genclik', 'donum', 'kariyer', 'sosyal', 'kisilik', 'gelecek'].forEach(function (sec) {
     if (fragsBy[sec] && fragsBy[sec].length) sections[sec] = _sgPara(sec, full, first, fragsBy[sec], rng, usedReflect);
   });
-  sections.gunumuz = _sgGunumuz(full, first, stats, rng);
+  sections.gunumuz = _sgGunumuz(full, first, stats, rng, usedReflect);
   var summary = _sgSummary(full, first, stats);
   return { name: full, summary: summary, sections: sections, stats: stats };
 }
@@ -452,9 +539,12 @@ function SGEN_resultHTML(story, headerLabel, buttonsHtml) {
     _sgStatBar('Zekâ', '🧠', st.smart, '#60a5fa') +
     _sgStatBar('Kaos Seviyesi', '🔥', st.chaos, '#c4b5fd');
   var sectionsHtml = SGEN_SECTION_ORDER.filter(function(sec) { return story.sections[sec]; }).map(function(sec) {
-    return '<div style="margin-bottom:18px">' +
-      '<h3 class="fd" style="font-size:19px;color:#c4b5fd;margin-bottom:7px;display:flex;align-items:center;gap:8px"><span style="width:6px;height:20px;background:#a78bfa;border-radius:3px;display:inline-block"></span>' + SGEN_SECTION_TITLES[sec] + '</h3>' +
-      '<p style="font-size:15.5px;color:#cfcdd6;line-height:1.8;margin:0">' + esc(story.sections[sec]) + '</p>' +
+    var paras = String(story.sections[sec]).split('\n\n').map(function(par) {
+      return '<p style="font-size:15.5px;color:#cfcdd6;line-height:1.85;margin:0 0 13px 0">' + esc(par) + '</p>';
+    }).join('');
+    return '<div style="margin-bottom:20px">' +
+      '<h3 class="fd" style="font-size:19px;color:#c4b5fd;margin-bottom:9px;display:flex;align-items:center;gap:8px"><span style="width:6px;height:20px;background:#a78bfa;border-radius:3px;display:inline-block"></span>' + SGEN_SECTION_TITLES[sec] + '</h3>' +
+      paras +
     '</div>';
   }).join('');
   return '<div style="flex:1;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto">' +
@@ -560,8 +650,8 @@ function storygenSoloStart() {
         '<h3 class="fd" style="font-size:28px;margin-bottom:8px">Kendi RP Karakterini Yarat</h3>' +
         '<p style="font-size:16px;color:var(--t2);line-height:1.6;margin-bottom:24px">Bir ad-soyad gir, <b>10 soruyu</b> sen cevapla; sistem sana <b>tamamen özgün</b> bir roleplay karakter hikâyesi + suç, güven, liderlik, zekâ ve kaos istatistikleri üretsin. 100+ soruluk havuzdan her seferinde farklı!</p>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;text-align:left;margin-bottom:20px">' +
-          '<div class="form-group"><label class="lbl" style="font-size:18px;margin-bottom:8px">👤 Karakter Adı</label><input class="inp" style="font-size:20px;padding:16px;border-radius:14px" id="sgsolo-name" placeholder="Örn: Burak" maxlength="24"></div>' +
-          '<div class="form-group"><label class="lbl" style="font-size:18px;margin-bottom:8px">👥 Karakter Soyadı</label><input class="inp" style="font-size:20px;padding:16px;border-radius:14px" id="sgsolo-surname" placeholder="Örn: Erol" maxlength="24"></div>' +
+          '<div class="form-group"><label class="lbl" style="font-size:18px;margin-bottom:8px">👤 Karakter Adı</label><input class="inp" style="font-size:20px;padding:16px;border-radius:14px" id="sgsolo-name" placeholder="Alfonzo" maxlength="24"></div>' +
+          '<div class="form-group"><label class="lbl" style="font-size:18px;margin-bottom:8px">👥 Karakter Soyadı</label><input class="inp" style="font-size:20px;padding:16px;border-radius:14px" id="sgsolo-surname" placeholder="Williams" maxlength="24"></div>' +
         '</div>' +
         '<button class="btn bp" style="width:100%;font-size:22px;padding:18px;border-radius:14px;background:linear-gradient(135deg,#a78bfa,#8b5cf6);border:none" onclick="_sgSoloBegin()">🚀 Başla</button>' +
       '</div>' +
