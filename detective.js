@@ -70,9 +70,9 @@ function renderDetDifficulty(counts, stats) {
   _detEnsureStyle();
   var ag = document.getElementById('ag');
   var diffs = [
-    { k: 'easy', name: 'KOLAY', col: '#3cdd8c', icon: '\ud83d\udfe2', desc: '3 şüpheli \u00b7 4 kanıt', sub: 'Yeni başlayan dedektifler için' },
-    { k: 'medium', name: 'ORTA', col: '#ffb95f', icon: '\ud83d\udfe1', desc: '5 şüpheli \u00b7 8 kanıt', sub: 'Dikkat ve eleme gerektirir' },
-    { k: 'hard', name: 'ZOR', col: '#ff6a63', icon: '\ud83d\udd34', desc: '8 şüpheli \u00b7 12 kanıt', sub: 'Gerçek dedektiflere göre' }
+    { k: 'easy', name: 'KOLAY', col: '#3cdd8c', icon: '\ud83d\udfe2', desc: '3 şüpheli \u00b7 4 kanıt \u00b7 3 hak', sub: 'Kanıtları birleştirmeden çözülmez' },
+    { k: 'medium', name: 'ORTA', col: '#ffb95f', icon: '\ud83d\udfe1', desc: '5 şüpheli \u00b7 8 kanıt \u00b7 2 hak', sub: 'Kısmi mazeretler, güçlü tuzaklar' },
+    { k: 'hard', name: 'ZOR', col: '#ff6a63', icon: '\ud83d\udd34', desc: '8 şüpheli \u00b7 12+ kanıt \u00b7 TEK HAK', sub: 'Hiçbir kanıt suçluyu söylemez' }
   ];
   var cards = diffs.map(function(d) {
     var n = counts[d.k] || 0;
@@ -93,7 +93,7 @@ function renderDetDifficulty(counts, stats) {
       '<div style="text-align:center;margin-bottom:10px">' +
         '<div style="font-size:54px;line-height:1">\ud83d\udd75\ufe0f</div>' +
         '<h2 class="fd" style="font-size:clamp(34px,5vw,52px);letter-spacing:1px;color:#f0e6cf">DEDEKTİF DOSYASI</h2>' +
-        '<p style="color:#bdb6a6;font-size:16px;max-width:580px;margin:6px auto 0">Bir zorluk seç; sana rastgele bir vaka açılır. Kanıtları incele, şüphelileri sorgula, mantığını kullan ve <b style="color:#caa46a">gerçek suçluyu</b> bul. İlk denemede bulursan en yüksek puanı kaparsın!</p>' +
+        '<p style="color:#bdb6a6;font-size:16px;max-width:580px;margin:6px auto 0">Bir zorluk seç; sana rastgele bir vaka açılır. Bu dosyalarda <b style="color:#ff8a80">hiçbir kanıt suçluyu doğrudan söylemez</b>: saatleri karşılaştır, mazeretleri çapraz kontrol et, tuzaklara dikkat et ve <b style="color:#caa46a">gerçek suçluyu</b> mantığınla bul. Zorluk arttıkça suçlama hakkın azalır!</p>' +
         ((typeof curUser !== 'undefined' && curUser) ? '<p class="det-mono" style="font-size:13px;color:#7a7568;margin-top:8px">Çözülen vaka: <b style="color:#3cdd8c">' + stats.solved + '</b> \u00b7 Kusursuz: <b style="color:#caa46a">' + stats.perfect + '</b></p>' : '<p style="font-size:13px;color:#7a7568;margin-top:8px">İlerlemenin kaydedilmesi için giriş yapmalısın.</p>') +
       '</div>' +
       '<div style="width:90px;height:4px;background:linear-gradient(90deg,#caa46a,#ff544d);margin:14px auto 22px;border-radius:2px"></div>' +
@@ -161,7 +161,7 @@ function renderDetList(cases, stats) {
       '<div style="text-align:center;margin-bottom:10px">' +
         '<div style="font-size:54px;line-height:1">\ud83d\udd75\ufe0f</div>' +
         '<h2 class="fd" style="font-size:clamp(34px,5vw,52px);letter-spacing:1px;color:#f0e6cf">DEDEKTİF DOSYASI</h2>' +
-        '<p style="color:#bdb6a6;font-size:16px;max-width:560px;margin:6px auto 0">Kanıtları incele, şüphelileri sorgula, mantığını kullan ve <b style="color:#caa46a">gerçek suçluyu</b> bul. İlk denemede bulursan en yüksek puanı kaparsın!</p>' +
+        '<p style="color:#bdb6a6;font-size:16px;max-width:560px;margin:6px auto 0">Hiçbir kanıt suçluyu doğrudan söylemez: saatleri karşılaştır, mazeretleri çapraz kontrol et ve <b style="color:#caa46a">gerçek suçluyu</b> mantığınla bul.</p>' +
         ((typeof curUser !== 'undefined' && curUser) ? '<p class="det-mono" style="font-size:13px;color:#7a7568;margin-top:8px">Çözülen vaka: <b style="color:#3cdd8c">' + stats.solved + '</b> \u00b7 Kusursuz: <b style="color:#caa46a">' + stats.perfect + '</b></p>' : '') +
       '</div>' +
       '<div style="width:90px;height:4px;background:linear-gradient(90deg,#caa46a,#ff544d);margin:14px auto 22px;border-radius:2px"></div>' +
@@ -242,8 +242,9 @@ function renderDetCase() {
   var no = 'DOSYA #' + String(c.id).padStart(3, '0');
   var used = s.progress.attempts || 0;
   var done = s.progress.done;
+  var maxA = s.progress.max_attempts || (c.difficulty === 'hard' ? 1 : (c.difficulty === 'medium' ? 2 : 3));
   var dots = '';
-  for (var i = 0; i < 3; i++) dots += '<span style="width:14px;height:14px;border-radius:50%;display:inline-block;margin:0 3px;background:' + (i < used ? '#ff544d' : 'transparent') + ';border:2px solid ' + (i < used ? '#ff544d' : '#5a5040') + '"></span>';
+  for (var i = 0; i < maxA; i++) dots += '<span style="width:14px;height:14px;border-radius:50%;display:inline-block;margin:0 3px;background:' + (i < used ? '#ff544d' : 'transparent') + ';border:2px solid ' + (i < used ? '#ff544d' : '#5a5040') + '"></span>';
 
   var body = s.tab === 'suspects' ? _detSuspectsHtml() : (s.tab === 'evidence' ? _detEvidenceHtml() : _detNotesHtml());
 
@@ -272,7 +273,7 @@ function renderDetCase() {
         '<div class="det-mono" style="font-size:13px;color:#ffb95f;border-top:1px dashed #3a3024;padding-top:10px">DURUM: ' + esc(c.status_text || 'Soruşturma sürüyor.') + '</div>' +
       '</div>' +
       // hak göstergesi
-      (done ? '' : '<div style="text-align:center;margin-bottom:14px"><span style="font-size:13px;color:#9a969e">Suçlama hakkın: </span>' + dots + ' <span style="font-size:12px;color:#7a7568">(' + (3 - used) + ' hak kaldı)</span></div>') +
+      (done ? '' : '<div style="text-align:center;margin-bottom:14px"><span style="font-size:13px;color:#9a969e">Suçlama hakkın: </span>' + dots + ' <span style="font-size:12px;color:' + ((maxA - used) <= 1 ? '#ff8a80' : '#7a7568') + '">(' + (maxA - used) + ' hak ' + ((maxA - used) <= 1 ? '\u2014 emin olmadan suçlama!' : 'kaldı') + ')</span></div>') +
       // sekmeler
       '<div style="display:flex;gap:4px;border-bottom:1px solid #3a3024;margin-bottom:18px;flex-wrap:wrap">' +
         '<div class="det-tab ' + (s.tab === 'suspects' ? 'on' : '') + '" onclick="detTab(\'suspects\')">\ud83d\udd75\ufe0f ŞÜPHELİLER (' + c.suspects.length + ')</div>' +
@@ -295,7 +296,9 @@ function detPick() {
       '<span style="margin-left:auto;font-size:22px;color:#ff544d">\u261b</span>' +
     '</button>';
   }).join('');
-  _detModal('<div style="text-align:center;margin-bottom:16px"><div style="font-size:40px">\u2696\ufe0f</div><h3 class="fd" style="font-size:26px;color:#f0e6cf">Suçluyu Seç</h3><p style="font-size:14px;color:#bdb6a6">Kararını ver. Doğru tahmin yüksek puan, yanlış tahmin -10 puandır.</p></div>' +
+  var maxA = (detState.progress && detState.progress.max_attempts) || (detState.case.difficulty === 'hard' ? 1 : (detState.case.difficulty === 'medium' ? 2 : 3));
+  var pickWarn = maxA === 1 ? '<b style="color:#ff8a80">Bu vakada TEK suçlama hakkın var \u2014 yanlışsa dosya kapanır!</b>' : 'Kararını ver. Doğru tahmin yüksek puan, yanlış tahmin -10 puandır.';
+  _detModal('<div style="text-align:center;margin-bottom:16px"><div style="font-size:40px">\u2696\ufe0f</div><h3 class="fd" style="font-size:26px;color:#f0e6cf">Suçluyu Seç</h3><p style="font-size:14px;color:#bdb6a6">' + pickWarn + '</p></div>' +
     cards + '<button class="btn bg" style="width:100%;padding:12px;margin-top:6px" onclick="detCloseModal()">Vazgeç</button>');
 }
 
@@ -308,7 +311,7 @@ function detConfirm(suspectId) {
     '<div style="margin:14px auto;display:flex;flex-direction:column;align-items:center;gap:8px">' + _detImg(su.img, 90) +
       '<div class="fd" style="font-size:22px;color:#ff8a80">' + esc(su.name) + '</div>' +
       '<div style="font-size:13px;color:#caa46a">' + esc(su.profession || '') + '</div></div>' +
-    '<p style="font-size:14px;color:#bdb6a6;margin-bottom:18px">Bu kişiyi suçluyorsun. Karar kesindir.</p>' +
+    '<p style="font-size:14px;color:#bdb6a6;margin-bottom:18px">Bu kişiyi suçluyorsun. Karar kesindir.' + (((detState.progress && detState.progress.max_attempts) || (detState.case.difficulty === 'hard' ? 1 : 3)) - (detState.progress.attempts || 0) <= 1 ? ' <b style="color:#ff8a80">Son hakkın \u2014 yanlışsa dosya kapanır!</b>' : '') + '</p>' +
     '<div style="display:flex;gap:10px">' +
       '<button class="btn bg" style="flex:1;padding:14px" onclick="detPick()">\u2190 Geri</button>' +
       '<button class="btn bp" style="flex:1;padding:14px;background:linear-gradient(135deg,#ff544d,#d63a33);border:none" onclick="detSubmitGuess(' + suspectId + ')">Suçla \ud83d\udd28</button>' +
