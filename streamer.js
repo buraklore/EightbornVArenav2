@@ -70,13 +70,14 @@ function streamStart() {
     '<div class="gc-new" onclick="streamSetup(\'CFATE\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.FATE||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'\ud83c\udfb2\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('CFATE','Kaderini Se\u00e7') +'</h3><p>'+ _sd('CFATE','Kaderi chat belirler!') +'</p><div class="diff" style="background:rgba(255,84,77,.08);color:#ffb4ac">\u0130NTERAKT\u0130F</div></div>' +
     '<div class="gc-new" onclick="streamSetup(\'CRPSIM\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.RPSIM||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'🎮\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('CRPSIM','RP Simülasyonu') +'</h3><p>'+ _sd('CRPSIM','Şehrin kaderini chat seçer!') +'</p><div class="diff" style="background:rgba(167,139,250,.12);color:#c4b5fd">İNTERAKTİF</div></div>' +
     '<div class="gc-new" onclick="streamSetup(\'CDETECTIVE\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.DETECTIVE||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'\ud83d\udd75\ufe0f\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('CDETECTIVE','Dedektif Dosyası') +'</h3><p>'+ _sd('CDETECTIVE','Suçluyu chat ile bul!') +'</p><div class="diff" style="background:rgba(202,164,106,.12);color:#caa46a">İNTERAKTİF</div></div>' +
+    '<div class="gc-new" onclick="streamSetup(\'CSTORY\')"><div class="gc-i" style="background:#1f1f28"><img src="'+(_gameImgs.STORYGEN||_gameImgs.STORY||'')+'" style="width:100%;height:100%;object-fit:cover;opacity:0.7" onerror="this.parentElement.innerHTML=\'\ud83d\udcd6\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,#1f1f28,transparent)"></div></div><h3>'+ _sn('CSTORY','Karakter Hikayesi') +'</h3><p>'+ _sd('CSTORY','Chat bir RP karakteri yaratır!') +'</p><div class="diff" style="background:rgba(167,139,250,.12);color:#c4b5fd">İNTERAKTİF</div></div>' +
     '</div></div>';
 }
 
 function streamSetup(mode) {
   var ag = document.getElementById('ag');
   var isStory = mode === 'STORY';
-  var modeNames = {QUOTE:'Replik Bil',FACE:'Yüzden Bil',MEMORY:'Eightborn Moruq',CDIE:'Kim Hayatta Kalacak',CTEAM:'Ekibini Kur',CFATE:'Kaderini Seç',CRPSIM:'🎮 RP Simülasyonu',CDETECTIVE:'🕵️ Dedektif Dosyası',DUEL:'Düello Oluştur'};
+  var modeNames = {QUOTE:'Replik Bil',FACE:'Yüzden Bil',MEMORY:'Eightborn Moruq',CDIE:'Kim Hayatta Kalacak',CTEAM:'Ekibini Kur',CFATE:'Kaderini Seç',CRPSIM:'🎮 RP Simülasyonu',CDETECTIVE:'🕵️ Dedektif Dosyası',CSTORY:'📖 Karakter Hikayesi',DUEL:'Düello Oluştur'};
   if(window._pushUrl) window._pushUrl('streamer-setup');
   
   // Calculate max counts for dynamic options
@@ -125,7 +126,13 @@ function streamSetup(mode) {
   } else if (mode === 'CDETECTIVE') {
     extraField = '<div class="form-group" style="margin-bottom:20px"><label class="lbl" style="font-size:20px;margin-bottom:10px">🔍 Zorluk Seviyesi</label><select class="inp" style="font-size:22px;padding:20px;border-radius:16px" id="det-stream-diff"><option value="easy">🟢 Kolay — 3 şüpheli · 2 hak</option><option value="medium" selected>🟡 Orta — 5 şüpheli · 2 hak</option><option value="hard">🔴 Zor — 8 şüpheli · TEK HAK</option></select></div>' +
       '<p style="font-size:15px;color:var(--t3);margin-bottom:8px;text-align:center">Rastgele bir vaka açılır. <b style="color:#ff8a80">Hiçbir kanıt suçluyu doğrudan söylemez</b> — chat kanıtları çapraz kontrol edip <b style="color:#caa46a">şüpheli harfini (A / B / C…)</b> yazarak oy verir. Süre yok — düşünmek serbest! Oylar geldikçe <b style="color:#caa46a">suçluyu sen seçersin</b>, sonra gerçek suçlu açıklanır. Zor modda TEK suçlama hakkı vardır!</p>';
-  } else if (mode === 'DUEL') {
+  } else if (mode === 'CSTORY') {
+    extraField = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:18px">' +
+        '<div class="form-group"><label class="lbl" style="font-size:20px;margin-bottom:10px">👤 Karakter Adı</label><input class="inp" style="font-size:22px;padding:20px;border-radius:16px" id="cstory-name" placeholder="Örn: Burak" maxlength="24"></div>' +
+        '<div class="form-group"><label class="lbl" style="font-size:20px;margin-bottom:10px">👥 Karakter Soyadı</label><input class="inp" style="font-size:22px;padding:20px;border-radius:16px" id="cstory-surname" placeholder="Örn: Erol" maxlength="24"></div>' +
+      '</div>' +
+      '<div class="form-group" style="margin-bottom:18px"><label class="lbl" style="font-size:20px;margin-bottom:10px">⏱️ Oy Süresi</label><select class="inp" style="font-size:22px;padding:20px;border-radius:16px" id="cstory-secs"><option value="30">30 saniye</option><option value="45">45 saniye</option><option value="60" selected>60 saniye</option><option value="90">90 saniye</option><option value="0">Manuel — süresiz (yayıncı seçer)</option></select></div>' +
+      '<p style="font-size:15px;color:var(--t3);margin-bottom:8px;text-align:center">Sistem <b style="color:#c4b5fd">10 soru</b> sorar; yayıncı cevaplamaz, <b style="color:#c4b5fd">chat 1 / 2 / 3 / 4 yazarak</b> oy verir. Süre bitince en çok oy alan seçenek otomatik seçilir — yayıncı dilediği an seçeneğe tıklayıp geçebilir ya da oylamayı duraklatabilir. 10 soru sonunda <b style="color:#c4b5fd">tamamen özgün bir RP karakter hikâyesi</b> + suç/güven/liderlik/zekâ/kaos istatistikleri üretilir. 100+ soruluk havuzdan her oyun farklı!</p>';
     var charListHtml = '';
     var activeChars = chars.filter(function(c){ return c.a; });
     activeChars.forEach(function(c, i) {
@@ -648,6 +655,36 @@ async function streamConnect() {
     renderCDetCase();
     return;
   }
+  if (mode === 'CSTORY') {
+    if (typeof SGEN_makePlan !== 'function') { toast('Karakter Hikayesi modülü yüklenemedi.', false); return; }
+    var sgName = ((document.getElementById('cstory-name')||{}).value || '').trim();
+    var sgSurname = ((document.getElementById('cstory-surname')||{}).value || '').trim();
+    if (!sgName) { toast('Karakter adı gerekli!', false); return; }
+    if (sgName.length > 24) sgName = sgName.slice(0, 24);
+    if (sgSurname.length > 24) sgSurname = sgSurname.slice(0, 24);
+    var sgSecs = parseInt(((document.getElementById('cstory-secs')||{}).value), 10);
+    if (isNaN(sgSecs)) sgSecs = 60;
+    var sgPool = await apiGet('/storygen/pool');
+    if (!sgPool || sgPool.error || !sgPool.questions || sgPool.questions.length < 4) { toast((sgPool && sgPool.error) || 'Soru havuzu yüklenemedi.', false); return; }
+    var sgPlan = SGEN_makePlan(sgPool);
+    if (!sgPlan.length) { toast('Soru planı oluşturulamadı.', false); return; }
+    streamState = {
+      platform: platform, channelId: channelId, mode: 'CSTORY', active: true,
+      phase: 'VOTING', votes: {}, voters: {}, voteTimer: null, chatMessages: [],
+      sg: { firstName: sgName, lastName: sgSurname, name: (sgName + ' ' + sgSurname).trim(), pool: sgPool, plan: sgPlan, idx: 0, answers: [], voteSeconds: sgSecs, story: null }
+    };
+    if (platform === 'youtube') {
+      var initSgRes = await apiPost('/stream/youtube-init', { videoId: channelId });
+      if (initSgRes.error) { toast('YouTube bağlantı hatası: ' + initSgRes.error, false); return; }
+      streamState.liveChatId = initSgRes.liveChatId;
+      startChatPolling();
+    } else {
+      startKickChat(channelId);
+    }
+    if(window._pushUrl) window._pushUrl('streamer-live'); showPauseButton();
+    nextCStoryRound();
+    return;
+  }
   if (questions.length === 0) { toast('Yeterli soru yok!', false); return; }
   
   streamState = {
@@ -822,6 +859,7 @@ function processStreamMessage(author, text) {
   if (streamState.mode === 'STORY') { processStoryChatMessage(author, text); return; }
   if (streamState.mode === 'CRPSIM') { processChatVote(author, text); return; }
   if (streamState.mode === 'CDETECTIVE') { processChatVote(author, text); return; }
+  if (streamState.mode === 'CSTORY') { processChatVote(author, text); return; }
   if (streamState.mode === 'CDIE' || streamState.mode === 'CTEAM' || streamState.mode === 'CFATE' || streamState.mode === 'DUEL') { processChatVote(author, text); return; }
   if (streamState.roundWinner) return;
   
@@ -1290,8 +1328,18 @@ function processChatVote(author, text) {
       voteDisplay = ck;
       updateCRpsimVoteBar();
     }
+  } else if (s.mode === 'CSTORY') {
+    var nOpt = (s.sg && s.sg.plan && s.sg.plan[s.sg.idx] && s.sg.plan[s.sg.idx].opts) ? s.sg.plan[s.sg.idx].opts.length : 0;
+    var snum = parseInt(rawText, 10);
+    if (snum >= 1 && snum <= nOpt) {
+      var sgk = String(snum);
+      s.voters[author] = sgk;
+      s.votes[sgk] = (s.votes[sgk] || 0) + 1;
+      isValidVote = true;
+      voteDisplay = sgk;
+      updateCStoryVoteBar();
+    }
   } else if (s.mode === 'CDETECTIVE') {
-    var sus = (s.det && s.det.case && s.det.case.suspects) ? s.det.case.suspects : [];
     var nS = sus.length;
     var letter = null;
     if (upperText.length === 1 && nS > 0 && upperText >= 'A' && upperText <= String.fromCharCode(64 + nS)) letter = upperText;
