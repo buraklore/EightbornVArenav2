@@ -19,88 +19,212 @@ var SGEN_SECTION_TITLES = {
 };
 var SGEN_SECTION_ORDER = ['cocukluk', 'genclik', 'donum', 'kariyer', 'sosyal', 'kisilik', 'gunumuz', 'gelecek'];
 
-function _sgCap(s) { s = (s || '').trim(); if (!s) return ''; return s.charAt(0).toLocaleUpperCase('tr-TR') + s.slice(1); }
+function _sgCap(s) {
+  s = (s || '').trim(); if (!s) return '';
+  for (var i = 0; i < s.length; i++) { if (/[a-zA-ZçğıiöşüÇĞİÖŞÜ]/.test(s[i])) return s.slice(0, i) + s[i].toLocaleUpperCase('tr-TR') + s.slice(i + 1); }
+  return s;
+}
+// Bir bankadan, aynı hikâyede tekrar etmeyecek biçimde seçer (banka tükenirse sıfırlar).
+function _sgPickU(arr, rng, used) {
+  var avail = arr.filter(function (x) { return used.indexOf(x) < 0; });
+  if (!avail.length) { avail = arr; }
+  var pick = avail[Math.floor(rng() * avail.length)] || avail[0];
+  used.push(pick);
+  return pick;
+}
 function _sgClamp(n, lo, hi) { return Math.max(lo, Math.min(hi, Math.round(n))); }
 
-// Bir bölümün metnini, o kategorinin parçalarından kronolojik ve akıcı biçimde kur.
-function _sgSection(name, frags) {
-  frags = (frags || []).filter(function(f) { return f && f.trim(); });
+// ───────────────────────── HİKÂYE MOTORU (zengin anlatı) ─────────────────────────
+// Tohumlanmış rastgelelik: aynı karakter + aynı cevaplar => aynı hikâye, farklı seçimler => farklı hikâye.
+function _sgRng(seedStr) {
+  var h = 2166136261 >>> 0;
+  for (var i = 0; i < seedStr.length; i++) { h ^= seedStr.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return function () { h += 0x6D2B79F5; var t = h; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+function _sgPick(arr, rng) { return arr[Math.floor(rng() * arr.length)] || arr[0]; }
+function _sgDot(s) { s = (s || '').trim(); if (!s) return ''; return /[.!?…]$/.test(s) ? s : s + '.'; }
+function _sgSub(t, full, first) { return t.split('{name}').join(full).split('{first}').join(first); }
+
+// Bölüm açılışları — sahneyi kurar, ismi (ek almadan) doğal biçimde içine örer.
+var SGEN_OPENERS = {
+  cocukluk: [
+    'Her hikâyenin bir başlangıcı vardır; {name} için o başlangıç çocuklukta yazıldı.',
+    '{name} adını sonradan herkese duyuracaktı, ama önce o da küçük bir çocuktu.',
+    'Bu hikâye {name} ile başlıyor — ve daha ilk yıllardan, onun sıradan biri olmayacağı seziliyordu.',
+    'Çocukluk çoğu insan için masumiyet demektir; {name} için ise bir okuldu.',
+    'Şehrin uğultusu daha o yıllarda {name} adındaki çocuğun kulağına dolmuştu.'
+  ],
+  genclik: [
+    'Çocukluk geride kaldı; sıra, ateşle imtihan edilen gençlik yıllarına gelmişti.',
+    'Yıllar geçti, {first} büyüdü — ve gençlik ona hayatın sert yüzünü gösterdi.',
+    'Gençlik herkes için bir dönüm noktasıdır; {first} için ise düpedüz bir sınavdı.',
+    'Bir çocuğun bittiği, bir gencin doğduğu o eşikte {name} kendini sokağın ortasında buldu.'
+  ],
+  donum: [
+    'Her hayatta bir an gelir, her şey değişir; {name} için o an çoktan kapıya dayanmıştı.',
+    'Ve sonra, hiçbir şeyin eskisi gibi olmayacağı o gün geldi.',
+    'Kaderin {name} için sakladığı kırılma, hiç beklenmedik bir anda yaşandı.',
+    'Hayat onu rahat bırakmadı; bir gün gelip her şeyi alt üst eden o olayı önüne koydu.'
+  ],
+  kariyer: [
+    'Hayat devam ediyordu ve {first} ekmeğini kazanmanın bir yolunu bulmak zorundaydı.',
+    'Geçmişin izleri silinmiyordu, ama gelecek kurulmalıydı — ve bu, işten başlardı.',
+    'Bu şehirde ayakta kalmak para isterdi; {name} da kendi yolunu çizmeye koyuldu.',
+    'Kimi miras bir servete konar, kimi her şeyi sıfırdan kurar; {first} ikincisiydi.'
+  ],
+  sosyal: [
+    'Hiç kimse bu şehirde tek başına ayakta kalamaz; {name} da dostlar ve düşmanlar edindi.',
+    'Bir insanı dostları kadar düşmanları da tanımlar — ve {first} bu konuda eli boş değildi.',
+    'Şehir kocaman bir satranç tahtasıysa, {name} de taşlarını dizmeye başlamıştı: yanında duranlar ve karşısında olanlar.',
+    'Yalnız yürüdüğünü sanırdı, ama yolu boyunca hem sadık dostlar hem amansız hasımlar topladı.'
+  ],
+  kisilik: [
+    'Peki tüm bu yaşananlar, {name} adında nasıl bir insan yaratmıştı?',
+    'Bir insanın gerçek yüzü en çok zorlandığı anda ortaya çıkar; {first} de defalarca sınandı.',
+    'Geçmiş onu yoğurmuştu; geriye nasıl bir karakter kaldığına yakından bakmak gerekiyordu.',
+    'Onu tanımak, attığı adımları değil, o adımları attıran şeyi anlamakla mümkündü.'
+  ],
+  gelecek: [
+    'Geçmiş yazılmıştı, bugün yaşanıyordu; geriye bir tek gelecek kalıyordu.',
+    'Peki {name} bütün bunların ardından neyin peşindeydi?',
+    'Her yolculuğun bir ufku vardır; {first} de gözlerini çoktan o ufka dikmişti.',
+    'Bugüne kadar olanlar bir yana — asıl soru, {name} adındaki bu insanın nereye gittiğiydi.'
+  ]
+};
+// Bölüm kapanışları — bir sonraki döneme köprü kurar, kişisel gelişimi vurgular.
+var SGEN_CLOSERS = {
+  cocukluk: [
+    'Çocukluğunda atılan bu tohumlar, ileride filizlenip onu bambaşka biri yapacaktı.',
+    'O ilk yıllar, içinde sönmeyecek bir kıvılcım bıraktı.',
+    'İşte bu küçük dünyada, {first} adındaki çocuk sessizce şekillenmeye başladı.',
+    'Henüz farkında değildi, ama bu yıllar geleceğinin temelini örüyordu.'
+  ],
+  genclik: [
+    'Gençliğin bu fırtınalı günleri, onu çelikleştirerek olacaklara hazırladı.',
+    'Artık o, çocukluğundaki kişi değildi; gençlik onu yeniden yoğurmuştu.',
+    'Bu yıllarda verdiği kararlar, ileride önüne çıkacak bütün yolları belirleyecekti.',
+    'Gençlik bittiğinde {first} artık ne istediğini biliyordu — ya da öyle sanıyordu.'
+  ],
+  donum: [
+    'O günden sonra {first}, sanki bambaşka biri olarak uyandı hayata.',
+    'Bu kırılma, onun içindeki bütün dengeleri yeniden kurdu.',
+    'Artık geriye dönüş yoktu; bu olay hikâyesini ikiye bölmüştü — öncesi ve sonrası.',
+    'O an, {name} adının altına çizilen kalın bir çizgi gibiydi.'
+  ],
+  kariyer: [
+    'İşte bu yol, onun şehirdeki yerini yavaş yavaş belirledi.',
+    'Kariyeri, karakterinin bir aynası oldu: nasıl biriyse öyle çalıştı.',
+    'Bu seçimler, {name} adını şehrin belli çevrelerinde duyurmaya başladı.',
+    'Çalışma biçimi, onun hem ekmeği hem imzası hâline geldi.'
+  ],
+  sosyal: [
+    'Bu bağlar ve husumetler, yolculuğunun en belirleyici parçası oldu.',
+    'Kimi sırtını yasladığı sağlam bir duvar, kimi ömürlük bir gölge olarak kaldı.',
+    'Dostlukları da düşmanlıkları da, onu bugünkü konumuna taşıyan görünmez kuvvetlerdi.',
+    'Etrafındaki bu insanlar olmadan, {name} bambaşka bir hikâye olurdu.'
+  ],
+  kisilik: [
+    'İşte {name}, tüm bu çizgilerin birleşiminden doğan katmanlı bir karakterdi.',
+    'Bu özellikler, onun hem en büyük gücü hem de en derin zaafıydı.',
+    'Kısacası o, kolay çözülmeyen, ucu hep biraz açık kalan bir insandı.',
+    'Onu basit bir kalıba sığdırmak isteyen herkes yanılırdı.'
+  ],
+  gelecek: [
+    'Ve hikâye burada bitmiyor — {name} için bu, yalnızca yeni bir bölümün başlangıcı.',
+    'Şehir onu izliyor; {first} ise kendi efsanesini yazmaya daha yeni başladı.',
+    'Önünde uzun bir yol var; ama {name} o yolu kendi kurallarıyla yürümeye kararlı.',
+    'Yarın ne getirir bilinmez, ama {first} sahneden inmeye hiç niyetli değil.'
+  ]
+};
+// Parçaları birbirine bağlayan ifadeler (zaman zarfı içermez ki parçaların kendi zamanıyla çakışmasın).
+var SGEN_CONN = ['Öte yandan, ', 'Bir yandan da, ', 'Dahası, ', 'Ne var ki, ', 'Aynı zamanda, ', 'Üstelik, ', 'Bununla birlikte, '];
+// Araya serpiştirilen kısa düşünce cümleleri — uzunluk ve ritim katar.
+var SGEN_REFLECT = [
+  'Bu, onun en belirgin yanlarından biriydi.',
+  'Zamanla bu özellik daha da derinleşti.',
+  'Çevresindekiler bunu çok geçmeden fark etti.',
+  'Bu seçim, ileride pek çok şeyi belirleyecekti.',
+  'Onu tanıyanlar bu yönünü iyi bilirdi.',
+  'İşte bu, hikâyesinin kilit taşlarından biriydi.',
+  'Bu çizgi yıllar boyunca onunla kaldı.',
+  'Geriye dönüp baktığında, bu anların hiçbirini değiştirmek istemezdi.'
+];
+
+// Bir bölümü zengin bir paragrafa dönüştür: açılış + örülmüş parçalar + köprü + kapanış.
+function _sgPara(secKey, full, first, frags, rng, used) {
+  frags = (frags || []).filter(function (f) { return f && f.trim(); });
   if (!frags.length) return '';
-  var connectors = ['', 'Zamanla ', 'Aynı yıllarda ', 'Öte yandan ', 'Üstelik ', 'O günlerde '];
-  var out = name + ' ' + frags[0].trim();
-  if (!/[.!?]$/.test(out)) out += '.';
-  for (var i = 1; i < frags.length; i++) {
-    var c = connectors[i % connectors.length];
-    var clause = frags[i].trim();
-    var sentence = c ? (c + clause) : _sgCap(clause);
-    if (!/[.!?]$/.test(sentence)) sentence += '.';
-    out += ' ' + _sgCap(sentence);
+  used = used || [];
+  var out = [];
+  if (SGEN_OPENERS[secKey]) out.push(_sgSub(_sgPick(SGEN_OPENERS[secKey], rng), full, first));
+  // ilk parça
+  out.push(_sgDot(_sgCap(frags[0].trim())));
+  // tek parçalıysa araya bir düşünce cümlesi koy (paragraf dolgun olsun)
+  if (frags.length === 1) {
+    out.push(_sgPickU(SGEN_REFLECT, rng, used));
+  } else {
+    // ikinci ve sonraki parçalar bağlayıcılarla
+    for (var i = 1; i < frags.length; i++) {
+      var conn = _sgPick(SGEN_CONN, rng);
+      out.push(_sgDot(conn + frags[i].trim()));
+      // çok parça varsa arada bir düşünce cümlesi
+      if (i === 1 && frags.length >= 2 && rng() < 0.6) out.push(_sgPickU(SGEN_REFLECT, rng, used));
+    }
   }
-  return out;
+  if (SGEN_CLOSERS[secKey]) out.push(_sgSub(_sgPick(SGEN_CLOSERS[secKey], rng), full, first));
+  return out.join(' ');
 }
 
-// "Günümüz" bölümü — baskın istatistik + isim üzerinden sentezlenir (çelişki üretmez).
-function _sgGunumuz(name, stats) {
-  var parts = [];
-  // baskın eksen
+// "Günümüz" bölümü — baskın istatistik + isim üzerinden zengin biçimde sentezlenir (çelişki üretmez).
+function _sgGunumuz(full, first, stats, rng) {
   var axes = [
-    { k: 'leader', hi: name + ' bugün etrafına insan toplayan, sözü dinlenen bir figür hâline geldi', lo: name + ' bugün hâlâ kendi yolunda yürüyen, kimsenin gölgesine sığmayan bir yalnız' },
-    { k: 'crime', hi: 'şehrin karanlık işlerinde adı sıkça geçiyor', lo: 'eli temiz kalmayı bugüne dek başardı' },
-    { k: 'chaos', hi: 'nereye gitse ardında bir fırtına bırakıyor', lo: 'sakin sularda yüzmeyi, gürültüden uzak durmayı seçiyor' },
-    { k: 'smart', hi: 'her hamlesini hesaplayan keskin zekâsıyla tanınıyor', lo: 'kararlarını kitaplardan değil sokaktan, içgüdüleriyle veriyor' },
-    { k: 'trust', hi: 'verdiği sözü tutmasıyla çevresinde güven topluyor', lo: 'kimseye tam güvenmeyen, herkesi bir kol mesafede tutan biri olarak biliniyor' }
+    { k: 'leader', hi: 'Bugün {name}, etrafına insan toplayan, sözü dinlenen bir figür hâline geldi', lo: 'Bugün {name}, kimsenin gölgesine sığmayan, kendi yolunda yürüyen bir yalnız' },
+    { k: 'crime', hi: 'şehrin karanlık işlerinde adı sıkça anılıyor', lo: 'tüm baskıya rağmen elini temiz tutmayı başardı' },
+    { k: 'chaos', hi: 'nereye gitse ardında bir fırtına bırakıyor', lo: 'gürültüden uzak, sakin sularda yüzmeyi seçiyor' },
+    { k: 'smart', hi: 'her hamlesini önceden hesaplayan keskin zekâsıyla tanınıyor', lo: 'kararlarını kitaplardan değil, sokağın öğrettiği içgüdüyle veriyor' },
+    { k: 'trust', hi: 'verdiği sözü tutmasıyla çevresinde sağlam bir güven kurdu', lo: 'kimseye tam güvenmeyen, herkesi bir kol mesafede tutan biri olarak biliniyor' }
   ];
-  // leader cümlesi her zaman açılış
-  parts.push(stats.leader >= 50 ? axes[0].hi : axes[0].lo);
-  // diğer eksenlerden en uçta olan 2 tanesini ekle
-  var rest = axes.slice(1).map(function(a) {
-    var v = stats[a.k]; var dist = Math.abs(v - 50);
-    return { txt: v >= 50 ? a.hi : a.lo, dist: dist };
-  }).sort(function(a, b) { return b.dist - a.dist; });
-  parts.push(rest[0].txt);
-  parts.push(rest[1].txt);
-  var s = parts[0] + '. ' + _sgCap(parts[1]) + '; ' + parts[2] + '.';
-  // kapanış
-  var chaos = stats.chaos, crime = stats.crime;
+  var lead = _sgSub(stats.leader >= 50 ? axes[0].hi : axes[0].lo, full, first);
+  var rest = axes.slice(1).map(function (a) { return { txt: stats[a.k] >= 50 ? a.hi : a.lo, dist: Math.abs(stats[a.k] - 50) }; })
+                 .sort(function (a, b) { return b.dist - a.dist; });
+  var body = lead + '. ' + _sgCap(rest[0].txt) + '; ' + rest[1].txt + '. ' + _sgCap(rest[2].txt) + '.';
   var close;
-  if (crime >= 65 || chaos >= 70) close = 'Şehir onun adını duyduğunda bir adım geri çekiliyor — çünkü ' + name + '\'in nereye kadar gideceğini kimse kestiremiyor.';
-  else if (stats.trust >= 65) close = 'Bugün ona güvenenlerin sayısı, karşısında durmaya cesaret edenlerden çok daha fazla.';
-  else if (stats.leader >= 65) close = 'Artık birçok kapı ona kendiliğinden açılıyor; gerisini de zamanla açmaya kararlı.';
-  else close = 'Hikâyesi henüz bitmedi; bugünü, yarını için attığı sessiz bir basamak olarak görüyor.';
-  return s + ' ' + close;
+  if (stats.crime >= 62 || stats.chaos >= 68) close = 'Şehir onun adını duyduğunda bir adım geri çekiliyor — çünkü ' + first + ' adındaki bu insanın nereye kadar gideceğini kimse kestiremiyor.';
+  else if (stats.trust >= 62) close = 'Bugün ona güvenenlerin sayısı, karşısında durmaya cesaret edenlerden çok daha fazla.';
+  else if (stats.leader >= 62) close = 'Artık birçok kapı ona kendiliğinden aralanıyor; gerisini de zamanla açmaya kararlı.';
+  else close = 'Hikâyesi henüz tamamlanmadı; bugünü, yarını için attığı sessiz bir basamak olarak görüyor.';
+  return body + ' ' + close;
 }
 
-// Özet — istatistik profilinden kısa bir tanım
-function _sgSummary(name, stats) {
-  function strongest() {
-    var arr = [
-      { k: 'crime', hi: 'tehlikeli', lo: 'temiz' },
-      { k: 'leader', hi: 'doğuştan lider', lo: 'yalnız kurt' },
-      { k: 'smart', hi: 'kurnaz ve zeki', lo: 'içgüdüsel' },
-      { k: 'chaos', hi: 'öngörülemez', lo: 'soğukkanlı' },
-      { k: 'trust', hi: 'sözüne güvenilir', lo: 'kimseye güvenmeyen' }
-    ];
-    return arr.map(function(a) { return { txt: stats[a.k] >= 50 ? a.hi : a.lo, dist: Math.abs(stats[a.k] - 50), k: a.k }; })
-              .sort(function(a, b) { return b.dist - a.dist; });
-  }
-  var s = strongest();
-  var traits = [s[0].txt, s[1].txt];
+// Özet — istatistik profilinden, ismi içine örerek kısa bir tanım
+function _sgSummary(full, first, stats) {
+  var arr = [
+    { k: 'crime', hi: 'tehlikeli', lo: 'temiz kalpli' },
+    { k: 'leader', hi: 'doğuştan lider', lo: 'yalnız bir kurt' },
+    { k: 'smart', hi: 'kurnaz ve zeki', lo: 'içgüdüleriyle hareket eden' },
+    { k: 'chaos', hi: 'öngörülemez', lo: 'soğukkanlı' },
+    { k: 'trust', hi: 'sözüne güvenilir', lo: 'kolay güvenmeyen' }
+  ];
+  var s = arr.map(function (a) { return { txt: stats[a.k] >= 50 ? a.hi : a.lo, dist: Math.abs(stats[a.k] - 50) }; })
+             .sort(function (a, b) { return b.dist - a.dist; });
   var goal;
   if (stats.leader >= 60 && stats.crime >= 55) goal = 'şehrin tepesine oynayan';
   else if (stats.crime >= 60) goal = 'kuralları kendi koyan';
   else if (stats.trust >= 60) goal = 'sadakatiyle yol alan';
   else if (stats.smart >= 62) goal = 'aklıyla ayakta kalan';
   else goal = 'kendi hikâyesini yazan';
-  return name + ' — ' + goal + ', ' + traits.join(', ') + ' bir karakter. Geçmişi onu bugünkü hâline getirdi; gelecekte ne olacağıysa verdiği kararlara bağlı.';
+  return full + ', ' + goal + '; ' + s[0].txt + ', ' + s[1].txt + ' bir karakter. Yokluktan mı geldi bolluktan mı bilinmez, ama bugün geldiği yeri kendi elleriyle kazandı — ve hikâyesi henüz bitmiş değil.';
 }
 
 // Ana motor: cevaplardan tam hikâye + istatistik üret
 // answers: [{cat, optText, frag, cr, tr, ld, sm, ch}]
 function SGEN_build(name, surname, answers) {
-  var full = ((name || '') + ' ' + (surname || '')).trim() || 'Bilinmeyen';
-  // 1) İstatistikleri topla
+  name = (name || '').trim(); surname = (surname || '').trim();
+  var full = (name + ' ' + surname).trim() || 'Bilinmeyen Biri';
+  var first = name || full.split(' ')[0];
+  // 1) İstatistikler
   var sum = { cr: 0, tr: 0, ld: 0, sm: 0, ch: 0 };
-  answers.forEach(function(a) { sum.cr += a.cr | 0; sum.tr += a.tr | 0; sum.ld += a.ld | 0; sum.sm += a.sm | 0; sum.ch += a.ch | 0; });
+  answers.forEach(function (a) { sum.cr += a.cr | 0; sum.tr += a.tr | 0; sum.ld += a.ld | 0; sum.sm += a.sm | 0; sum.ch += a.ch | 0; });
   var stats = {
     crime:  _sgClamp(36 + sum.cr * 3.8, 3, 99),
     trust:  _sgClamp(50 + sum.tr * 3.8, 3, 99),
@@ -110,21 +234,17 @@ function SGEN_build(name, surname, answers) {
   };
   // 2) Parçaları bölümlere göre grupla (soru sırası korunur)
   var fragsBy = {};
-  answers.forEach(function(a) {
-    var sec = SGEN_SECTION_OF[a.cat] || 'kisilik';
-    (fragsBy[sec] = fragsBy[sec] || []).push(a.frag);
-  });
-  // 3) Bölümleri yaz
+  answers.forEach(function (a) { var sec = SGEN_SECTION_OF[a.cat] || 'kisilik'; (fragsBy[sec] = fragsBy[sec] || []).push(a.frag); });
+  // 3) Tohumlu rng (aynı girdi => aynı hikâye)
+  var rng = _sgRng(full + '::' + answers.map(function (a) { return a.frag; }).join('|'));
+  var usedReflect = [];
+  // 4) Bölümleri yaz
   var sections = {};
-  var openers = {
-    cocukluk: full, genclik: full, donum: full,
-    kariyer: full, sosyal: full, kisilik: full, gelecek: full
-  };
-  ['cocukluk', 'genclik', 'donum', 'kariyer', 'sosyal', 'kisilik', 'gelecek'].forEach(function(sec) {
-    if (fragsBy[sec] && fragsBy[sec].length) sections[sec] = _sgSection(openers[sec], fragsBy[sec]);
+  ['cocukluk', 'genclik', 'donum', 'kariyer', 'sosyal', 'kisilik', 'gelecek'].forEach(function (sec) {
+    if (fragsBy[sec] && fragsBy[sec].length) sections[sec] = _sgPara(sec, full, first, fragsBy[sec], rng, usedReflect);
   });
-  sections.gunumuz = _sgGunumuz(full, stats);
-  var summary = _sgSummary(full, stats);
+  sections.gunumuz = _sgGunumuz(full, first, stats, rng);
+  var summary = _sgSummary(full, first, stats);
   return { name: full, summary: summary, sections: sections, stats: stats };
 }
 
